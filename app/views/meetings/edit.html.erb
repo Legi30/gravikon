@@ -29,7 +29,7 @@
           <div class="checkbox-group" role="group" aria-describedby="participants-error">
             <% @bodies.each_with_index do |name, index| %>
               <label class="checkbox-label" for="edit_participant_<%= index %>">
-                <%= check_box_tag "participants[]", name, @meeting.participants_array.include?(name), id: "edit_participant_#{index}", aria: { required: index < 2 ? "true" : "false" } %>
+                <%= check_box_tag "meeting[participants][]", name, @meeting.participants_array.include?(name), id: "edit_participant_#{index}", aria: { required: index < 2 ? "true" : "false" } %>
                 <%= name %>
               </label>
             <% end %>

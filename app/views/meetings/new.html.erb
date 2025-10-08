@@ -4,7 +4,7 @@
 
 <div class="content-section">
   <div class="card fade-in">
-    <%= form_with url: meetings_path, method: :post, aria: { label: "Formulář pro plánování nové schůzky" } do |f| %>
+    <%= form_with url: meetings_path, method: :post, scope: :meeting, aria: { label: "Formulář pro plánování nové schůzky" } do |f| %>
       <div class="form-group">
         <%= f.label :start_time, "Začátek (např. 12:00):", for: "meeting_start_time" %>
         <%= f.text_field :start_time, placeholder: "12:00", id: "meeting_start_time", aria: { describedby: "start-time-error", required: "true" } %>
@@ -29,7 +29,7 @@
           <div class="checkbox-group" role="group" aria-describedby="participants-error">
             <% @bodies.each_with_index do |name, index| %>
               <label class="checkbox-label" for="participant_<%= index %>">
-                <%= check_box_tag "participants[]", name, false, id: "participant_#{index}", aria: { required: index < 2 ? "true" : "false" } %>
+                <%= check_box_tag "meeting[participants][]", name, false, id: "participant_#{index}", aria: { required: index < 2 ? "true" : "false" } %>
                 <%= name %>
               </label>
             <% end %>

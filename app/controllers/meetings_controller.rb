@@ -18,11 +18,7 @@ class MeetingsController < ApplicationController
 
   def create
     @meeting = create_or_update_meeting
-
-    respond_to do |format|
-      format.html { redirect_to meetings_path, notice: "Schůzka naplánována." }
-      format.turbo_stream
-    end
+    redirect_to meetings_path, notice: "Schůzka naplánována."
   end
 
   def edit
@@ -40,11 +36,7 @@ class MeetingsController < ApplicationController
   def destroy
     @meeting = Meeting.find(params[:id])
     @meeting.destroy
-
-    respond_to do |format|
-      format.html { redirect_to meetings_path, notice: "Schůzka smazána." }
-      format.turbo_stream
-    end
+    redirect_to meetings_path, notice: "Schůzka smazána."
   end
 
   private

@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // Find form elements
   const startTimeField = document.querySelector('input[name="start_time"], input[name="meeting[start_time]"]');
   const endTimeField = document.querySelector('input[name="end_time"], input[name="meeting[end_time]"]');
-  const participantCheckboxes = document.querySelectorAll('input[name="participants[]"]');
+  const participantCheckboxes = document.querySelectorAll('input[name="participants[]"], input[name="meeting[participants][]"]');
   const submitButton = document.querySelector('input[type="submit"]');
 
   if (!startTimeField || !endTimeField || !submitButton) {

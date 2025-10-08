@@ -89,7 +89,10 @@ class PlanetarySystem
           next unless body.parent
           r = body.orbit_radius
           svg.circle(cx: body.parent.x, cy: body.parent.y, r: r.round(1),
-                     fill: "none", stroke: "#555", "stroke-dasharray": "3,2")
+                     fill: "none", stroke: "#555", "stroke-dasharray": "3,2",
+                     class: "orbit-path",
+                     "data-body-name": body.name,
+                     "data-parent-name": body.parent.name)
         end
 
         # Tělesa

@@ -29,6 +29,7 @@ class OrbitalAnimator {
 
     // Parse body data and store initial states
     this.bodies = Array.from(celestialBodies).map(element => {
+      const bodyName = element.getAttribute('data-name');
       const parentName = element.getAttribute('data-parent');
       const orbitRadius = parseFloat(element.getAttribute('data-orbit-radius')) || 0;
       const parentX = parseFloat(element.getAttribute('data-parent-x')) || 0;
@@ -49,11 +50,17 @@ class OrbitalAnimator {
       // Pre-calculate angular velocity (constant per body)
       const angularVelocity = orbitalPeriod > 0 ? (2 * Math.PI) / orbitalPeriod : 0;
 
+      // Find orbit path element for this body (if it exists)
+      const orbitPath = document.querySelector(`.orbit-path[data-body-name="${bodyName}"]`);
+      const orbitPathOriginalX = orbitPath ? parseFloat(orbitPath.getAttribute('cx')) : 0;
+      const orbitPathOriginalY = orbitPath ? parseFloat(orbitPath.getAttribute('cy')) : 0;
+
       return {
         element: element,
         textElement: hasTextLabel ? textElement : null,
         radius: radius,
         type: bodyType,
+        name: bodyName,
         parentName: parentName,
         parentX: parentX,
         parentY: parentY,
@@ -63,8 +70,30 @@ class OrbitalAnimator {
         angularVelocity: angularVelocity,
         originalX: originalX,
         originalY: originalY,
-        hasOrbit: orbitRadius > 0 && parentName !== ""
+        hasOrbit: orbitRadius > 0 && parentName !== "",
+        currentX: originalX,
+        currentY: originalY,
+        orbitPath: orbitPath,
+        orbitPathOriginalX: orbitPathOriginalX,
+        orbitPathOriginalY: orbitPathOriginalY
       };
+    });
+
+    // Sort bodies to ensure parents are processed before children
+    // Order: star -> planet -> moon
+    const typeOrder = { 'star': 0, 'planet': 1, 'moon': 2 };
+    this.bodies.sort((a, b) => {
+      const orderA = typeOrder[a.type] !== undefined ? typeOrder[a.type] : 999;
+      const orderB = typeOrder[b.type] !== undefined ? typeOrder[b.type] : 999;
+      return orderA - orderB;
+    });
+
+    // Create a lookup map for finding bodies by name
+    this.bodyLookup = {};
+    this.bodies.forEach(body => {
+      if (body.name) {
+        this.bodyLookup[body.name] = body;
+      }
     });
 
     if (window.Logger) window.Logger.log(`Initialized orbital animation for ${this.bodies.length} bodies`);
@@ -103,6 +132,20 @@ class OrbitalAnimator {
     this.bodies.forEach(body => {
       body.element.setAttribute('cx', body.originalX);
       body.element.setAttribute('cy', body.originalY);
+      body.currentX = body.originalX;
+      body.currentY = body.originalY;
+
+      // Reset text labels if they exist
+      if (body.textElement) {
+        body.textElement.setAttribute('x', body.originalX + body.radius + 5);
+        body.textElement.setAttribute('y', body.originalY - body.radius - 5);
+      }
+
+      // Reset orbit paths if they exist
+      if (body.orbitPath) {
+        body.orbitPath.setAttribute('cx', body.orbitPathOriginalX);
+        body.orbitPath.setAttribute('cy', body.orbitPathOriginalY);
+      }
     });
 
     if (window.Logger) window.Logger.log('Orbital animation reset');
@@ -150,14 +193,34 @@ class OrbitalAnimator {
     for (let i = 0; i < this.bodies.length; i++) {
       const body = this.bodies[i];
 
-      if (!body.hasOrbit) continue;
+      if (!body.hasOrbit) {
+        // Star or non-orbiting body - keep at original position
+        body.currentX = body.originalX;
+        body.currentY = body.originalY;
+        continue;
+      }
 
       // Calculate current angle using pre-calculated angular velocity
       const currentAngle = body.initialAngle + (body.angularVelocity * elapsedTime * this.speedMultiplier);
 
-      // Calculate new position on orbit
-      const newX = body.parentX + body.orbitRadius * Math.cos(currentAngle);
-      const newY = body.parentY + body.orbitRadius * Math.sin(currentAngle);
+      // Get parent's current position (for moons orbiting planets that are also moving)
+      let parentX = body.parentX;
+      let parentY = body.parentY;
+
+      if (body.parentName && this.bodyLookup[body.parentName]) {
+        const parentBody = this.bodyLookup[body.parentName];
+        // Use parent's current position if available
+        parentX = parentBody.currentX;
+        parentY = parentBody.currentY;
+      }
+
+      // Calculate new position on orbit relative to parent's current position
+      const newX = parentX + body.orbitRadius * Math.cos(currentAngle);
+      const newY = parentY + body.orbitRadius * Math.sin(currentAngle);
+
+      // Store current position for children (moons) to reference
+      body.currentX = newX;
+      body.currentY = newY;
 
       updates.push({ body, newX, newY });
     }
@@ -174,6 +237,21 @@ class OrbitalAnimator {
       if (body.textElement) {
         body.textElement.setAttribute('x', (newX + body.radius + 5).toFixed(2));
         body.textElement.setAttribute('y', (newY - body.radius - 5).toFixed(2));
+      }
+    }
+
+    // Update orbit paths for moons (their orbit circles need to follow parent planets)
+    for (let i = 0; i < this.bodies.length; i++) {
+      const body = this.bodies[i];
+
+      // Only update orbit paths for moons (type === 'moon')
+      if (body.type === 'moon' && body.orbitPath && body.parentName) {
+        const parentBody = this.bodyLookup[body.parentName];
+        if (parentBody) {
+          // Move the moon's orbit circle to follow the parent planet
+          body.orbitPath.setAttribute('cx', parentBody.currentX.toFixed(2));
+          body.orbitPath.setAttribute('cy', parentBody.currentY.toFixed(2));
+        }
       }
     }
 
