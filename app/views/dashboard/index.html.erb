@@ -1,0 +1,522 @@
+<div class="page-header">
+  <h1>📊 Přehled analytiky schůzek</h1>
+  <p style="color: var(--text); opacity: 0.8; margin-top: var(--spacing-sm);">
+    Statistiky a analýza relativistických schůzek v planetární soustavě
+    <span style="margin-left: 20px;">
+      <%= link_to "⚡ Výkon cache", dashboard_cache_stats_path, style: "color: #667eea; text-decoration: none; font-weight: 500; margin-right: 15px;" %>
+      <%= link_to "🚀 Výkon úloh", dashboard_job_performance_path, style: "color: #667eea; text-decoration: none; font-weight: 500;" %>
+    </span>
+  </p>
+</div>
+
+<!-- Key Statistics Cards -->
+<div class="stats-grid">
+  <div class="stat-card fade-in">
+    <div class="stat-icon">📅</div>
+    <div class="stat-content">
+      <div class="stat-value"><%= @total_meetings %></div>
+      <div class="stat-label">Celkem schůzek</div>
+    </div>
+  </div>
+
+  <div class="stat-card fade-in" style="animation-delay: 0.1s;">
+    <div class="stat-icon">⏱</div>
+    <div class="stat-content">
+      <div class="stat-value"><%= format_duration_hours(@total_time) %></div>
+      <div class="stat-label">Celkový čas schůzek</div>
+    </div>
+  </div>
+
+  <div class="stat-card fade-in" style="animation-delay: 0.2s;">
+    <div class="stat-icon">📡</div>
+    <div class="stat-content">
+      <div class="stat-value"><%= format_delay_display(@avg_delay) %></div>
+      <div class="stat-label">Průměrné zpoždění signálu</div>
+    </div>
+  </div>
+
+  <div class="stat-card fade-in" style="animation-delay: 0.3s;">
+    <div class="stat-icon">🌍</div>
+    <div class="stat-content">
+      <div class="stat-value"><%= @total_bodies %></div>
+      <div class="stat-label">Nebeských těles v soustavě</div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts Section -->
+<div class="content-section">
+  <div class="charts-grid">
+    <!-- Participant Frequency Chart -->
+    <div class="card fade-in" style="animation-delay: 0.4s;">
+      <h3>📍 Nejčastější účastníci schůzek</h3>
+      <p class="chart-description">
+        <small>Frekvence výskytu nebeských těles ve schůzkách</small>
+      </p>
+      <% if @participant_frequency.any? %>
+        <canvas id="participantChart" height="300" role="img" aria-label="Graf frekvence účastníků - sloupcový diagram zobrazující počet schůzek pro každé nebeské těleso"></canvas>
+      <% else %>
+        <p class="empty-state">Žádná data k zobrazení. Vytvořte první schůzku!</p>
+      <% end %>
+    </div>
+
+    <!-- Duration Distribution Chart -->
+    <div class="card fade-in" style="animation-delay: 0.5s;">
+      <h3>⏰ Distribuce délky schůzek</h3>
+      <p class="chart-description">
+        <small>Rozložení schůzek podle jejich délky (lokální čas)</small>
+      </p>
+      <% if @duration_distribution.values.sum > 0 %>
+        <canvas id="durationChart" height="300" role="img" aria-label="Graf distribuce délky schůzek - koláčový diagram zobrazující rozložení schůzek podle jejich délky"></canvas>
+      <% else %>
+        <p class="empty-state">Žádná data k zobrazení. Vytvořte první schůzku!</p>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<!-- Featured Meetings Section -->
+<% if @recent_meetings.any? %>
+<div class="content-section">
+  <div class="card fade-in" style="animation-delay: 0.6s;">
+    <h3>🕐 Poslední schůzky</h3>
+    <div class="timeline">
+      <% @recent_meetings.each_with_index do |meeting, index| %>
+        <div class="timeline-item" style="animation-delay: <%= 0.7 + index * 0.05 %>s;">
+          <div class="timeline-marker"></div>
+          <div class="timeline-content">
+            <div class="timeline-header">
+              <strong><%= meeting.start_time %> - <%= meeting.end_time %></strong>
+              <span class="timeline-badge"><%= meeting.formatted_duration %></span>
+            </div>
+            <div class="timeline-body">
+              <div class="timeline-participants">
+                <%= meeting.participants_array.join(" • ") %>
+              </div>
+              <% if meeting.topic.present? %>
+                <div class="timeline-topic">
+                  <em>"<%= meeting.topic %>"</em>
+                </div>
+              <% end %>
+              <div class="timeline-stats">
+                <span>📡 <%= meeting.formatted_delay %></span>
+                <span style="margin-left: 1rem;">⏱ <%= meeting.formatted_duration %></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+<% end %>
+
+<!-- Highlights Section -->
+<% if @longest_meeting || @highest_delay_meeting %>
+<div class="content-section">
+  <div class="highlights-grid">
+    <% if @longest_meeting %>
+    <div class="card fade-in highlight-card" style="animation-delay: 0.8s;">
+      <div class="highlight-icon">🏆</div>
+      <h3>Nejdelší schůzka</h3>
+      <div class="highlight-content">
+        <div class="highlight-value"><%= @longest_meeting.formatted_duration %></div>
+        <div class="highlight-details">
+          <div><strong><%= @longest_meeting.start_time %> - <%= @longest_meeting.end_time %></strong></div>
+          <div class="highlight-participants"><%= @longest_meeting.participants_array.join(", ") %></div>
+          <% if @longest_meeting.topic.present? %>
+            <div class="highlight-topic"><%= @longest_meeting.topic %></div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+    <% end %>
+
+    <% if @highest_delay_meeting %>
+    <div class="card fade-in highlight-card" style="animation-delay: 0.9s;">
+      <div class="highlight-icon">📡</div>
+      <h3>Největší zpoždění signálu</h3>
+      <div class="highlight-content">
+        <div class="highlight-value"><%= @highest_delay_meeting.formatted_delay %></div>
+        <div class="highlight-details">
+          <div><strong><%= @highest_delay_meeting.start_time %> - <%= @highest_delay_meeting.end_time %></strong></div>
+          <div class="highlight-participants"><%= @highest_delay_meeting.participants_array.join(", ") %></div>
+          <% if @highest_delay_meeting.topic.present? %>
+            <div class="highlight-topic"><%= @highest_delay_meeting.topic %></div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+    <% end %>
+  </div>
+</div>
+<% end %>
+
+<!-- Navigation Actions -->
+<div class="actions">
+  <%= link_to "📅 Schůzky", meetings_path, class: "btn btn-primary" %>
+  <%= link_to "🗺 Mapa soustavy", systems_path, class: "btn btn-secondary" %>
+</div>
+
+<!-- Chart.js Library from CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<!-- Initialize Charts -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Color scheme matching the space theme
+  const colors = {
+    primary: '#4a90e2',
+    secondary: '#7b68ee',
+    accent: '#ffd700',
+    success: '#66cc99',
+    danger: '#ff6b6b',
+    purple: '#9b59b6',
+    orange: '#ff9f43',
+    teal: '#26de81',
+    pink: '#fd79a8'
+  };
+
+  const chartColors = [
+    colors.accent,
+    colors.primary,
+    colors.secondary,
+    colors.success,
+    colors.purple,
+    colors.orange,
+    colors.teal,
+    colors.pink,
+    colors.danger
+  ];
+
+  // Common chart options for dark theme
+  const commonOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        labels: {
+          color: '#e0e0e0',
+          font: {
+            family: 'Inter, sans-serif',
+            size: 12
+          }
+        }
+      }
+    }
+  };
+
+  // Participant Frequency Chart (Bar Chart)
+  <% if @participant_frequency.any? %>
+  const participantCtx = document.getElementById('participantChart');
+  if (participantCtx) {
+    new Chart(participantCtx, {
+      type: 'bar',
+      data: {
+        labels: <%= @participant_frequency.keys.to_json.html_safe %>,
+        datasets: [{
+          label: 'Počet schůzek',
+          data: <%= @participant_frequency.values.to_json.html_safe %>,
+          backgroundColor: chartColors.slice(0, <%= @participant_frequency.length %>),
+          borderColor: chartColors.slice(0, <%= @participant_frequency.length %>).map(c => c),
+          borderWidth: 2,
+          borderRadius: 6
+        }]
+      },
+      options: {
+        ...commonOptions,
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              color: '#e0e0e0',
+              stepSize: 1
+            },
+            grid: {
+              color: 'rgba(255, 255, 255, 0.1)'
+            }
+          },
+          x: {
+            ticks: {
+              color: '#e0e0e0',
+              maxRotation: 45,
+              minRotation: 45
+            },
+            grid: {
+              color: 'rgba(255, 255, 255, 0.05)'
+            }
+          }
+        },
+        plugins: {
+          ...commonOptions.plugins,
+          tooltip: {
+            backgroundColor: 'rgba(26, 30, 58, 0.95)',
+            titleColor: '#ffd700',
+            bodyColor: '#e0e0e0',
+            borderColor: '#ffd700',
+            borderWidth: 1
+          }
+        }
+      }
+    });
+  }
+  <% end %>
+
+  // Duration Distribution Chart (Pie Chart)
+  <% if @duration_distribution.values.sum > 0 %>
+  const durationCtx = document.getElementById('durationChart');
+  if (durationCtx) {
+    new Chart(durationCtx, {
+      type: 'pie',
+      data: {
+        labels: <%= @duration_distribution.keys.to_json.html_safe %>,
+        datasets: [{
+          data: <%= @duration_distribution.values.to_json.html_safe %>,
+          backgroundColor: chartColors,
+          borderColor: '#0a0e27',
+          borderWidth: 2
+        }]
+      },
+      options: {
+        ...commonOptions,
+        plugins: {
+          ...commonOptions.plugins,
+          tooltip: {
+            backgroundColor: 'rgba(26, 30, 58, 0.95)',
+            titleColor: '#ffd700',
+            bodyColor: '#e0e0e0',
+            borderColor: '#ffd700',
+            borderWidth: 1,
+            callbacks: {
+              label: function(context) {
+                const label = context.label || '';
+                const value = context.parsed || 0;
+                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                return `${label}: ${value} (${percentage}%)`;
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+  <% end %>
+});
+</script>
+
+<!-- Custom Dashboard Styles -->
+<style>
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+}
+
+.stat-card {
+  background: linear-gradient(135deg, rgba(26, 30, 58, 0.8) 0%, rgba(15, 18, 35, 0.8) 100%);
+  border: 2px solid rgba(255, 215, 0, 0.2);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  transition: all var(--transition-normal);
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  border-color: rgba(255, 215, 0, 0.5);
+  box-shadow: 0 10px 30px rgba(255, 215, 0, 0.2);
+}
+
+.stat-icon {
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.stat-content {
+  flex: 1;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--accent);
+  font-family: 'Orbitron', sans-serif;
+  margin-bottom: var(--spacing-xs);
+}
+
+.stat-label {
+  font-size: 0.9rem;
+  color: rgba(224, 224, 224, 0.8);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.chart-description {
+  color: rgba(224, 224, 224, 0.7);
+  margin-bottom: var(--spacing-md);
+}
+
+.empty-state {
+  text-align: center;
+  padding: var(--spacing-xl);
+  color: rgba(224, 224, 224, 0.5);
+  font-style: italic;
+}
+
+canvas {
+  max-height: 300px;
+}
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) 0;
+}
+
+.timeline-item {
+  display: flex;
+  gap: var(--spacing-md);
+  position: relative;
+  opacity: 0;
+  animation: fadeInUp 0.5s ease forwards;
+}
+
+.timeline-marker {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent);
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+
+.timeline-content {
+  flex: 1;
+  background: rgba(26, 30, 58, 0.4);
+  border-left: 2px solid rgba(255, 215, 0, 0.3);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-normal);
+}
+
+.timeline-content:hover {
+  background: rgba(26, 30, 58, 0.6);
+  border-left-color: var(--accent);
+}
+
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-sm);
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}
+
+.timeline-badge {
+  background: var(--accent);
+  color: var(--background);
+  padding: 2px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.timeline-participants {
+  color: var(--primary);
+  font-weight: 600;
+  margin-bottom: var(--spacing-xs);
+}
+
+.timeline-topic {
+  color: rgba(224, 224, 224, 0.7);
+  margin-bottom: var(--spacing-xs);
+  font-size: 0.95rem;
+}
+
+.timeline-stats {
+  color: rgba(224, 224, 224, 0.6);
+  font-size: 0.85rem;
+  margin-top: var(--spacing-xs);
+}
+
+.highlights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.highlight-card {
+  text-align: center;
+}
+
+.highlight-icon {
+  font-size: 4rem;
+  margin-bottom: var(--spacing-md);
+}
+
+.highlight-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--accent);
+  font-family: 'Orbitron', sans-serif;
+  margin: var(--spacing-md) 0;
+}
+
+.highlight-details {
+  color: rgba(224, 224, 224, 0.8);
+  line-height: 1.6;
+}
+
+.highlight-participants {
+  color: var(--primary);
+  margin: var(--spacing-sm) 0;
+}
+
+.highlight-topic {
+  color: rgba(224, 224, 224, 0.6);
+  font-style: italic;
+  font-size: 0.95rem;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stat-value {
+    font-size: 1.5rem;
+  }
+
+  .highlight-value {
+    font-size: 2rem;
+  }
+}
+</style>

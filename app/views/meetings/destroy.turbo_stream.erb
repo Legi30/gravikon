@@ -1,0 +1,7 @@
+<%= turbo_stream.remove @meeting %>
+<%= turbo_stream.remove "relativistic-#{dom_id(@meeting)}" %>
+<%= turbo_stream.update "flash-messages" do %>
+  <div class="notice">
+    Schůzka smazána.
+  </div>
+<% end %>

@@ -1,7 +1,14 @@
+# frozen_string_literal: true
+
 class MeetingsController < ApplicationController
   def index
     @meetings = Meeting.all
-    @system_data = JSON.parse(File.read(Rails.root.join("data/system_data.json")))
+    @system_data = Rails.cache.fetch('system_data') do
+      JSON.parse(File.read(Rails.root.join("data/system_data.json")))
+    rescue Errno::ENOENT, JSON::ParserError => e
+      Rails.logger.error("MeetingsController#index: Failed to load system_data - #{e.message}")
+      { "bodies" => [] }  # Return empty structure to prevent crashes
+    end
   end
 
   def new
@@ -10,8 +17,12 @@ class MeetingsController < ApplicationController
   end
 
   def create
-    create_or_update_meeting
-    redirect_to meetings_path, notice: "Schůzka naplánována."
+    @meeting = create_or_update_meeting
+
+    respond_to do |format|
+      format.html { redirect_to meetings_path, notice: "Schůzka naplánována." }
+      format.turbo_stream
+    end
   end
 
   def edit
@@ -29,26 +40,58 @@ class MeetingsController < ApplicationController
   def destroy
     @meeting = Meeting.find(params[:id])
     @meeting.destroy
-    redirect_to meetings_path, notice: "Schůzka smazána."
+
+    respond_to do |format|
+      format.html { redirect_to meetings_path, notice: "Schůzka smazána." }
+      format.turbo_stream
+    end
   end
 
   private
 
   def extract_bodies_from_system
-    system_data = JSON.parse(File.read(Rails.root.join("data/system_data.json")))
+    system_data = Rails.cache.fetch('system_data') do
+      JSON.parse(File.read(Rails.root.join("data/system_data.json")))
+    rescue Errno::ENOENT, JSON::ParserError => e
+      Rails.logger.error("MeetingsController#extract_bodies_from_system: Failed to load system_data - #{e.message}")
+      { "bodies" => [] }
+    end
     system_data["bodies"].map { |b| b["name"] }
   end
 
+  # Strong parameters - whitelist only permitted attributes
+  def meeting_params
+    params.require(:meeting).permit(:start_time, :end_time, :topic)
+  rescue ActionController::ParameterMissing
+    {}
+  end
+
+  # Whitelist participants array
+  def participants_params
+    if params[:participants].is_a?(Array)
+      params[:participants]
+    elsif params[:meeting] && params[:meeting][:participants].is_a?(Array)
+      params[:meeting][:participants]
+    else
+      []
+    end
+  end
 
   def create_or_update_meeting
-    meeting_data = params[:meeting] || {}
-    participants = params[:participants] || meeting_data[:participants] || []
-    
-    start_time = meeting_data[:start_time] || params[:start_time]
-    end_time = meeting_data[:end_time] || params[:end_time]
-    topic = meeting_data[:topic] || params[:topic] || ""
+    # Use strong parameters to extract only permitted attributes
+    permitted_params = meeting_params
+    participants = participants_params
+
+    start_time = permitted_params[:start_time]
+    end_time = permitted_params[:end_time]
+    topic = permitted_params[:topic] || ""
   
-    system_data = JSON.parse(File.read(Rails.root.join("data/system_data.json")))
+    system_data = Rails.cache.fetch('system_data') do
+      JSON.parse(File.read(Rails.root.join("data/system_data.json")))
+    rescue Errno::ENOENT, JSON::ParserError => e
+      Rails.logger.error("MeetingsController#create_or_update_meeting: Failed to load system_data - #{e.message}")
+      { "bodies" => [] }
+    end
     bodies = system_data["bodies"]
   
     parsed_participants = participants.map { |name| find_body(name, bodies) }.compact
@@ -69,8 +112,8 @@ class MeetingsController < ApplicationController
   
     avg_duration = (local_durations.sum / local_durations.size.to_f).round(2)
     avg_delay = ((distances.sum / distances.size.to_f) / 100).round(2)
-  
-    Meeting.create!(
+
+    meeting = Meeting.create!(
       start_time: start_time,
       end_time: end_time,
       topic: topic,
@@ -78,6 +121,8 @@ class MeetingsController < ApplicationController
       local_avg_duration: avg_duration,
       avg_delay: avg_delay
     )
+
+    meeting
   end
   
 

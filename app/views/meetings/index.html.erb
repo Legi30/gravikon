@@ -1,32 +1,44 @@
-<h1>Naplánované schůzky</h1>
+<div class="page-header">
+  <h1>Naplánované schůzky</h1>
+</div>
 
-<table>
-  <tr>
-    <th>Čas</th>
-    <th>Účastníci</th>
-    <th>Téma</th>
-    <th>⏱ Průměrná délka</th>
-    <th>📡 Zpoždění</th>
-  </tr>
+<div id="flash-messages" role="alert" aria-live="polite" aria-atomic="true"></div>
 
-  <% @meetings.each do |m| %>
-    <tr>
-      <td><%= "#{m.start_time} - #{m.end_time}" %></td>
-      <td><%= JSON.parse(m.participants).join(", ") %></td>
-      <td><%= m.topic.presence || "(bez tématu)" %></td>
-      <td><%= "#{m.local_avg_duration} min" %></td>
-      <td><%= "#{m.avg_delay} s" %></td>
-      <td>
-        <%= link_to "✏️ Upravit", edit_meeting_path(m), class: "button-like", style: "margin-right: 0.5em;" %>
-      <td>
-        <%= form_with url: meeting_path(m), method: :delete, data: { confirm: "Opravdu smazat tuto schůzku?" }, style: "display:inline;" do %>
-          <%= submit_tag "🗑 Smazat", class: "button-like" %>
-        <% end %>
-      </td>
-    </tr>
-  <% end %>
-</table>
+<div class="content-section">
+  <div class="card fade-in">
+    <table role="table" aria-label="Seznam naplánovaných schůzek">
+      <thead>
+        <tr>
+          <th scope="col">Čas</th>
+          <th scope="col">Účastníci</th>
+          <th scope="col">Téma</th>
+          <th scope="col"><abbr title="Průměrná délka schůzky" aria-label="Průměrná délka">⏱ Průměrná délka</abbr></th>
+          <th scope="col"><abbr title="Zpoždění signálu" aria-label="Zpoždění signálu">📡 Zpoždění</abbr></th>
+          <th scope="col">Akce</th>
+        </tr>
+      </thead>
+      <tbody id="meetings-table">
+        <%= render partial: 'meeting', collection: @meetings, locals: { system_data: @system_data } %>
+      </tbody>
+    </table>
 
-<%= link_to "Naplánovat novou schůzku", new_meeting_path, class: "btn btn-primary" %>
-<br>
-<%= link_to "Podívat se na mapu", systems_path, class: "btn btn-secondary" %>
+    <div id="empty-state-container">
+      <% if @meetings.empty? %>
+        <div class="empty-state" role="status">
+          <p>Zatím nebyly naplánovány žádné schůzky.</p>
+          <p>
+            <%= link_to "Vytvořit první schůzku", new_meeting_path, class: "btn btn-primary", "aria-label" => "Vytvořit první schůzku" %>
+          </p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<nav class="actions" role="navigation" aria-label="Akce se schůzkami">
+  <%= link_to "Naplánovat novou schůzku", new_meeting_path, class: "btn btn-primary", "aria-label" => "Naplánovat novou schůzku - klávesová zkratka N", title: "Naplánovat novou schůzku (klávesová zkratka: N)" %>
+  <%= link_to "Podívat se na mapu", systems_path, class: "btn btn-secondary", "aria-label" => "Podívat se na mapu soustavy" %>
+</nav>
+
+<!-- Include relativistic visualization JavaScript -->
+<script src="<%= asset_path('relativistic_viz.js') %>"></script>

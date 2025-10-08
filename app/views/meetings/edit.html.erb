@@ -1,31 +1,50 @@
-<h1>Upravit schůzku</h1>
+<div class="page-header">
+  <h1>Upravit schůzku</h1>
+</div>
 
-<%= form_with model: @meeting, url: meeting_path(@meeting), method: :put do |form| %>
-  <div>
-    <%= form.label :start_time, "Začátek" %><br>
-    <%= form.text_field :start_time, value: @meeting.start_time %>
-  </div>
+<div class="content-section">
+  <div class="card fade-in">
+    <%= form_with model: @meeting, url: meeting_path(@meeting), method: :put, aria: { label: "Formulář pro úpravu schůzky" } do |form| %>
+      <div class="form-group">
+        <%= form.label :start_time, "Začátek:", for: "meeting_start_time" %>
+        <%= form.text_field :start_time, value: @meeting.start_time, placeholder: "12:00", id: "meeting_start_time", aria: { describedby: "start-time-error", required: "true" } %>
+        <div id="start-time-error" class="error-message" style="display: none;" role="alert" aria-live="polite"></div>
+      </div>
 
-  <div>
-    <%= form.label :end_time, "Konec" %><br>
-    <%= form.text_field :end_time, value: @meeting.end_time %>
-  </div>
+      <div class="form-group">
+        <%= form.label :end_time, "Konec:", for: "meeting_end_time" %>
+        <%= form.text_field :end_time, value: @meeting.end_time, placeholder: "13:30", id: "meeting_end_time", aria: { describedby: "end-time-error duration-display", required: "true" } %>
+        <div id="end-time-error" class="error-message" style="display: none;" role="alert" aria-live="polite"></div>
+        <div id="duration-display" class="success-message" style="display: none;" role="status" aria-live="polite"></div>
+      </div>
 
-  <div>
-    <%= form.label :topic, "Téma" %><br>
-    <%= form.text_field :topic, value: @meeting.topic %>
-  </div>
+      <div class="form-group">
+        <%= form.label :topic, "Téma:", for: "meeting_topic" %>
+        <%= form.text_field :topic, value: @meeting.topic, placeholder: "Diskuse o gravitaci...", id: "meeting_topic" %>
+      </div>
 
-  <div>
-    <label>Účastníci:</label><br>
-    <% @bodies.each do |name| %>
-      <label>
-        <%= check_box_tag "participants[]", name, JSON.parse(@meeting.participants).include?(name) %>
-        <%= name %>
-      </label><br>
+      <div class="form-group">
+        <fieldset>
+          <legend>Účastníci (vyberte alespoň 2):</legend>
+          <div class="checkbox-group" role="group" aria-describedby="participants-error">
+            <% @bodies.each_with_index do |name, index| %>
+              <label class="checkbox-label" for="edit_participant_<%= index %>">
+                <%= check_box_tag "participants[]", name, @meeting.participants_array.include?(name), id: "edit_participant_#{index}", aria: { required: index < 2 ? "true" : "false" } %>
+                <%= name %>
+              </label>
+            <% end %>
+          </div>
+          <div id="participants-error" class="error-message" style="display: none;" role="alert" aria-live="polite"></div>
+        </fieldset>
+      </div>
+
+      <div class="actions">
+        <%= form.submit "Uložit změny", class: "btn btn-success" %>
+        <%= link_to "Zrušit", meetings_path, class: "btn btn-secondary" %>
+      </div>
     <% end %>
   </div>
+</div>
 
-  <%= form.submit "Uložit změny" %>
-<% end %>
-
+<!-- Include meeting form validation JavaScript -->
+<script src="<%= asset_path('meeting_form.js') %>"></script>

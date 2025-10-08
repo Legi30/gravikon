@@ -1,18 +1,110 @@
-<h1>Mapa planetární soustavy</h1>
-
-<p>Tato mapa byla vygenerována skriptem <code>generator.rb</code> a vykreslena skriptem <code>visualizer.rb</code>.</p>
-
-<%= form_with url: regenerate_system_path, method: :post do %>
-  <%= submit_tag "Vygenerovat novou soustavu", class: "btn" %>
-<% end %>
-
-<br>
-<%= link_to "Zpět na seznam schůzek", meetings_path, class: "btn btn-secondary", style: "margin-top: 20px;" %>
-<br>
-<br>
-
-<div>
-  <%= image_tag @svg_url, alt: "Mapa soustavy", style: "width: 100%; max-width: 900px; border: 1px solid #ccc;" %>
+<div class="page-header">
+  <h1>Mapa planetární soustavy</h1>
 </div>
 
+<div class="content-section">
+  <div class="card fade-in">
+    <p>Tato mapa byla vygenerována skriptem <code>generator.rb</code> a vykreslena skriptem <code>visualizer.rb</code>.</p>
+    <p class="mb-3">Najeďte myší na nebeské objekty pro zobrazení detailních informací.</p>
 
+    <h3>Parametry generování</h3>
+    <%= form_with url: regenerate_system_path, method: :post, id: "system-generation-form", "aria-label" => "Formulář pro generování planetární soustavy" do |f| %>
+      <div class="form-group">
+        <%= label_tag :num_planets, "Počet planet (1-10):" %>
+        <%= number_field_tag :num_planets, 5, min: 1, max: 10, class: "form-control", id: "num-planets-field", "aria-describedby": "planets-help", "aria-required": "true" %>
+        <small id="planets-help" style="color: var(--text); opacity: 0.8;">Kolik planet obíhá kolem hvězdy</small>
+      </div>
+
+      <div class="form-group">
+        <%= label_tag :max_moons, "Maximální počet měsíců (0-5):" %>
+        <%= number_field_tag :max_moons, 2, min: 0, max: 5, class: "form-control", id: "max-moons-field", "aria-describedby": "moons-help", "aria-required": "true" %>
+        <small id="moons-help" style="color: var(--text); opacity: 0.8;">Maximální počet měsíců pro každou planetu</small>
+      </div>
+
+      <div class="actions">
+        <%= submit_tag "Vygenerovat novou soustavu", class: "btn btn-accent", id: "generate-button", "aria-label": "Vygenerovat novou planetární soustavu" %>
+        <%= link_to "Zpět na seznam schůzek", meetings_path, class: "btn btn-secondary", "aria-label": "Návrat na seznam schůzek" %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('system-generation-form');
+    const numPlanetsField = document.getElementById('num-planets-field');
+    const maxMoonsField = document.getElementById('max-moons-field');
+    const submitButton = document.getElementById('generate-button');
+
+    function validateForm() {
+      const numPlanets = parseInt(numPlanetsField.value, 10);
+      const maxMoons = parseInt(maxMoonsField.value, 10);
+
+      let isValid = true;
+
+      // Validate num_planets (1-10)
+      if (isNaN(numPlanets) || numPlanets < 1 || numPlanets > 10) {
+        isValid = false;
+      }
+
+      // Validate max_moons (0-5)
+      if (isNaN(maxMoons) || maxMoons < 0 || maxMoons > 5) {
+        isValid = false;
+      }
+
+      submitButton.disabled = !isValid;
+      return isValid;
+    }
+
+    // Validate on input
+    numPlanetsField.addEventListener('input', validateForm);
+    maxMoonsField.addEventListener('input', validateForm);
+
+    // Validate on form submission
+    form.addEventListener('submit', function(e) {
+      if (!validateForm()) {
+        e.preventDefault();
+        alert('Prosím zadejte platné hodnoty: Počet planet (1-10), Měsíce (0-5)');
+      }
+    });
+
+    // Initial validation
+    validateForm();
+  });
+</script>
+
+<div class="content-section">
+  <div class="card fade-in">
+    <h3>Ovládání animace</h3>
+    <div class="animation-controls" role="group" aria-label="Ovládání animace orbitálního pohybu">
+      <button id="orbit-play-pause" class="btn btn-accent" aria-label="Pozastavit nebo spustit animaci" aria-pressed="true">⏸ Pozastavit</button>
+      <button id="orbit-reset" class="btn btn-secondary" aria-label="Resetovat animaci na začátek">↻ Resetovat</button>
+
+      <div class="speed-control">
+        <label for="orbit-speed">Rychlost: <span id="speed-label" aria-live="polite">1.0×</span></label>
+        <input type="range" id="orbit-speed" min="0.1" max="5" step="0.1" value="1.0" class="speed-slider" aria-label="Rychlost animace" aria-valuemin="0.1" aria-valuemax="5" aria-valuenow="1.0" aria-valuetext="1.0×">
+      </div>
+
+      <div class="fps-display-container">
+        <span id="fps-display" style="font-weight: 500; color: #11998e;" aria-live="polite" aria-label="Aktuální snímková frekvence">60 FPS</span>
+        <small style="color: var(--text); opacity: 0.6; margin-left: 8px;">(cíl: 60)</small>
+      </div>
+    </div>
+    <p class="help-text">
+      <small>Animace zobrazuje orbitální pohyb planet a měsíců kolem svých rodičovských těles.
+      Rychlost otáčení je zjednodušeně založena na Keplerových zákonech (čím dále od rodiče, tím pomaleji).</small>
+    </p>
+  </div>
+</div>
+
+<div class="svg-container fade-in" role="img" aria-label="Interaktivní mapa planetární soustavy s animovanými orbity">
+  <%= raw File.read(Rails.root.join('public/system.svg')) %>
+</div>
+
+<!-- Tooltip for celestial body information -->
+<div id="tooltip" role="tooltip" aria-live="polite"></div>
+
+<!-- Include system map JavaScript -->
+<script src="<%= asset_path('system_map.js') %>"></script>
+<!-- Include orbital animation JavaScript -->
+<script src="<%= asset_path('orbital_animation.js') %>"></script>

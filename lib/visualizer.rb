@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'json'
 require 'nokogiri'
 
@@ -34,13 +36,13 @@ end
 
 # === Planetární systém ===
 class PlanetarySystem
-  attr_reader :bodies, :background
+  attr_reader :bodies, :background, :raw_bodies
 
   def initialize(json_path)
     data = JSON.parse(File.read(json_path))
-    raw_bodies = data["bodies"]
+    @raw_bodies = data["bodies"]
 
-    @bodies = raw_bodies.map { |b| Body.new(b) }
+    @bodies = @raw_bodies.map { |b| Body.new(b) }
     assign_parents!
     generate_background
   end
@@ -93,7 +95,51 @@ class PlanetarySystem
         # Tělesa
         bodies.each do |body|
           scaled_radius = (body.radius * scale_factor).clamp(1, 50)
-          svg.circle(cx: body.x, cy: body.y, r: scaled_radius.round(1), fill: body.color)
+
+          # Získat mass pro data atribut
+          raw_body = raw_bodies.find { |b| b["name"] == body.name }
+          mass = raw_body ? raw_body["mass"] : 0
+
+          # Vypočítat orbitální parametry pro animaci
+          orbit_radius = body.orbit_radius
+          parent_name = body.parent ? body.parent.name : ""
+          parent_x = body.parent ? body.parent.x : 0
+          parent_y = body.parent ? body.parent.y : 0
+
+          # Počáteční úhel na orbitě (v radiánech)
+          if body.parent
+            initial_angle = Math.atan2(body.y - parent_y, body.x - parent_x)
+          else
+            initial_angle = 0
+          end
+
+          # Orbitální perioda (úměrná poloměru orbity - zjednodušený Keplerův zákon)
+          # Menší hodnota = rychlejší otáčení
+          if orbit_radius && orbit_radius > 0
+            # Perioda v sekundách pro jeden oběh (čím dále, tím pomaleji)
+            orbital_period = (orbit_radius / 50.0) ** 1.5 * 10
+          else
+            orbital_period = 0
+          end
+
+          svg.circle(
+            cx: body.x,
+            cy: body.y,
+            r: scaled_radius.round(1),
+            fill: body.color,
+            "data-name": body.name,
+            "data-type": body.type,
+            "data-radius": body.radius,
+            "data-mass": mass,
+            "data-dilation": body.dilation,
+            "data-parent": parent_name,
+            "data-parent-x": parent_x.round(2),
+            "data-parent-y": parent_y.round(2),
+            "data-orbit-radius": orbit_radius ? orbit_radius.round(2) : 0,
+            "data-initial-angle": initial_angle.round(4),
+            "data-orbital-period": orbital_period.round(2),
+            class: "celestial-body"
+          )
           svg.text_("#{body.name}", x: body.x + scaled_radius + 5, y: body.y - scaled_radius - 5,
                      "font-size": "10", fill: "white")
 

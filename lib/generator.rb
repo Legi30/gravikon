@@ -1,9 +1,38 @@
+# frozen_string_literal: true
+
 require 'json'
 require 'securerandom'
 
+# === Parametry z příkazové řádky ===
+# Přijímá dva argumenty: počet planet a maximální počet měsíců na planetu
+# Použití: ruby lib/generator.rb 5 2
+if ARGV.length >= 2
+  begin
+    NUM_PLANETS = Integer(ARGV[0])
+    MAX_MOONS_PER_PLANET = Integer(ARGV[1])
+
+    # Validace rozsahů
+    unless NUM_PLANETS.between?(1, 10)
+      STDERR.puts "Error: NUM_PLANETS must be between 1 and 10, got #{NUM_PLANETS}"
+      exit 1
+    end
+
+    unless MAX_MOONS_PER_PLANET.between?(0, 5)
+      STDERR.puts "Error: MAX_MOONS_PER_PLANET must be between 0 and 5, got #{MAX_MOONS_PER_PLANET}"
+      exit 1
+    end
+  rescue ArgumentError => e
+    STDERR.puts "Error: Invalid arguments. Both must be integers. #{e.message}"
+    exit 1
+  end
+else
+  # Výchozí hodnoty pokud argumenty nejsou poskytnuty
+  NUM_PLANETS = 5
+  MAX_MOONS_PER_PLANET = 2
+  STDERR.puts "Warning: Using default values (NUM_PLANETS=#{NUM_PLANETS}, MAX_MOONS_PER_PLANET=#{MAX_MOONS_PER_PLANET})"
+end
+
 # === Nastavení ===
-NUM_PLANETS = 5
-MOONS_PER_PLANET = 1
 STAR_POSITION = [400, 400]
 GRAVITATIONAL_CONSTANT = 0.0001 #6.67430e-11
 C = 10_000_000 #299_792_458.0 # m/s
@@ -82,8 +111,8 @@ NUM_PLANETS.times do |i|
   }
   bodies << planet
 
-  # Měsíce
-  rand(0..2).times do |j|
+  # Měsíce (0 až MAX_MOONS_PER_PLANET)
+  rand(0..MAX_MOONS_PER_PLANET).times do |j|
     angle = rand * 2 * Math::PI
     moon_distance = 20 + j * 15
     moon_x = planet_x + moon_distance * Math.cos(angle)

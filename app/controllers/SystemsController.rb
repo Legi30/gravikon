@@ -1,13 +1,4 @@
-#def show
-#  system_data_path = Rails.root.join("data", "system_data.json")
-#  schedule_path = Rails.root.join("data", "schedule.json")
-#  svg_output_path = Rails.root.join("public", "system.svg")#
-
-#   Vygeneruj SVG (spuštěním visualizeru)
-#  system("ruby lib/visualizer.rb")
-
-#  @svg_path_with_timestamp = "/system.svg?ts=#{Time.now.to_i}"
-#end
+# frozen_string_literal: true
 
 class SystemsController < ApplicationController
   def show
@@ -16,14 +7,34 @@ class SystemsController < ApplicationController
 
   def regenerate
     Meeting.delete_all
-    # 1. Spustíme generátor nové soustavy
-    system("ruby lib/generator.rb 4 2")
 
-    # 2. Spustíme vizualizér
-    system("ruby lib/visualizer.rb")
+    # Získáme a striktně validujeme parametry
+    begin
+      # Použití Integer() zajistí, že vstup je skutečně celé číslo
+      # Na rozdíl od to_i, které vrací 0 pro neplatné vstupy
+      num_planets = Integer(params[:num_planets] || 5)
+      max_moons = Integer(params[:max_moons] || 2)
+    rescue ArgumentError, TypeError => e
+      Rails.logger.error("SystemsController#regenerate: Invalid parameters - #{e.message}")
+      redirect_to systems_url, alert: "Neplatné parametry. Použijte celá čísla." and return
+    end
 
-    # 3. Přesměrujeme zpět na zobrazení mapy (čímž se znovu načte)
-    redirect_to systems_path
+    # Sanitace a omezení na platné rozsahy
+    num_planets = num_planets.clamp(1, 10)
+    max_moons = max_moons.clamp(0, 5)
+
+    # Invalidate cache immediately to prevent serving stale data during regeneration
+    # This prevents race condition where users could see old system data after meetings are deleted
+    Rails.cache.delete('system_data')
+    Rails.logger.info("SystemsController#regenerate: Cache invalidated before regeneration")
+
+    # Logování akce pro audit trail
+    Rails.logger.info("SystemsController#regenerate: Starting system generation with num_planets=#{num_planets}, max_moons=#{max_moons}")
+
+    # Spustíme generování na pozadí s parametry
+    GenerateSystemJob.perform_later(num_planets, max_moons)
+
+    redirect_to systems_url, notice: "Generování soustavy s #{num_planets} planetami probíhá na pozadí..."
   end
 end
 

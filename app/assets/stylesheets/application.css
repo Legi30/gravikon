@@ -7,19 +7,8 @@
  * depending on specificity.
  *
  * Consider organizing styles into separate files for maintainability.
+ *
+ * NOTE: .button-like styles moved to gravikon.css to avoid conflicts
+ * The space-themed button styles are now the canonical implementation
  */
- .button-like {
-    background-color: #eee;
-    border: 1px solid #ccc;
-    padding: 4px 8px;
-    border-radius: 4px;
-    text-decoration: none;
-    font-size: 14px;
-    cursor: pointer;
-    color: #000;
-  }
-  
-  .button-like:hover {
-    background-color: #ddd;
-  }
   

@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html>
+<html lang="cs">
   <head>
-    <title><%= content_for(:title) || "Gravikon" %></title>
+    <title><%= content_for(:title) || "Gravikon - Relativistický schůzkovač" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
+    <meta name="description" content="Gravitační schůzkovač s podporou relativistických efektů v planetární soustavě">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
 
@@ -17,11 +18,59 @@
     <link rel="icon" href="/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/icon.png">
 
+    <%# Google Fonts - Orbitron for headings, Inter for body %>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+
     <%# Includes all stylesheet files in app/assets/stylesheets %>
     <%= stylesheet_link_tag :app %>
+    <%# Include Gravikon CSS design system %>
+    <%= stylesheet_link_tag "gravikon", media: "all" %>
   </head>
 
   <body>
-    <%= yield %>
+    <!-- Skip to main content link for screen readers -->
+    <a href="#main-content" class="skip-to-content">Přeskočit na hlavní obsah</a>
+
+    <!-- Navigation Header -->
+    <nav class="main-nav" role="navigation" aria-label="Hlavní navigace">
+      <div class="nav-container">
+        <div class="nav-brand">
+          <%= link_to root_path, class: "brand-link", "aria-label" => "Gravikon - Domovská stránka" do %>
+            <span class="brand-icon" aria-hidden="true">🌌</span>
+            <span class="brand-text">Gravikon</span>
+          <% end %>
+        </div>
+        <div class="nav-links">
+          <%= link_to dashboard_path, class: "nav-link #{'active' if current_page?(dashboard_path)}", "aria-label" => "Přehled - klávesová zkratka D", title: "Přehled (klávesová zkratka: D)" do %>
+            <span class="nav-icon" aria-hidden="true">📊</span>
+            <span>Přehled</span>
+          <% end %>
+          <%= link_to meetings_path, class: "nav-link #{'active' if current_page?(meetings_path) || current_page?(root_path)}", "aria-label" => "Schůzky - klávesová zkratka S", title: "Schůzky (klávesová zkratka: S)" do %>
+            <span class="nav-icon" aria-hidden="true">📅</span>
+            <span>Schůzky</span>
+          <% end %>
+          <%= link_to systems_path, class: "nav-link #{'active' if current_page?(systems_path)}", "aria-label" => "Mapa soustavy - klávesová zkratka M", title: "Mapa soustavy (klávesová zkratka: M)" do %>
+            <span class="nav-icon" aria-hidden="true">🗺</span>
+            <span>Mapa</span>
+          <% end %>
+          <button class="nav-link help-button" onclick="window.keyboardShortcuts?.showHelp()" aria-label="Zobrazit nápovědu klávesových zkratek" title="Nápověda (klávesová zkratka: ?)">
+            <span class="nav-icon" aria-hidden="true">❓</span>
+            <span>Nápověda</span>
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main content -->
+    <main id="main-content" class="container" role="main" aria-label="Hlavní obsah">
+      <%= yield %>
+    </main>
+
+    <!-- Load logger first (production-safe logging) -->
+    <script src="<%= asset_path('logger.js') %>"></script>
+    <!-- Include keyboard shortcuts JavaScript -->
+    <script src="<%= asset_path('keyboard_shortcuts.js') %>"></script>
   </body>
 </html>

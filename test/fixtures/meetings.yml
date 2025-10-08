@@ -1,17 +1,57 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
-one:
-  start_time: MyString
-  end_time: MyString
-  topic: MyString
-  participants: MyText
-  local_avg_duration: 1.5
-  avg_delay: 1.5
+earth_mars_meeting:
+  start_time: "09:00"
+  end_time: "10:00"
+  topic: "Týdenní koordinace"
+  participants: '["Earth", "Mars"]'
+  local_avg_duration: 60
+  avg_delay: 120.5
 
-two:
-  start_time: MyString
-  end_time: MyString
-  topic: MyString
-  participants: MyText
-  local_avg_duration: 1.5
-  avg_delay: 1.5
+earth_sol_meeting:
+  start_time: "14:00"
+  end_time: "15:30"
+  topic: "Měsíční přehled"
+  participants: '["Earth", "Sol"]'
+  local_avg_duration: 90
+  avg_delay: 100.2
+
+mars_venus_meeting:
+  start_time: "11:00"
+  end_time: "12:00"
+  topic: "Kvartální plánování"
+  participants: '["Mars", "Venus", "Earth"]'
+  local_avg_duration: 75
+  avg_delay: 150.8
+
+long_duration_meeting:
+  start_time: "08:00"
+  end_time: "10:30"
+  topic: "Roční strategická schůzka"
+  participants: '["Earth", "Mars", "Venus", "Sol"]'
+  local_avg_duration: 150
+  avg_delay: 200.0
+
+high_delay_meeting:
+  start_time: "16:00"
+  end_time: "17:00"
+  topic: "Vzdálená koordinace"
+  participants: '["Neptune", "Pluto"]'
+  local_avg_duration: 45
+  avg_delay: 350.5
+
+short_meeting:
+  start_time: "10:00"
+  end_time: "10:30"
+  topic: "Rychlá diskuze"
+  participants: '["Earth", "Moon"]'
+  local_avg_duration: 30
+  avg_delay: 5.2
+
+midnight_wraparound:
+  start_time: "23:00"
+  end_time: "01:00"
+  topic: "Noční směna koordinace"
+  participants: '["Earth", "Mars"]'
+  local_avg_duration: 120
+  avg_delay: 120.0

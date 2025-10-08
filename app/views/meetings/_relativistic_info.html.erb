@@ -1,0 +1,84 @@
+<%
+  # Accept system_data as explicit local variable (no hidden dependencies)
+  system_data ||= { "bodies" => [] }
+%>
+<tr class="relativistic-details" id="relativistic-<%= dom_id(meeting) %>" style="display: none;">
+  <td colspan="6">
+    <div class="relativistic-info-container">
+      <h4>Relativistické efekty</h4>
+
+      <!-- Time Dilation Visualization -->
+      <div class="relativistic-section">
+        <h5>⏱ Časová dilatace</h5>
+        <p class="explanation">Gravitace způsobuje, že čas běží různě rychle na různých tělesech. Zobrazuje, kolik času skutečně uplyne pro každého účastníka.</p>
+
+        <div class="time-dilation-bars">
+          <% participants = meeting.participants_array %>
+          <% participants.each do |participant_name| %>
+            <%
+              # Find body data from explicitly passed system_data parameter
+              body = system_data["bodies"].find { |b| b["name"] == participant_name }
+              dilation = body ? body["dilation"] : 1.0
+
+              # Výpočet lokální délky pro toto těleso (with nil safety)
+              local_duration = meeting.local_avg_duration ? (meeting.local_avg_duration / dilation) : 0
+
+              # Barva podle dilatace (zelená = nízká, červená = vysoká)
+              color_value = ((1.0 - dilation) * 255).to_i.clamp(0, 255)
+              bar_color = "rgb(#{color_value}, #{255 - color_value}, 50)"
+            %>
+
+            <div class="time-bar-item">
+              <span class="participant-name"><%= participant_name %></span>
+              <div class="time-bar-wrapper">
+                <div class="time-bar"
+                     style="width: <%= meeting.local_avg_duration && meeting.local_avg_duration > 0 ? (local_duration / meeting.local_avg_duration * 100).clamp(0, 150) : 0 %>%; background-color: <%= bar_color %>;"
+                     data-duration="<%= local_duration.round(2) %>"
+                     data-dilation="<%= dilation %>">
+                </div>
+                <span class="time-value"><%= local_duration.round(2) %> min</span>
+              </div>
+              <span class="dilation-factor" title="Dilatační faktor">
+                <%= dilation.round(4) %>×
+              </span>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Signal Delay Visualization -->
+      <div class="relativistic-section">
+        <h5>📡 Zpoždění signálu</h5>
+        <p class="explanation">Světlo má konečnou rychlost (~300,000 km/s). Signály mezi účastníky trvají <%= meeting.avg_delay ? meeting.avg_delay.round(2) : '?' %> sekund.</p>
+
+        <div class="signal-delay-viz">
+          <div class="signal-animation-container">
+            <% participants.each_with_index do |p1, i| %>
+              <% participants[(i+1)..-1]&.each do |p2| %>
+                <div class="signal-path" data-from="<%= p1 %>" data-to="<%= p2 %>">
+                  <span class="signal-label"><%= p1 %> ↔ <%= p2 %></span>
+                  <div class="signal-line">
+                    <div class="signal-pulse"></div>
+                  </div>
+                </div>
+              <% end %>
+            <% end %>
+          </div>
+
+          <div class="delay-summary">
+            <strong>Průměrné zpoždění:</strong> <%= meeting.avg_delay ? "#{meeting.avg_delay.round(2)} s" : '?' %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Explanation Footer -->
+      <div class="relativistic-footer">
+        <small>
+          <strong>💡 Vysvětlení:</strong>
+          Časová dilatace je efekt obecné relativity - čas běží pomaleji blíže masivním objektům.
+          Zpoždění signálu je způsobeno konečnou rychlostí světla.
+        </small>
+      </div>
+    </div>
+  </td>
+</tr>

@@ -1,0 +1,20 @@
+<%
+  # Accept system_data as explicit local variable (defaults to empty if not provided)
+  system_data ||= { "bodies" => [] }
+%>
+<tr id="<%= dom_id(meeting) %>">
+  <td><%= "#{meeting.start_time || '?'} - #{meeting.end_time || '?'}" %></td>
+  <td><%= meeting.participants_array.presence&.join(", ") || "(neznámí účastníci)" %></td>
+  <td><%= meeting.topic.presence || "(bez tématu)" %></td>
+  <td><%= meeting.local_avg_duration ? "#{meeting.local_avg_duration} min" : "?" %></td>
+  <td><%= meeting.avg_delay ? "#{meeting.avg_delay} s" : "?" %></td>
+  <td>
+    <div style="display: flex; gap: 0.5rem;">
+      <%= link_to "✏️ Upravit", edit_meeting_path(meeting), class: "button-like" %>
+      <%= form_with url: meeting_path(meeting), method: :delete, data: { turbo_confirm: "Opravdu smazat tuto schůzku?" }, style: "display:inline;" do %>
+        <%= submit_tag "🗑 Smazat", class: "button-like" %>
+      <% end %>
+    </div>
+  </td>
+</tr>
+<%= render 'meetings/relativistic_info', meeting: meeting, system_data: system_data %>
