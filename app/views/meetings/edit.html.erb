@@ -1,0 +1,31 @@
+<h1>Upravit schůzku</h1>
+
+<%= form_with model: @meeting, url: meeting_path(@meeting), method: :put do |form| %>
+  <div>
+    <%= form.label :start_time, "Začátek" %><br>
+    <%= form.text_field :start_time, value: @meeting.start_time %>
+  </div>
+
+  <div>
+    <%= form.label :end_time, "Konec" %><br>
+    <%= form.text_field :end_time, value: @meeting.end_time %>
+  </div>
+
+  <div>
+    <%= form.label :topic, "Téma" %><br>
+    <%= form.text_field :topic, value: @meeting.topic %>
+  </div>
+
+  <div>
+    <label>Účastníci:</label><br>
+    <% @bodies.each do |name| %>
+      <label>
+        <%= check_box_tag "participants[]", name, JSON.parse(@meeting.participants).include?(name) %>
+        <%= name %>
+      </label><br>
+    <% end %>
+  </div>
+
+  <%= form.submit "Uložit změny" %>
+<% end %>
+

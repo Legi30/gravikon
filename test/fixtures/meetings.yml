@@ -1,0 +1,17 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  start_time: MyString
+  end_time: MyString
+  topic: MyString
+  participants: MyText
+  local_avg_duration: 1.5
+  avg_delay: 1.5
+
+two:
+  start_time: MyString
+  end_time: MyString
+  topic: MyString
+  participants: MyText
+  local_avg_duration: 1.5
+  avg_delay: 1.5

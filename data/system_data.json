@@ -1,0 +1,84 @@
+{
+  "bodies": [
+    {
+      "name": "Stavor",
+      "type": "star",
+      "x": 400,
+      "y": 400,
+      "radius": 79338328,
+      "density": 1525,
+      "mass": 3.190124146413977e+27,
+      "dilation": 1.0
+    },
+    {
+      "name": "Ploxis",
+      "type": "planet",
+      "x": 417.28,
+      "y": 501.54,
+      "radius": 1052185,
+      "density": 5848,
+      "mass": 28534633038383415000000.0,
+      "dilation": 0.972502537996897
+    },
+    {
+      "name": "Plomur",
+      "type": "planet",
+      "x": 376.86,
+      "y": 237.64,
+      "radius": 3184288,
+      "density": 4207,
+      "mass": 5.68981494851554e+23,
+      "dilation": 0.8016432425270478
+    },
+    {
+      "name": "Plintar",
+      "type": "planet",
+      "x": 550.28,
+      "y": 223.25,
+      "radius": 2841798,
+      "density": 4778,
+      "mass": 4.593189544160263e+23,
+      "dilation": 0.8226424512894447
+    },
+    {
+      "name": "Morex",
+      "type": "moon",
+      "x": 540.29,
+      "y": 240.58,
+      "radius": 423625,
+      "density": 4975,
+      "mass": 1584259937279662400000.0,
+      "dilation": 0.9962532110908798
+    },
+    {
+      "name": "Morlux",
+      "type": "moon",
+      "x": 516.31,
+      "y": 214.82,
+      "radius": 648334,
+      "density": 3065,
+      "mass": 3498770698246542600000.0,
+      "dilation": 0.9945888035372807
+    },
+    {
+      "name": "Plirion",
+      "type": "planet",
+      "x": 691.19,
+      "y": 378.25,
+      "radius": 2981856,
+      "density": 4520,
+      "mass": 501980727971466340000000.0,
+      "dilation": 0.8144383828771784
+    },
+    {
+      "name": "Plarkon",
+      "type": "planet",
+      "x": 446.44,
+      "y": 751.95,
+      "radius": 3036665,
+      "density": 5575,
+      "mass": 6.539192657136149e+23,
+      "dilation": 0.7545312989157159
+    }
+  ]
+}

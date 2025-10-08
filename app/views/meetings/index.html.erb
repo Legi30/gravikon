@@ -1,0 +1,32 @@
+<h1>Naplánované schůzky</h1>
+
+<table>
+  <tr>
+    <th>Čas</th>
+    <th>Účastníci</th>
+    <th>Téma</th>
+    <th>⏱ Průměrná délka</th>
+    <th>📡 Zpoždění</th>
+  </tr>
+
+  <% @meetings.each do |m| %>
+    <tr>
+      <td><%= "#{m.start_time} - #{m.end_time}" %></td>
+      <td><%= JSON.parse(m.participants).join(", ") %></td>
+      <td><%= m.topic.presence || "(bez tématu)" %></td>
+      <td><%= "#{m.local_avg_duration} min" %></td>
+      <td><%= "#{m.avg_delay} s" %></td>
+      <td>
+        <%= link_to "✏️ Upravit", edit_meeting_path(m), class: "button-like", style: "margin-right: 0.5em;" %>
+      <td>
+        <%= form_with url: meeting_path(m), method: :delete, data: { confirm: "Opravdu smazat tuto schůzku?" }, style: "display:inline;" do %>
+          <%= submit_tag "🗑 Smazat", class: "button-like" %>
+        <% end %>
+      </td>
+    </tr>
+  <% end %>
+</table>
+
+<%= link_to "Naplánovat novou schůzku", new_meeting_path, class: "btn btn-primary" %>
+<br>
+<%= link_to "Podívat se na mapu", systems_path, class: "btn btn-secondary" %>

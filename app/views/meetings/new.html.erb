@@ -1,0 +1,29 @@
+<h1>Nová schůzka</h1>
+
+<%= form_with url: meetings_path, method: :post do |f| %>
+  <p>
+    <label>Začátek (např. 12:00):</label><br>
+    <%= f.text_field :start_time %>
+  </p>
+  <p>
+    <label>Konec (např. 13:30):</label><br>
+    <%= f.text_field :end_time %>
+  </p>
+  <p>
+    <label>Téma (volitelné):</label><br>
+    <%= f.text_field :topic %>
+  </p>
+  <p>
+    <label>Účastníci:</label><br>
+    <% @bodies.each do |name| %>
+      <label>
+        <%= check_box_tag "participants[]", name %>
+        <%= name %>
+      </label><br>
+    <% end %>
+  </p>
+  <p>
+    <%= f.submit "Naplánovat" %>
+  </p>
+<% end %>
+

@@ -1,0 +1,18 @@
+<h1>Mapa planetární soustavy</h1>
+
+<p>Tato mapa byla vygenerována skriptem <code>generator.rb</code> a vykreslena skriptem <code>visualizer.rb</code>.</p>
+
+<%= form_with url: regenerate_system_path, method: :post do %>
+  <%= submit_tag "Vygenerovat novou soustavu", class: "btn" %>
+<% end %>
+
+<br>
+<%= link_to "Zpět na seznam schůzek", meetings_path, class: "btn btn-secondary", style: "margin-top: 20px;" %>
+<br>
+<br>
+
+<div>
+  <%= image_tag @svg_url, alt: "Mapa soustavy", style: "width: 100%; max-width: 900px; border: 1px solid #ccc;" %>
+</div>
+
+
