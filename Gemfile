@@ -14,6 +14,11 @@ gem "jbuilder"
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
 # gem "bcrypt", "~> 3.1.7"
 
+# Rack middleware for blocking & throttling abusive requests [https://github.com/rack/rack-attack]
+# Note: Only needed in production, not test environment (see config/initializers/rack_attack.rb:165)
+# TEMPORARILY COMMENTED OUT - Re-enable after running 'bundle install'
+gem "rack-attack", groups: [:development, :production]
+
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem "tzinfo-data", platforms: %i[ windows jruby ]
 
@@ -52,4 +57,12 @@ end
 group :development do
   # Use console on exceptions pages [https://github.com/rails/web-console]
   gem "web-console"
+end
+
+group :test do
+  # System testing with browser automation [https://guides.rubyonrails.org/testing.html#system-testing]
+  gem "capybara"
+  gem "selenium-webdriver"
+  # Mocking and stubbing library for tests
+  gem "mocha"
 end

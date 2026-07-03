@@ -1,35 +1,89 @@
 <%
-  # Accept system_data as explicit local variable (no hidden dependencies)
+  # Accept system_data and is_inter_system as explicit local variables
   system_data ||= { "bodies" => [] }
+  is_inter_system = local_assigns.fetch(:is_inter_system, false)
+  show_system_column = local_assigns.fetch(:show_system_column, false)
 %>
 <tr class="relativistic-details" id="relativistic-<%= dom_id(meeting) %>" style="display: none;">
-  <td colspan="6">
+  <td colspan="<%= show_system_column ? 7 : 6 %>">
     <div class="relativistic-info-container">
-      <h4>Relativistické efekty</h4>
+      <h4>Relativistické efekty<% if is_inter_system %> - Mezisystémová schůzka<% end %></h4>
+
+      <% if is_inter_system %>
+        <!-- Inter-system meeting information -->
+        <div class="relativistic-section" style="background: rgba(102, 126, 234, 0.1); padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
+          <h5>🌌 Mezisystémové efekty</h5>
+          <p class="explanation">
+            Tato schůzka zahrnuje účastníky z více planetárních soustav. Relativistické efekty jsou výrazně větší kvůli:
+          </p>
+          <ul style="margin: 0.5rem 0 0 1.5rem; line-height: 1.8;">
+            <li><strong>Větším vzdálenostem:</strong> Systémy jsou odděleny stovkami jednotek, zatímco tělesa uvnitř systému jen desítkami</li>
+            <li><strong>Gravitaci černé díry:</strong> Centrální černá díra galaxie ovlivňuje časovou dilataci ve všech soustavách</li>
+            <li><strong>Kombinovaným efektům:</strong> Lokální gravitace hvězd + galaxiová gravitace černé díry</li>
+          </ul>
+        </div>
+      <% end %>
 
       <!-- Time Dilation Visualization -->
       <div class="relativistic-section">
         <h5>⏱ Časová dilatace</h5>
-        <p class="explanation">Gravitace způsobuje, že čas běží různě rychle na různých tělesech. Zobrazuje, kolik času skutečně uplyne pro každého účastníka.</p>
+        <p class="explanation">
+          Gravitace způsobuje, že čas běží různě rychle na různých tělesech.
+          <% if is_inter_system %>
+            U mezisystémových schůzek zahrnuje efekty lokální hvězdy i centrální černé díry galaxie.
+          <% else %>
+            Zobrazuje, kolik času skutečně uplyne pro každého účastníka.
+          <% end %>
+        </p>
 
         <div class="time-dilation-bars">
           <% participants = meeting.participants_array %>
           <% participants.each do |participant_name| %>
             <%
-              # Find body data from explicitly passed system_data parameter
-              body = system_data["bodies"].find { |b| b["name"] == participant_name }
-              dilation = body ? body["dilation"] : 1.0
+              # For inter-system meetings, need to load from participant's specific system
+              if is_inter_system && meeting.participant_systems.present?
+                system_id = meeting.participant_systems[participant_name]
+                if system_id
+                  participant_system = @systems_by_id[system_id]
+                  if participant_system
+                    participant_system_data = participant_system.load_system_data
+                    body = participant_system_data&.dig('bodies')&.find { |b| b['name'] == participant_name }
+                  end
+                end
+                body ||= { 'dilation' => 1.0 }
+              else
+                # Single-system meeting: use passed system_data
+                bodies = system_data && system_data["bodies"].is_a?(Array) ? system_data["bodies"] : nil
+                body = bodies&.find { |b| b["name"] == participant_name }
+              end
 
-              # Výpočet lokální délky pro toto těleso (with nil safety)
-              local_duration = meeting.local_avg_duration ? (meeting.local_avg_duration / dilation) : 0
+              dilation = body && body["dilation"] ? body["dilation"] : 1.0
 
-              # Barva podle dilatace (zelená = nízká, červená = vysoká)
+              # Calculate local duration for this body (with nil safety)
+              local_duration = meeting.local_avg_duration && dilation > 0 ? (meeting.local_avg_duration / dilation) : 0
+
+              # Color based on dilation (green = low, red = high)
               color_value = ((1.0 - dilation) * 255).to_i.clamp(0, 255)
               bar_color = "rgb(#{color_value}, #{255 - color_value}, 50)"
+
+              # For inter-system, show system name
+              system_label = if is_inter_system && meeting.participant_systems.present?
+                               participant_systems_hash = meeting.participant_systems_hash
+                               system_id = participant_systems_hash[participant_name]
+                               participant_system = @systems_by_id[system_id]
+                               participant_system ? participant_system.name : ""
+                             else
+                               ""
+                             end
             %>
 
             <div class="time-bar-item">
-              <span class="participant-name"><%= participant_name %></span>
+              <span class="participant-name">
+                <%= participant_name %>
+                <% if is_inter_system && system_label.present? %>
+                  <small style="color: rgba(255, 255, 255, 0.6);">(<%= system_label %>)</small>
+                <% end %>
+              </span>
               <div class="time-bar-wrapper">
                 <div class="time-bar"
                      style="width: <%= meeting.local_avg_duration && meeting.local_avg_duration > 0 ? (local_duration / meeting.local_avg_duration * 100).clamp(0, 150) : 0 %>%; background-color: <%= bar_color %>;"
@@ -38,25 +92,53 @@
                 </div>
                 <span class="time-value"><%= local_duration.round(2) %> min</span>
               </div>
-              <span class="dilation-factor" title="Dilatační faktor">
+              <span class="dilation-factor" title="Dilatační faktor <%= is_inter_system ? '(lokální × galaxie)' : '' %>">
                 <%= dilation.round(4) %>×
               </span>
             </div>
           <% end %>
         </div>
+
+        <% if is_inter_system %>
+          <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(255, 255, 255, 0.05); border-radius: 4px; font-size: 0.9rem;">
+            <strong>💡 Vysvětlení složené dilatace:</strong>
+            Faktor dilatace u mezisystémových schůzek kombinuje lokální efekt (gravitace hvězdy) a galaxiový efekt (gravitace černé díry).
+            Výsledná dilatace = lokální dilatace × galaxiová dilatace.
+          </div>
+        <% end %>
       </div>
 
       <!-- Signal Delay Visualization -->
       <div class="relativistic-section">
         <h5>📡 Zpoždění signálu</h5>
-        <p class="explanation">Světlo má konečnou rychlost (~300,000 km/s). Signály mezi účastníky trvají <%= meeting.avg_delay ? meeting.avg_delay.round(2) : '?' %> sekund.</p>
+        <p class="explanation">
+          Světlo má konečnou rychlost (~300,000 km/s).
+          <% if is_inter_system %>
+            U mezisystémových schůzek jsou zpoždění výrazně větší kvůli vzdálenostem mezi soustavami.
+          <% end %>
+          Signály mezi účastníky trvají <%= meeting.avg_delay ? meeting.avg_delay.round(2) : '?' %> sekund.
+        </p>
 
         <div class="signal-delay-viz">
           <div class="signal-animation-container">
             <% participants.each_with_index do |p1, i| %>
               <% participants[(i+1)..-1]&.each do |p2| %>
+                <%
+                  # For inter-system meetings, indicate if participants are from different systems
+                  different_systems = false
+                  if is_inter_system && meeting.participant_systems.present?
+                    sys1 = meeting.participant_systems[p1]
+                    sys2 = meeting.participant_systems[p2]
+                    different_systems = (sys1 != sys2)
+                  end
+                %>
                 <div class="signal-path" data-from="<%= p1 %>" data-to="<%= p2 %>">
-                  <span class="signal-label"><%= p1 %> ↔ <%= p2 %></span>
+                  <span class="signal-label">
+                    <%= p1 %> ↔ <%= p2 %>
+                    <% if different_systems %>
+                      <span style="color: var(--accent); font-weight: bold;" title="Mezisystémové spojení">🌌</span>
+                    <% end %>
+                  </span>
                   <div class="signal-line">
                     <div class="signal-pulse"></div>
                   </div>
@@ -67,6 +149,9 @@
 
           <div class="delay-summary">
             <strong>Průměrné zpoždění:</strong> <%= meeting.avg_delay ? "#{meeting.avg_delay.round(2)} s" : '?' %>
+            <% if is_inter_system %>
+              <br><small style="color: rgba(255, 255, 255, 0.7);">Zahrnuje mezisystémové i intrasystémové vzdálenosti</small>
+            <% end %>
           </div>
         </div>
       </div>
@@ -75,7 +160,11 @@
       <div class="relativistic-footer">
         <small>
           <strong>💡 Vysvětlení:</strong>
-          Časová dilatace je efekt obecné relativity - čas běží pomaleji blíže masivním objektům.
+          <% if is_inter_system %>
+            U mezisystémových schůzek jsou relativistické efekty zvýrazněny velkými vzdálenostmi a kombinovanou gravitací hvězd a centrální černé díry galaxie.
+          <% else %>
+            Časová dilatace je efekt obecné relativity - čas běží pomaleji blíže masivním objektům.
+          <% end %>
           Zpoždění signálu je způsobeno konečnou rychlostí světla.
         </small>
       </div>

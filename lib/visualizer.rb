@@ -2,6 +2,7 @@
 
 require 'json'
 require 'nokogiri'
+require 'fileutils'
 
 # === Třída tělesa ===
 class Body
@@ -36,11 +37,20 @@ end
 
 # === Planetární systém ===
 class PlanetarySystem
-  attr_reader :bodies, :background, :raw_bodies
+  attr_reader :bodies, :background, :raw_bodies, :system_id, :system_name, :system_x, :system_y
 
-  def initialize(json_path)
+  # Initialize planetary system
+  # @param json_path [String] Path to system JSON file
+  # @param system_id [String, nil] Optional system ID for multi-system support
+  def initialize(json_path, system_id: nil)
     data = JSON.parse(File.read(json_path))
     @raw_bodies = data["bodies"]
+
+    # Extract system metadata if available (for multi-system support)
+    @system_id = system_id || data["system_id"] || extract_system_id_from_path(json_path)
+    @system_name = data["system_name"] || "System #{@system_id}"
+    @system_x = data["system_x"]
+    @system_y = data["system_y"]
 
     @bodies = @raw_bodies.map { |b| Body.new(b) }
     assign_parents!
@@ -73,10 +83,37 @@ class PlanetarySystem
     end
   end
 
-  def to_svg(schedule_json_path = nil, output = "public/system.svg")
+  # Generate SVG visualization of the system
+  # @param schedule_json_path [String, nil] Optional schedule JSON path (legacy parameter)
+  # @param output [String, nil] Output path for SVG file
+  # @return [String] Path to generated SVG file
+  def to_svg(schedule_json_path = nil, output = nil)
+    # Determine output path based on system_id
+    output ||= determine_output_path
+
+    # Ensure directory exists
+    FileUtils.mkdir_p(File.dirname(output))
+
     scale_factor = 180.0 / bodies.map(&:radius).max
-    builder = Nokogiri::XML::Builder.new do |svg|
-      svg.svg(xmlns: "http://www.w3.org/2000/svg", width: "800", height: "800") do
+    builder = Nokogiri::XML::Builder.new(encoding: 'UTF-8') do |svg|
+      svg.svg(xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 800 800", width: "800", height: "800",
+              "data-system-id": system_id,
+              "data-system-name": system_name) do
+
+        # Add system metadata as hidden metadata element
+        svg.metadata do
+          svg.system do
+            svg.id_ system_id
+            svg.name_ system_name
+            if system_x && system_y
+              svg.galaxyPosition do
+                svg.x_ system_x.round(2)
+                svg.y_ system_y.round(2)
+              end
+            end
+          end
+        end
+
         svg.rect(x: 0, y: 0, width: 800, height: 800, fill: "#001022")
 
         # Pozadí
@@ -151,11 +188,72 @@ class PlanetarySystem
     end
 
     File.write(output, builder.to_xml)
-    puts "Vykresleno do #{"public/system.svg"}"
+    puts "Vykresleno do #{output}"
+    output
+  end
+
+  # Class method for convenience - generate SVG from system file
+  # @param json_path [String] Path to system JSON file
+  # @param system_id [String, nil] Optional system ID
+  # @param output_path [String, nil] Optional output path
+  # @return [String] Path to generated SVG
+  def self.generate(json_path:, system_id: nil, output_path: nil)
+    system = new(json_path, system_id: system_id)
+    system.to_svg(nil, output_path)
+  end
+
+  private
+
+  # Extract system ID from file path
+  # @param path [String] File path
+  # @return [String] Extracted system ID or 'default'
+  def extract_system_id_from_path(path)
+    if path.include?('systems/')
+      # Extract from path like: data/systems/alpha.json -> alpha
+      File.basename(path, '.json')
+    else
+      'default'
+    end
+  end
+
+  # Determine output path based on system ID
+  # @return [String] Output path for SVG
+  def determine_output_path
+    if system_id == 'default'
+      # Backward compatibility: default system goes to public/system.svg
+      root_path('public', 'system.svg')
+    else
+      # Multi-system: individual systems go to public/systems/<id>.svg
+      root_path('public', 'systems', "#{system_id}.svg")
+    end
+  end
+
+  # Get root path (Rails-aware)
+  # @param path_parts [Array<String>] Path components
+  # @return [String] Full path
+  def root_path(*path_parts)
+    if defined?(Rails)
+      Rails.root.join(*path_parts).to_s
+    else
+      File.join(Dir.pwd, *path_parts)
+    end
   end
 end
 
 # === Spuštění ===
-system = PlanetarySystem.new("data/system_data.json")
-system.to_svg("schedule.json")
+# Command-line execution with support for system ID parameter
+if __FILE__ == $PROGRAM_NAME
+  begin
+    # Parse command-line arguments
+    input_path = ARGV[0] || 'data/system_data.json'
+    system_id = ARGV[1] # Optional system ID
+    output_path = ARGV[2] # Optional output path
 
+    system = PlanetarySystem.new(input_path, system_id: system_id)
+    system.to_svg(nil, output_path)
+  rescue => e
+    STDERR.puts "Error: #{e.message}"
+    STDERR.puts e.backtrace.join("\n") if ENV['DEBUG']
+    exit 1
+  end
+end

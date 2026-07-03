@@ -8,12 +8,15 @@ class SystemsController < ApplicationController
   def regenerate
     Meeting.delete_all
 
+    # Security: Use strong parameters
+    regenerate_params_hash = regenerate_params
+
     # Získáme a striktně validujeme parametry
     begin
       # Použití Integer() zajistí, že vstup je skutečně celé číslo
       # Na rozdíl od to_i, které vrací 0 pro neplatné vstupy
-      num_planets = Integer(params[:num_planets] || 5)
-      max_moons = Integer(params[:max_moons] || 2)
+      num_planets = Integer(regenerate_params_hash[:num_planets] || 5)
+      max_moons = Integer(regenerate_params_hash[:max_moons] || 2)
     rescue ArgumentError, TypeError => e
       Rails.logger.error("SystemsController#regenerate: Invalid parameters - #{e.message}")
       redirect_to systems_url, alert: "Neplatné parametry. Použijte celá čísla." and return
@@ -35,6 +38,13 @@ class SystemsController < ApplicationController
     GenerateSystemJob.perform_later(num_planets, max_moons)
 
     redirect_to systems_url, notice: "Generování soustavy s #{num_planets} planetami probíhá na pozadí..."
+  end
+
+  private
+
+  # Strong parameters for system regeneration
+  def regenerate_params
+    params.permit(:num_planets, :max_moons)
   end
 end
 

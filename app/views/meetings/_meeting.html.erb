@@ -1,11 +1,73 @@
 <%
-  # Accept system_data as explicit local variable (defaults to empty if not provided)
+  # Accept system_data and show_system_column as explicit local variables
   system_data ||= { "bodies" => [] }
+  show_system_column = local_assigns.fetch(:show_system_column, false)
+
+  # Determine if this is an inter-system meeting
+  is_inter_system = meeting.is_inter_system || false
+
+  # Get system information
+  system_name = if is_inter_system
+                  "Více soustav"
+                elsif meeting.system.present?
+                  meeting.system.name
+                else
+                  "—"
+                end
+
+  # Build data attributes for filtering
+  data_attrs = {
+    is_inter_system: is_inter_system.to_s,
+    system_id: meeting.system_id&.to_s
+  }
+
+  # For inter-system meetings, include all involved system IDs
+  if is_inter_system && meeting.participant_systems.present?
+    participant_systems_hash = meeting.participant_systems_hash
+    system_ids = participant_systems_hash.values.uniq.compact
+    data_attrs[:system_ids] = system_ids.join(',')
+  end
 %>
-<tr id="<%= dom_id(meeting) %>">
+<tr id="<%= dom_id(meeting) %>" data-is-inter-system="<%= is_inter_system %>" data-system-id="<%= meeting.system_id %>" <% if is_inter_system && meeting.participant_systems.present? %>data-system-ids="<%= meeting.participant_systems_hash.values.uniq.compact.join(',') %>"<% end %>>
   <td><%= "#{meeting.start_time || '?'} - #{meeting.end_time || '?'}" %></td>
-  <td><%= meeting.participants_array.presence&.join(", ") || "(neznámí účastníci)" %></td>
-  <td><%= meeting.topic.presence || "(bez tématu)" %></td>
+  <td>
+    <% if is_inter_system && meeting.participant_systems.present? %>
+      <%# Show participants with their system names for inter-system meetings %>
+      <%
+        participant_systems_hash = meeting.participant_systems_hash
+        participants_with_systems = meeting.participants_array.map do |participant_name|
+          system_id = participant_systems_hash[participant_name]
+          if system_id
+            participant_system = @systems_by_id[system_id]
+            system_label = participant_system ? participant_system.name : "?"
+            "#{participant_name} (#{system_label})"
+          else
+            participant_name
+          end
+        end
+      %>
+      <%= participants_with_systems.join(", ") %>
+    <% else %>
+      <%= meeting.participants_array.presence&.join(", ") || "(neznámí účastníci)" %>
+    <% end %>
+  </td>
+  <td>
+    <% if is_inter_system %>
+      <span style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.85rem; margin-right: 0.5rem;" title="Mezisystémová schůzka">🌌</span>
+    <% end %>
+    <%= meeting.topic.presence || "(bez tématu)" %>
+  </td>
+  <% if show_system_column %>
+    <td>
+      <% if is_inter_system %>
+        <span style="color: var(--accent); font-weight: bold;" title="<%= meeting.participant_systems.present? ? "Soustavy: #{meeting.participant_systems_hash.values.uniq.compact.map { |sid| @systems_by_id[sid]&.name }.compact.join(', ')}" : 'Více soustav' %>">
+          🌌 Více soustav
+        </span>
+      <% else %>
+        <%= system_name %>
+      <% end %>
+    </td>
+  <% end %>
   <td><%= meeting.local_avg_duration ? "#{meeting.local_avg_duration} min" : "?" %></td>
   <td><%= meeting.avg_delay ? "#{meeting.avg_delay} s" : "?" %></td>
   <td>
@@ -17,4 +79,4 @@
     </div>
   </td>
 </tr>
-<%= render 'meetings/relativistic_info', meeting: meeting, system_data: system_data %>
+<%= render 'meetings/relativistic_info', meeting: meeting, system_data: system_data, is_inter_system: is_inter_system %>

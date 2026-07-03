@@ -291,4 +291,297 @@ class MeetingTest < ActiveSupport::TestCase
     assert_kind_of String, meeting.participants
     assert_equal ["Earth", "Mars"], JSON.parse(meeting.participants)
   end
+
+  # === System Associations (LOG002 tests) ===
+
+  test "associates meeting with a system via system_id" do
+    # Create a test system with minimal setup to avoid orbit validation
+    system = System.new(
+      name: "Test System",
+      x: 300,
+      y: 300,
+      json_file_path: "data/systems/test_system.json"
+    )
+    # Skip validations that require files/galaxy data
+    system.save(validate: false)
+
+    meeting = Meeting.new(
+      start_time: "09:00",
+      end_time: "10:00",
+      participants: '["Earth", "Mars"]',
+      system: system
+    )
+
+    assert_equal system, meeting.system
+    assert_equal system.id, meeting.system_id
+
+    # Cleanup
+    system.destroy
+  end
+
+  test "allows optional system association for backwards compatibility" do
+    meeting = Meeting.new(
+      start_time: "09:00",
+      end_time: "10:00",
+      participants: '["Earth", "Mars"]'
+    )
+
+    # Should be valid without system_id (for legacy meetings)
+    assert meeting.valid?
+    assert_nil meeting.system_id
+    assert_nil meeting.system
+  end
+
+  test "validates is_inter_system defaults to false" do
+    meeting = Meeting.new(
+      start_time: "09:00",
+      end_time: "10:00",
+      participants: '["Earth", "Mars"]'
+    )
+
+    # is_inter_system should default to false or nil (which is falsy)
+    assert_not meeting.is_inter_system
+  end
+
+  test "validates participant_systems JSON structure for inter-system meetings" do
+    meeting = Meeting.new(
+      start_time: "09:00",
+      end_time: "10:00",
+      participants: '["Earth", "Mars"]',
+      is_inter_system: true,
+      participant_systems: '{"Earth": 1, "Mars": 2}'
+    )
+
+    # Should parse participant_systems correctly
+    ps_hash = meeting.participant_systems_hash
+    assert_equal 1, ps_hash["Earth"]
+    assert_equal 2, ps_hash["Mars"]
+  end
+
+  test "rejects inter-system meeting without participant_systems" do
+    meeting = Meeting.new(
+      start_time: "09:00",
+      end_time: "10:00",
+      participants: '["Earth", "Mars"]',
+      is_inter_system: true,
+      participant_systems: nil
+    )
+
+    assert_not meeting.valid?
+    assert_includes meeting.errors[:participant_systems], "musí být vyplněno pro schůzky mezi systémy"
+  end
+
+  test "rejects invalid participant_systems JSON format" do
+    meeting = Meeting.new(
+      start_time: "09:00",
+      end_time: "10:00",
+      participants: '["Earth", "Mars"]',
+      is_inter_system: true,
+      participant_systems: 'invalid json'
+    )
+
+    assert_not meeting.valid?
+    assert meeting.errors[:participant_systems].any? { |msg| msg.include?("JSON") }
+  end
+
+  test "rejects non-hash participant_systems JSON" do
+    meeting = Meeting.new(
+      start_time: "09:00",
+      end_time: "10:00",
+      participants: '["Earth", "Mars"]',
+      is_inter_system: true,
+      participant_systems: '["array", "not", "hash"]'
+    )
+
+    assert_not meeting.valid?
+    assert_includes meeting.errors[:participant_systems], "musí být hash/objekt"
+  end
+
+  test "validates participant_systems has mapping for all participants" do
+    meeting = Meeting.new(
+      start_time: "09:00",
+      end_time: "10:00",
+      participants: '["Earth", "Mars", "Venus"]',
+      is_inter_system: true,
+      participant_systems: '{"Earth": 1, "Mars": 2}'  # Missing Venus
+    )
+
+    assert_not meeting.valid?
+    assert meeting.errors[:participant_systems].any? { |msg| msg.include?("Venus") }
+  end
+
+  test "validates participant_systems references existing systems" do
+    meeting = Meeting.new(
+      start_time: "09:00",
+      end_time: "10:00",
+      participants: '["Earth", "Mars"]',
+      is_inter_system: true,
+      participant_systems: '{"Earth": 99999, "Mars": 99998}'  # Non-existent IDs
+    )
+
+    assert_not meeting.valid?
+    assert meeting.errors[:participant_systems].any? { |msg| msg.include?("neexistující systém") }
+  end
+
+  test "accepts valid inter-system meeting with participant_systems mapping" do
+    # Create test systems
+    system1 = System.new(name: "Alpha", x: 200, y: 200, json_file_path: "data/systems/alpha.json")
+    system2 = System.new(name: "Beta", x: 600, y: 600, json_file_path: "data/systems/beta.json")
+    system1.save(validate: false)
+    system2.save(validate: false)
+
+    # Create system data files with test bodies
+    FileUtils.mkdir_p(Rails.root.join("data/systems"))
+    File.write(Rails.root.join("data/systems/alpha.json"), {
+      bodies: [{ name: "Earth", type: "planet" }, { name: "Mars", type: "planet" }]
+    }.to_json)
+    File.write(Rails.root.join("data/systems/beta.json"), {
+      bodies: [{ name: "Proxima", type: "star" }, { name: "Kepler", type: "planet" }]
+    }.to_json)
+
+    meeting = Meeting.new(
+      start_time: "09:00",
+      end_time: "10:00",
+      participants: '["Earth", "Kepler"]',
+      is_inter_system: true,
+      participant_systems: "{\"Earth\": #{system1.id}, \"Kepler\": #{system2.id}}"
+    )
+
+    assert meeting.valid?, "Meeting should be valid: #{meeting.errors.full_messages}"
+
+    # Cleanup
+    File.delete(Rails.root.join("data/systems/alpha.json")) rescue nil
+    File.delete(Rails.root.join("data/systems/beta.json")) rescue nil
+    system1.destroy
+    system2.destroy
+  end
+
+  test "participant_systems_hash returns empty hash for blank participant_systems" do
+    meeting = Meeting.new(participant_systems: nil)
+    assert_equal({}, meeting.participant_systems_hash)
+
+    meeting.participant_systems = ""
+    assert_equal({}, meeting.participant_systems_hash)
+  end
+
+  test "participant_systems_hash returns empty hash for invalid JSON" do
+    meeting = Meeting.new(participant_systems: "invalid json")
+    assert_equal({}, meeting.participant_systems_hash)
+  end
+
+  test "participant_systems_hash returns parsed hash for valid JSON" do
+    meeting = Meeting.new(participant_systems: '{"Earth": 1, "Mars": 2}')
+    ps_hash = meeting.participant_systems_hash
+    assert_equal 1, ps_hash["Earth"]
+    assert_equal 2, ps_hash["Mars"]
+  end
+
+  test "rejects participant_systems with oversized data (DOS prevention)" do
+    # Create oversized participant_systems (> 50 entries)
+    large_hash = {}
+    60.times { |i| large_hash["Body#{i}"] = 1 }
+
+    meeting = Meeting.new(
+      start_time: "09:00",
+      end_time: "10:00",
+      participants: '["Body0", "Body1"]',
+      is_inter_system: true,
+      participant_systems: large_hash.to_json
+    )
+
+    assert_not meeting.valid?
+    assert meeting.errors[:participant_systems].any? { |msg| msg.include?("příliš mnoho") }
+  end
+
+  test "rejects participant_systems with nested objects (security)" do
+    meeting = Meeting.new(
+      start_time: "09:00",
+      end_time: "10:00",
+      participants: '["Earth", "Mars"]',
+      is_inter_system: true,
+      participant_systems: '{"Earth": {"nested": "object"}, "Mars": 2}'
+    )
+
+    # The before_validation callback should reject nested objects
+    meeting.valid?
+    # participant_systems should be set to nil by the security check
+    assert_nil meeting.participant_systems
+  end
+
+  test "participant_bodies_with_systems returns array for single-system meeting" do
+    system = System.new(name: "Sol", x: 300, y: 300, json_file_path: "data/systems/sol.json")
+    system.save(validate: false)
+
+    # Create system data file
+    FileUtils.mkdir_p(Rails.root.join("data/systems"))
+    File.write(Rails.root.join("data/systems/sol.json"), {
+      bodies: [
+        { name: "Earth", type: "planet", mass: 5.97e24 },
+        { name: "Mars", type: "planet", mass: 6.39e23 }
+      ]
+    }.to_json)
+
+    meeting = Meeting.new(
+      start_time: "09:00",
+      end_time: "10:00",
+      participants: '["Earth", "Mars"]',
+      system: system
+    )
+
+    bodies = meeting.participant_bodies_with_systems
+    assert_equal 2, bodies.length
+    assert_equal "Earth", bodies[0][:name]
+    assert_equal system.id, bodies[0][:system_id]
+    assert_equal "Sol", bodies[0][:system_name]
+    assert_equal 5.97e24, bodies[0][:body_data]["mass"]
+
+    # Cleanup
+    File.delete(Rails.root.join("data/systems/sol.json")) rescue nil
+    system.destroy
+  end
+
+  test "participant_bodies_with_systems returns array for inter-system meeting" do
+    system1 = System.new(name: "Alpha", x: 200, y: 200, json_file_path: "data/systems/alpha.json")
+    system2 = System.new(name: "Beta", x: 600, y: 600, json_file_path: "data/systems/beta.json")
+    system1.save(validate: false)
+    system2.save(validate: false)
+
+    # Create system data files
+    FileUtils.mkdir_p(Rails.root.join("data/systems"))
+    File.write(Rails.root.join("data/systems/alpha.json"), {
+      bodies: [{ name: "Earth", type: "planet", mass: 5.97e24 }]
+    }.to_json)
+    File.write(Rails.root.join("data/systems/beta.json"), {
+      bodies: [{ name: "Kepler", type: "planet", mass: 3.5e24 }]
+    }.to_json)
+
+    meeting = Meeting.new(
+      start_time: "09:00",
+      end_time: "10:00",
+      participants: '["Earth", "Kepler"]',
+      is_inter_system: true,
+      participant_systems: "{\"Earth\": #{system1.id}, \"Kepler\": #{system2.id}}"
+    )
+
+    bodies = meeting.participant_bodies_with_systems
+    assert_equal 2, bodies.length
+
+    # Check Earth from Alpha
+    earth_body = bodies.find { |b| b[:name] == "Earth" }
+    assert_not_nil earth_body
+    assert_equal system1.id, earth_body[:system_id]
+    assert_equal "Alpha", earth_body[:system_name]
+
+    # Check Kepler from Beta
+    kepler_body = bodies.find { |b| b[:name] == "Kepler" }
+    assert_not_nil kepler_body
+    assert_equal system2.id, kepler_body[:system_id]
+    assert_equal "Beta", kepler_body[:system_name]
+
+    # Cleanup
+    File.delete(Rails.root.join("data/systems/alpha.json")) rescue nil
+    File.delete(Rails.root.join("data/systems/beta.json")) rescue nil
+    system1.destroy
+    system2.destroy
+  end
 end

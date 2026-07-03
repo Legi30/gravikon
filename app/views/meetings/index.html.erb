@@ -4,6 +4,27 @@
 
 <div id="flash-messages" role="alert" aria-live="polite" aria-atomic="true"></div>
 
+<% if @systems.present? && @systems.count > 1 %>
+  <div class="content-section">
+    <div class="card fade-in">
+      <h3>Filtrovat schůzky</h3>
+      <div class="filter-controls" style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem;">
+        <div class="filter-group">
+          <label for="system-filter" style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Podle soustavy:</label>
+          <select id="system-filter" class="form-control" style="min-width: 200px;" aria-label="Filtrovat podle soustavy">
+            <option value="">Všechny schůzky</option>
+            <option value="inter-system">🌌 Pouze mezisystémové</option>
+            <option value="single-system">🪐 Pouze v rámci soustavy</option>
+            <% @systems.each do |system| %>
+              <option value="system-<%= system.id %>"><%= system.name %></option>
+            <% end %>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>
+
 <div class="content-section">
   <div class="card fade-in">
     <table role="table" aria-label="Seznam naplánovaných schůzek">
@@ -12,13 +33,16 @@
           <th scope="col">Čas</th>
           <th scope="col">Účastníci</th>
           <th scope="col">Téma</th>
+          <% if @systems.present? && @systems.count > 0 %>
+            <th scope="col">Soustava</th>
+          <% end %>
           <th scope="col"><abbr title="Průměrná délka schůzky" aria-label="Průměrná délka">⏱ Průměrná délka</abbr></th>
           <th scope="col"><abbr title="Zpoždění signálu" aria-label="Zpoždění signálu">📡 Zpoždění</abbr></th>
           <th scope="col">Akce</th>
         </tr>
       </thead>
       <tbody id="meetings-table">
-        <%= render partial: 'meeting', collection: @meetings, locals: { system_data: @system_data } %>
+        <%= render partial: 'meeting', collection: @meetings, locals: { system_data: @system_data, show_system_column: (@systems.present? && @systems.count > 0) } %>
       </tbody>
     </table>
 
@@ -37,8 +61,61 @@
 
 <nav class="actions" role="navigation" aria-label="Akce se schůzkami">
   <%= link_to "Naplánovat novou schůzku", new_meeting_path, class: "btn btn-primary", "aria-label" => "Naplánovat novou schůzku - klávesová zkratka N", title: "Naplánovat novou schůzku (klávesová zkratka: N)" %>
+  <% if @systems.present? && @systems.count >= 2 %>
+    <%= link_to "🌌 Mezisystémová schůzka", new_inter_system_meetings_path, class: "btn btn-accent", "aria-label" => "Naplánovat schůzku mezi soustavami" %>
+  <% end %>
   <%= link_to "Podívat se na mapu", systems_path, class: "btn btn-secondary", "aria-label" => "Podívat se na mapu soustavy" %>
+  <% if @systems.present? && @systems.count > 0 %>
+    <%= link_to "Mapa galaxie", galaxy_index_path, class: "btn btn-secondary", "aria-label" => "Podívat se na mapu galaxie" %>
+  <% end %>
 </nav>
 
 <!-- Include relativistic visualization JavaScript -->
 <script src="<%= asset_path('relativistic_viz.js') %>"></script>
+
+<% if @systems.present? && @systems.count > 1 %>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const filterSelect = document.getElementById('system-filter');
+    const meetingsTable = document.getElementById('meetings-table');
+
+    if (filterSelect && meetingsTable) {
+      filterSelect.addEventListener('change', function() {
+        const filterValue = this.value;
+        const rows = meetingsTable.querySelectorAll('tr[id^="meeting_"]');
+
+        rows.forEach(function(row) {
+          const isInterSystem = row.dataset.isInterSystem === 'true';
+          const systemId = row.dataset.systemId;
+
+          let shouldShow = true;
+
+          if (filterValue === 'inter-system') {
+            shouldShow = isInterSystem;
+          } else if (filterValue === 'single-system') {
+            shouldShow = !isInterSystem;
+          } else if (filterValue.startsWith('system-')) {
+            const targetSystemId = filterValue.replace('system-', '');
+            shouldShow = systemId === targetSystemId || (isInterSystem && row.dataset.systemIds && row.dataset.systemIds.includes(targetSystemId));
+          }
+
+          // Show/hide the meeting row and its relativistic info row
+          if (shouldShow) {
+            row.style.display = '';
+            const relativisticRow = document.getElementById('relativistic-' + row.id);
+            if (relativisticRow) {
+              relativisticRow.style.display = relativisticRow.classList.contains('show') ? '' : 'none';
+            }
+          } else {
+            row.style.display = 'none';
+            const relativisticRow = document.getElementById('relativistic-' + row.id);
+            if (relativisticRow) {
+              relativisticRow.style.display = 'none';
+            }
+          }
+        });
+      });
+    }
+  });
+</script>
+<% end %>

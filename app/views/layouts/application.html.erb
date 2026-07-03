@@ -43,17 +43,21 @@
           <% end %>
         </div>
         <div class="nav-links">
-          <%= link_to dashboard_path, class: "nav-link #{'active' if current_page?(dashboard_path)}", "aria-label" => "Přehled - klávesová zkratka D", title: "Přehled (klávesová zkratka: D)" do %>
-            <span class="nav-icon" aria-hidden="true">📊</span>
-            <span>Přehled</span>
+          <%= link_to galaxy_index_path, class: "nav-link #{'active' if current_page?(galaxy_index_path) || current_page?(root_path)}", "aria-label" => "Galaxie - klávesová zkratka G", title: "Galaxie (klávesová zkratka: G)" do %>
+            <span class="nav-icon" aria-hidden="true">🌌</span>
+            <span>Galaxie</span>
           <% end %>
-          <%= link_to meetings_path, class: "nav-link #{'active' if current_page?(meetings_path) || current_page?(root_path)}", "aria-label" => "Schůzky - klávesová zkratka S", title: "Schůzky (klávesová zkratka: S)" do %>
+          <%= link_to meetings_path, class: "nav-link #{'active' if current_page?(meetings_path)}", "aria-label" => "Schůzky - klávesová zkratka S", title: "Schůzky (klávesová zkratka: S)" do %>
             <span class="nav-icon" aria-hidden="true">📅</span>
             <span>Schůzky</span>
           <% end %>
           <%= link_to systems_path, class: "nav-link #{'active' if current_page?(systems_path)}", "aria-label" => "Mapa soustavy - klávesová zkratka M", title: "Mapa soustavy (klávesová zkratka: M)" do %>
             <span class="nav-icon" aria-hidden="true">🗺</span>
             <span>Mapa</span>
+          <% end %>
+          <%= link_to dashboard_path, class: "nav-link #{'active' if current_page?(dashboard_path)}", "aria-label" => "Přehled - klávesová zkratka D", title: "Přehled (klávesová zkratka: D)" do %>
+            <span class="nav-icon" aria-hidden="true">📊</span>
+            <span>Přehled</span>
           <% end %>
           <button class="nav-link help-button" onclick="window.keyboardShortcuts?.showHelp()" aria-label="Zobrazit nápovědu klávesových zkratek" title="Nápověda (klávesová zkratka: ?)">
             <span class="nav-icon" aria-hidden="true">❓</span>
@@ -72,5 +76,8 @@
     <script src="<%= asset_path('logger.js') %>"></script>
     <!-- Include keyboard shortcuts JavaScript -->
     <script src="<%= asset_path('keyboard_shortcuts.js') %>"></script>
+    <!-- Load galaxy and system interactive features -->
+    <script src="<%= asset_path('galaxy.js') %>"></script>
+    <script src="<%= asset_path('system.js') %>"></script>
   </body>
 </html>

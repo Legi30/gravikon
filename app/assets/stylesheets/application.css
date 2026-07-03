@@ -10,5 +10,39 @@
  *
  * NOTE: .button-like styles moved to gravikon.css to avoid conflicts
  * The space-themed button styles are now the canonical implementation
+ *
+ * === STYLESHEET IMPORT ORDER ===
+ * 1. gravikon.css - Base design system and theme
+ * 2. galaxy.css - Galaxy map and multi-system UI
+ * 3. systems.css - Individual system views
+ * 4. meetings.css - Meeting styles with multi-system support
  */
-  
+
+/* Import base theme and design system */
+@import url('gravikon.css');
+
+/* Import multi-system specific styles */
+@import url('galaxy.css');
+@import url('systems.css');
+@import url('meetings.css');
+
+/* === Additional Global Styles === */
+
+/* Ensure smooth scrolling for anchor links */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Print-friendly styles */
+@media print {
+  body {
+    background: white;
+    color: black;
+  }
+
+  .main-nav,
+  .btn,
+  .actions {
+    display: none;
+  }
+}

@@ -273,4 +273,234 @@ namespace :data do
     puts "Use 'rails data:fix_legacy_meetings' to auto-fix issues"
     puts "=" * 80
   end
+
+  desc "Verify consistency between galaxy_data.json and System database"
+  task verify_galaxy_consistency: :environment do
+    puts "=" * 80
+    puts "GALAXY DATA CONSISTENCY CHECK"
+    puts "=" * 80
+    puts
+
+    galaxy_file = Rails.root.join('data', 'galaxy_data.json')
+
+    unless File.exist?(galaxy_file)
+      puts "⚠️  galaxy_data.json not found at #{galaxy_file}"
+      puts "Run 'rails runner \"GalaxyVisualizer.generate\"' to create it"
+      next
+    end
+
+    galaxy_data = JSON.parse(File.read(galaxy_file))
+    json_systems = galaxy_data['systems'] || []
+    db_systems = System.all.to_a
+
+    puts "Systems in galaxy_data.json: #{json_systems.count}"
+    puts "Systems in database: #{db_systems.count}"
+    puts
+
+    issues = []
+
+    # Check 1: Systems in JSON but not in database
+    json_systems.each do |json_system|
+      system_id = json_system['id']
+      db_system = db_systems.find do |s|
+        File.basename(s.json_file_path, '.json') == system_id.to_s
+      end
+
+      unless db_system
+        issues << "System '#{system_id}' exists in galaxy_data.json but not in database"
+      end
+    end
+
+    # Check 2: Systems in database but not in JSON
+    db_systems.each do |db_system|
+      system_id = File.basename(db_system.json_file_path, '.json')
+      json_system = json_systems.find { |s| s['id'].to_s == system_id.to_s }
+
+      unless json_system
+        issues << "System '#{db_system.name}' (ID: #{system_id}) exists in database but not in galaxy_data.json"
+      end
+    end
+
+    # Check 3: Coordinate mismatches
+    db_systems.each do |db_system|
+      system_id = File.basename(db_system.json_file_path, '.json')
+      json_system = json_systems.find { |s| s['id'].to_s == system_id.to_s }
+
+      if json_system
+        json_x = json_system['x'].to_f
+        json_y = json_system['y'].to_f
+        db_x = db_system.x.to_f
+        db_y = db_system.y.to_f
+
+        if (json_x - db_x).abs > 0.01 || (json_y - db_y).abs > 0.01
+          issues << "System '#{db_system.name}' (ID: #{system_id}) coordinate mismatch: DB=(#{db_x}, #{db_y}), JSON=(#{json_x}, #{json_y})"
+        end
+      end
+    end
+
+    if issues.empty?
+      puts "✓ No consistency issues found"
+      puts "  All systems are synchronized between galaxy_data.json and database"
+    else
+      puts "⚠️  Found #{issues.count} consistency issues:"
+      puts
+      issues.each_with_index do |issue, index|
+        puts "  #{index + 1}. #{issue}"
+      end
+      puts
+      puts "Run 'rails data:sync_galaxy_data' to fix these issues"
+    end
+
+    puts "=" * 80
+  end
+
+  desc "Synchronize galaxy_data.json with System database (DB is source of truth)"
+  task sync_galaxy_data: :environment do
+    puts "=" * 80
+    puts "SYNCHRONIZING GALAXY DATA"
+    puts "=" * 80
+    puts
+    puts "Using database as source of truth..."
+    puts
+
+    galaxy_file = Rails.root.join('data', 'galaxy_data.json')
+
+    # Load or create galaxy data
+    if File.exist?(galaxy_file)
+      galaxy_data = JSON.parse(File.read(galaxy_file))
+    else
+      puts "Creating new galaxy_data.json..."
+      galaxy_data = GalaxyService.send(:create_default_galaxy_data)
+    end
+
+    # Rebuild systems array from database
+    db_systems = System.all.to_a
+    new_systems = []
+
+    db_systems.each do |db_system|
+      system_id = File.basename(db_system.json_file_path, '.json')
+      new_systems << {
+        'id' => system_id,
+        'x' => db_system.x.to_f,
+        'y' => db_system.y.to_f
+      }
+      puts "  ✓ Added system '#{db_system.name}' (ID: #{system_id}) at (#{db_system.x}, #{db_system.y})"
+    end
+
+    galaxy_data['systems'] = new_systems
+
+    # Save updated galaxy data
+    File.write(galaxy_file, JSON.pretty_generate(galaxy_data))
+    puts
+    puts "✓ Saved #{new_systems.count} systems to galaxy_data.json"
+
+    # Clear caches
+    GalaxyService.clear_galaxy_cache
+    GalaxyService.clear_all_system_caches
+    puts "✓ Cleared galaxy caches"
+
+    # Regenerate galaxy SVG
+    begin
+      GalaxyVisualizer.generate
+      puts "✓ Regenerated galaxy.svg"
+    rescue => e
+      puts "⚠️  Failed to regenerate galaxy.svg: #{e.message}"
+    end
+
+    puts "=" * 80
+    puts "Synchronization complete!"
+    puts "=" * 80
+  end
+
+  desc "Clean up orphaned system files (data and SVG files without database records)"
+  task cleanup_orphaned_system_files: :environment do
+    puts "=" * 80
+    puts "CLEANING UP ORPHANED SYSTEM FILES"
+    puts "=" * 80
+    puts
+
+    # Get all system IDs from database
+    db_system_ids = System.all.map do |system|
+      File.basename(system.json_file_path, '.json')
+    end
+
+    puts "Systems in database: #{db_system_ids.count}"
+    puts
+
+    orphaned_data_files = []
+    orphaned_svg_files = []
+
+    # Check data/systems directory
+    systems_data_dir = Rails.root.join('data', 'systems')
+    if Dir.exist?(systems_data_dir)
+      Dir.glob(File.join(systems_data_dir, '*.json')).each do |file|
+        system_id = File.basename(file, '.json')
+        unless db_system_ids.include?(system_id)
+          orphaned_data_files << file
+        end
+      end
+    end
+
+    # Check public/systems directory
+    systems_svg_dir = Rails.root.join('public', 'systems')
+    if Dir.exist?(systems_svg_dir)
+      Dir.glob(File.join(systems_svg_dir, '*.svg')).each do |file|
+        system_id = File.basename(file, '.svg')
+        unless db_system_ids.include?(system_id)
+          orphaned_svg_files << file
+        end
+      end
+    end
+
+    total_orphaned = orphaned_data_files.count + orphaned_svg_files.count
+
+    if total_orphaned == 0
+      puts "✓ No orphaned files found"
+    else
+      puts "⚠️  Found #{total_orphaned} orphaned files:"
+      puts
+
+      if orphaned_data_files.any?
+        puts "Orphaned data files (#{orphaned_data_files.count}):"
+        orphaned_data_files.each do |file|
+          puts "  • #{file}"
+        end
+        puts
+      end
+
+      if orphaned_svg_files.any?
+        puts "Orphaned SVG files (#{orphaned_svg_files.count}):"
+        orphaned_svg_files.each do |file|
+          puts "  • #{file}"
+        end
+        puts
+      end
+
+      print "Delete these files? (y/N): "
+      response = STDIN.gets.chomp.downcase
+
+      if response == 'y'
+        deleted_count = 0
+
+        orphaned_data_files.each do |file|
+          File.delete(file)
+          puts "  ✓ Deleted: #{file}"
+          deleted_count += 1
+        end
+
+        orphaned_svg_files.each do |file|
+          File.delete(file)
+          puts "  ✓ Deleted: #{file}"
+          deleted_count += 1
+        end
+
+        puts
+        puts "✓ Deleted #{deleted_count} orphaned files"
+      else
+        puts "Cleanup cancelled"
+      end
+    end
+
+    puts "=" * 80
+  end
 end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_07_21_175056) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_20_164549) do
   create_table "meetings", force: :cascade do |t|
     t.string "start_time"
     t.string "end_time"
@@ -20,5 +20,36 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_21_175056) do
     t.float "avg_delay"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "solar_system_id"
+    t.integer "system_id"
+    t.boolean "is_inter_system", default: false, null: false
+    t.text "participant_systems"
+    t.index ["solar_system_id"], name: "index_meetings_on_solar_system_id"
+    t.index ["system_id"], name: "index_meetings_on_system_id"
   end
+
+  create_table "solar_systems", force: :cascade do |t|
+    t.string "name", null: false
+    t.float "distance_from_center", null: false
+    t.float "angle", null: false
+    t.integer "num_planets", null: false
+    t.integer "max_moons", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_solar_systems_on_created_at"
+    t.index ["name"], name: "index_solar_systems_on_name", unique: true
+  end
+
+  create_table "systems", force: :cascade do |t|
+    t.string "name", null: false
+    t.float "x", null: false
+    t.float "y", null: false
+    t.string "json_file_path", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["name"], name: "index_systems_on_name", unique: true
+  end
+
+  add_foreign_key "meetings", "solar_systems"
+  add_foreign_key "meetings", "systems", on_delete: :nullify
 end
