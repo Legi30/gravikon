@@ -1,6 +1,4 @@
 <%
-  # Accept system_data and show_system_column as explicit local variables
-  system_data ||= { "bodies" => [] }
   show_system_column = local_assigns.fetch(:show_system_column, false)
 
   # Determine if this is an inter-system meeting
@@ -14,19 +12,6 @@
                 else
                   "—"
                 end
-
-  # Build data attributes for filtering
-  data_attrs = {
-    is_inter_system: is_inter_system.to_s,
-    system_id: meeting.system_id&.to_s
-  }
-
-  # For inter-system meetings, include all involved system IDs
-  if is_inter_system && meeting.participant_systems.present?
-    participant_systems_hash = meeting.participant_systems_hash
-    system_ids = participant_systems_hash.values.uniq.compact
-    data_attrs[:system_ids] = system_ids.join(',')
-  end
 %>
 <tr id="<%= dom_id(meeting) %>" data-is-inter-system="<%= is_inter_system %>" data-system-id="<%= meeting.system_id %>" <% if is_inter_system && meeting.participant_systems.present? %>data-system-ids="<%= meeting.participant_systems_hash.values.uniq.compact.join(',') %>"<% end %>>
   <td><%= "#{meeting.start_time || '?'} - #{meeting.end_time || '?'}" %></td>
@@ -68,15 +53,15 @@
       <% end %>
     </td>
   <% end %>
-  <td><%= meeting.local_avg_duration ? "#{meeting.local_avg_duration} min" : "?" %></td>
-  <td><%= meeting.avg_delay ? "#{meeting.avg_delay} s" : "?" %></td>
+  <td><%= meeting.local_avg_duration ? meeting.formatted_duration : "?" %></td>
+  <td><%= meeting.avg_delay ? meeting.formatted_delay : "?" %></td>
   <td>
     <div style="display: flex; gap: 0.5rem;">
       <%= link_to "✏️ Upravit", edit_meeting_path(meeting), class: "button-like" %>
-      <%= form_with url: meeting_path(meeting), method: :delete, data: { turbo_confirm: "Opravdu smazat tuto schůzku?" }, style: "display:inline;" do %>
+      <%= form_with url: meeting_path(meeting), method: :delete, html: { onsubmit: "return confirm('Opravdu smazat tuto schůzku?');" }, style: "display:inline;" do %>
         <%= submit_tag "🗑 Smazat", class: "button-like" %>
       <% end %>
     </div>
   </td>
 </tr>
-<%= render 'meetings/relativistic_info', meeting: meeting, system_data: system_data, is_inter_system: is_inter_system %>
+<%= render 'meetings/relativistic_info', meeting: meeting, is_inter_system: is_inter_system, show_system_column: show_system_column %>

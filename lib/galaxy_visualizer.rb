@@ -332,95 +332,31 @@ class GalaxyVisualizer
   # Get default path to galaxy data
   # @return [String] Path to galaxy_data.json
   def default_galaxy_path
-    if defined?(Rails)
-      Rails.root.join('data', 'galaxy_data.json').to_s
-    else
-      File.join(Dir.pwd, 'data', 'galaxy_data.json')
-    end
+    GalaxyService.galaxy_data_path.to_s
   end
 
-  # Get path to system data file
+  # Get path to system data file (sanitized by GalaxyService)
   # @param system_id [String] System ID
   # @return [String, nil] Path to system JSON file or nil if invalid
   def system_data_path(system_id)
-    # Security: Sanitize system_id to prevent path traversal
-    sanitized_id = sanitize_system_id(system_id)
-    return nil unless sanitized_id
-
-    if defined?(Rails)
-      Rails.root.join('data', 'systems', "#{sanitized_id}.json").to_s
-    else
-      File.join(Dir.pwd, 'data', 'systems', "#{sanitized_id}.json")
-    end
-  end
-
-  # Sanitize system_id to prevent path traversal attacks
-  # @param system_id [String] System ID to sanitize
-  # @return [String, nil] Sanitized system_id or nil if invalid
-  def sanitize_system_id(system_id)
-    return nil if system_id.nil? || system_id.to_s.empty?
-
-    id_str = system_id.to_s
-
-    # Reject paths containing dangerous characters
-    return nil if id_str.include?('..') || id_str.include?('/') || id_str.include?('\\')
-
-    # Validate format: UUID or alphanumeric slug
-    if id_str.match?(/\A[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\z/i) ||
-       id_str.match?(/\A[a-z0-9_]+\z/i)
-      id_str.downcase
-    else
-      nil
-    end
+    GalaxyService.system_data_path(system_id)&.to_s
   end
 
   # Get default output path
   # @return [String] Default path for output SVG
   def default_output_path
-    if defined?(Rails)
-      Rails.root.join('public', 'galaxy.svg').to_s
-    else
-      File.join(Dir.pwd, 'public', 'galaxy.svg')
-    end
+    GalaxyService.galaxy_svg_path.to_s
   end
 
   # Log info message
   # @param message [String] Message to log
   def log_info(message)
-    if defined?(Rails)
-      Rails.logger.info(message)
-    else
-      puts("INFO: #{message}")
-    end
+    Rails.logger.info(message)
   end
 
   # Log warning message
   # @param message [String] Message to log
   def log_warn(message)
-    if defined?(Rails)
-      Rails.logger.warn(message)
-    else
-      STDERR.puts("WARNING: #{message}")
-    end
-  end
-end
-
-# === Command-line execution ===
-# Run if called directly from command line
-if __FILE__ == $PROGRAM_NAME
-  begin
-    galaxy_path = ARGV[0] || 'data/galaxy_data.json'
-    output_path = ARGV[1] || 'public/galaxy.svg'
-
-    visualizer = GalaxyVisualizer.new(galaxy_path)
-    result = visualizer.to_svg(output_path)
-
-    puts "Galaxie vykreslena do #{result}"
-    puts "Počet systémů: #{visualizer.systems.length}"
-    puts "Černá díra: #{visualizer.black_hole['name']}"
-  rescue => e
-    STDERR.puts "Error: #{e.message}"
-    STDERR.puts e.backtrace.join("\n") if ENV['DEBUG']
-    exit 1
+    Rails.logger.warn(message)
   end
 end

@@ -70,52 +70,25 @@ module CacheInstrumentation
   end
 end
 
-# Subscribe to ActiveSupport cache events
-ActiveSupport::Notifications.subscribe("cache_read.active_support") do |name, start, finish, id, payload|
-  # Only track system_data cache reads
-  if payload[:key] == "system_data"
-    duration = finish - start
+# Track the galaxy/system data caches (keys are versioned, e.g.
+# "galaxy_data_v2" and "system_data_<uuid>_v2" — match by prefix)
+TRACKED_CACHE_KEY_PATTERN = /\A(system_data|galaxy_data)/
 
-    if payload[:hit]
-      CacheInstrumentation::Monitor.stats[:hits] += 1
-      CacheInstrumentation::Monitor.stats[:total_read_time] += duration
-      Rails.logger.debug("Cache HIT: system_data (#{(duration * 1000).round(2)}ms)")
-    else
-      # Note: cache_read with miss=true means cache_fetch will generate value
-      # The actual miss is tracked in cache_fetch_hit
-    end
-  end
-end
-
+# Fetch hits are counted via cache_fetch_hit (NOT cache_read, which would
+# double count the same fetch); misses via cache_generate.
 ActiveSupport::Notifications.subscribe("cache_fetch_hit.active_support") do |name, start, finish, id, payload|
-  if payload[:key] == "system_data"
+  if payload[:key].to_s.match?(TRACKED_CACHE_KEY_PATTERN)
     duration = finish - start
     CacheInstrumentation::Monitor.stats[:hits] += 1
     CacheInstrumentation::Monitor.stats[:total_read_time] += duration
-    Rails.logger.debug("Cache FETCH_HIT: system_data (#{(duration * 1000).round(2)}ms)")
   end
 end
 
 ActiveSupport::Notifications.subscribe("cache_generate.active_support") do |name, start, finish, id, payload|
-  if payload[:key] == "system_data"
+  if payload[:key].to_s.match?(TRACKED_CACHE_KEY_PATTERN)
     duration = finish - start
     CacheInstrumentation::Monitor.stats[:misses] += 1
     CacheInstrumentation::Monitor.stats[:total_fetch_time] += duration
     CacheInstrumentation::Monitor.stats[:fetch_count] += 1
-    Rails.logger.info("Cache MISS: system_data - regenerating (#{(duration * 1000).round(2)}ms)")
   end
 end
-
-# Log cache stats periodically in development
-if Rails.env.development?
-  Thread.new do
-    loop do
-      sleep 300 # Every 5 minutes
-      CacheInstrumentation::Monitor.log_report if CacheInstrumentation::Monitor.stats[:fetch_count] > 0
-    end
-  rescue => e
-    Rails.logger.error("Cache instrumentation thread error: #{e.message}")
-  end
-end
-
-Rails.logger.info("Cache instrumentation initialized for system_data cache monitoring")

@@ -1,3 +1,10 @@
+<%# System create/edit form.
+    locals:
+      system, url, method, form_label, submit_text, cancel_path
+      suggested_position - optional {x:, y:} prefilled into empty coordinates %>
+<% suggested_position = local_assigns[:suggested_position] %>
+<% prefill_x = system.x.presence || suggested_position&.dig(:x) %>
+<% prefill_y = system.y.presence || suggested_position&.dig(:y) %>
 <%= form_with model: system, url: url, method: method, id: "system-form", "aria-label" => form_label do |f| %>
   <div class="form-group">
     <%= f.label :name, "Název soustavy:", for: "system_name" %>
@@ -8,7 +15,7 @@
 
   <div class="form-group">
     <%= f.label :x, "Pozice X (0-800, doporučeno 100-700):", for: "system_x" %>
-    <%= f.number_field :x, min: 0, max: 800, step: 0.1, id: "system_x", class: "form-control", "aria-describedby": "x-error x-help", "aria-required": "true", required: true %>
+    <%= f.number_field :x, value: prefill_x, min: 0, max: 800, step: 0.1, id: "system_x", class: "form-control", "aria-describedby": "x-error x-help", "aria-required": "true", required: true %>
     <small id="x-help" style="color: var(--text); opacity: 0.8;">Horizontální pozice v galaxii (střed: 400)</small>
     <div id="x-error" class="error-message" style="display: none;" role="alert" aria-live="polite"></div>
     <% if system.x.present? && (system.x < 100 || system.x > 700) %>
@@ -20,7 +27,7 @@
 
   <div class="form-group">
     <%= f.label :y, "Pozice Y (0-800, doporučeno 100-700):", for: "system_y" %>
-    <%= f.number_field :y, min: 0, max: 800, step: 0.1, id: "system_y", class: "form-control", "aria-describedby": "y-error y-help", "aria-required": "true", required: true %>
+    <%= f.number_field :y, value: prefill_y, min: 0, max: 800, step: 0.1, id: "system_y", class: "form-control", "aria-describedby": "y-error y-help", "aria-required": "true", required: true %>
     <small id="y-help" style="color: var(--text); opacity: 0.8;">Vertikální pozice v galaxii (střed: 400)</small>
     <div id="y-error" class="error-message" style="display: none;" role="alert" aria-live="polite"></div>
     <% if system.y.present? && (system.y < 100 || system.y > 700) %>
@@ -34,19 +41,24 @@
     <!-- JavaScript will populate this with validation messages -->
   </div>
 
-  <div class="form-group">
-    <%= f.label :num_planets, "Počet planet (1-10):", for: "system_num_planets" %>
-    <%= f.number_field :num_planets, min: 1, max: 10, value: (system.new_record? ? 5 : nil), id: "system_num_planets", class: "form-control", "aria-describedby": "planets-error planets-help", "aria-required": "true", required: true %>
-    <small id="planets-help" style="color: var(--text); opacity: 0.8;">Počet planet v nové soustavě</small>
-    <div id="planets-error" class="error-message" style="display: none;" role="alert" aria-live="polite"></div>
-  </div>
+  <% if system.new_record? %>
+    <%# Generation parameters only make sense when creating — editing an
+        existing system changes name/position; planet counts are changed
+        via the regenerate action on the detail page %>
+    <div class="form-group">
+      <%= f.label :num_planets, "Počet planet (1-10):", for: "system_num_planets" %>
+      <%= f.number_field :num_planets, min: 1, max: 10, value: 5, id: "system_num_planets", class: "form-control", "aria-describedby": "planets-error planets-help", "aria-required": "true", required: true %>
+      <small id="planets-help" style="color: var(--text); opacity: 0.8;">Počet planet v nové soustavě</small>
+      <div id="planets-error" class="error-message" style="display: none;" role="alert" aria-live="polite"></div>
+    </div>
 
-  <div class="form-group">
-    <%= f.label :max_moons_per_planet, "Maximální počet měsíců na planetu (0-5):", for: "system_max_moons" %>
-    <%= f.number_field :max_moons_per_planet, min: 0, max: 5, value: (system.new_record? ? 2 : nil), id: "system_max_moons", class: "form-control", "aria-describedby": "moons-error moons-help", "aria-required": "true", required: true %>
-    <small id="moons-help" style="color: var(--text); opacity: 0.8;">Maximální počet měsíců pro každou planetu</small>
-    <div id="moons-error" class="error-message" style="display: none;" role="alert" aria-live="polite"></div>
-  </div>
+    <div class="form-group">
+      <%= f.label :max_moons_per_planet, "Maximální počet měsíců na planetu (0-5):", for: "system_max_moons" %>
+      <%= f.number_field :max_moons_per_planet, min: 0, max: 5, value: 2, id: "system_max_moons", class: "form-control", "aria-describedby": "moons-error moons-help", "aria-required": "true", required: true %>
+      <small id="moons-help" style="color: var(--text); opacity: 0.8;">Maximální počet měsíců pro každou planetu</small>
+      <div id="moons-error" class="error-message" style="display: none;" role="alert" aria-live="polite"></div>
+    </div>
+  <% end %>
 
   <div class="actions">
     <%= f.submit submit_text, class: "btn btn-primary", id: "submit-button", "aria-label": submit_text %>
@@ -60,8 +72,8 @@
     const nameField = document.getElementById('system_name');
     const xField = document.getElementById('system_x');
     const yField = document.getElementById('system_y');
-    const numPlanetsField = document.getElementById('system_num_planets');
-    const maxMoonsField = document.getElementById('system_max_moons');
+    const numPlanetsField = document.getElementById('system_num_planets'); // null on edit
+    const maxMoonsField = document.getElementById('system_max_moons');     // null on edit
     const submitButton = document.getElementById('submit-button');
     const positionValidation = document.getElementById('position-validation');
 
@@ -74,7 +86,6 @@
     // Constants for validation
     const GALAXY_CENTER = [400, 400];
     const MIN_DISTANCE_FROM_BLACK_HOLE = 50;
-    const MIN_DISTANCE_BETWEEN_SYSTEMS = 40;
     const CANVAS_SIZE = 800;
 
     function showError(element, message) {
@@ -89,36 +100,27 @@
       element.parentElement.querySelector('.form-control')?.classList.remove('error');
     }
 
-    function validateName() {
+    function validateName(showErrors) {
       const name = nameField.value.trim();
-      if (name.length === 0) {
-        showError(nameError, 'Název musí být vyplněn');
-        return false;
-      }
-      if (name.length < 3) {
-        showError(nameError, 'Název musí mít alespoň 3 znaky');
-        return false;
-      }
-      if (name.length > 100) {
-        showError(nameError, 'Název může mít maximálně 100 znaků');
-        return false;
-      }
-      hideError(nameError);
-      return true;
+      let message = null;
+      if (name.length === 0) message = 'Název musí být vyplněn';
+      else if (name.length < 3) message = 'Název musí mít alespoň 3 znaky';
+      else if (name.length > 50) message = 'Název může mít maximálně 50 znaků';
+
+      if (message && showErrors) showError(nameError, message);
+      else hideError(nameError);
+      return !message;
     }
 
-    function validateCoordinate(field, errorElement, coordinateName) {
+    function validateCoordinate(field, errorElement, coordinateName, showErrors) {
       const value = parseFloat(field.value);
-      if (isNaN(value)) {
-        showError(errorElement, `${coordinateName} musí být číslo`);
-        return false;
-      }
-      if (value < 0 || value > CANVAS_SIZE) {
-        showError(errorElement, `${coordinateName} musí být v rozsahu 0-${CANVAS_SIZE}`);
-        return false;
-      }
-      hideError(errorElement);
-      return true;
+      let message = null;
+      if (isNaN(value)) message = `${coordinateName} musí být číslo`;
+      else if (value < 0 || value > CANVAS_SIZE) message = `${coordinateName} musí být v rozsahu 0-${CANVAS_SIZE}`;
+
+      if (message && showErrors) showError(errorElement, message);
+      else hideError(errorElement);
+      return !message;
     }
 
     function validatePosition() {
@@ -126,6 +128,7 @@
       const y = parseFloat(yField.value);
 
       if (isNaN(x) || isNaN(y)) {
+        positionValidation.style.display = 'none';
         return true; // Skip if coordinates not fully entered yet
       }
 
@@ -161,27 +164,27 @@
       return true;
     }
 
-    function validateNumeric(field, errorElement, label, min, max) {
+    function validateNumeric(field, errorElement, label, min, max, showErrors) {
+      if (!field) return true; // generation fields are absent on the edit form
       const value = parseInt(field.value, 10);
-      if (isNaN(value)) {
-        showError(errorElement, `${label} musí být číslo`);
-        return false;
-      }
-      if (value < min || value > max) {
-        showError(errorElement, `${label} musí být v rozsahu ${min}-${max}`);
-        return false;
-      }
-      hideError(errorElement);
-      return true;
+      let message = null;
+      if (isNaN(value)) message = `${label} musí být číslo`;
+      else if (value < min || value > max) message = `${label} musí být v rozsahu ${min}-${max}`;
+
+      if (message && showErrors) showError(errorElement, message);
+      else hideError(errorElement);
+      return !message;
     }
 
-    function validateForm() {
-      const nameValid = validateName();
-      const xValid = validateCoordinate(xField, xError, 'X souřadnice');
-      const yValid = validateCoordinate(yField, yError, 'Y souřadnice');
+    // Errors are shown only after the user interacts with the form — the
+    // pristine form just keeps the submit button disabled when incomplete.
+    function validateForm(showErrors) {
+      const nameValid = validateName(showErrors);
+      const xValid = validateCoordinate(xField, xError, 'X souřadnice', showErrors);
+      const yValid = validateCoordinate(yField, yError, 'Y souřadnice', showErrors);
       const positionValid = validatePosition();
-      const planetsValid = validateNumeric(numPlanetsField, planetsError, 'Počet planet', 1, 10);
-      const moonsValid = validateNumeric(maxMoonsField, moonsError, 'Počet měsíců', 0, 5);
+      const planetsValid = validateNumeric(numPlanetsField, planetsError, 'Počet planet', 1, 10, showErrors);
+      const moonsValid = validateNumeric(maxMoonsField, moonsError, 'Počet měsíců', 0, 5, showErrors);
 
       const isValid = nameValid && xValid && yValid && positionValid && planetsValid && moonsValid;
       submitButton.disabled = !isValid;
@@ -189,22 +192,20 @@
     }
 
     // Attach event listeners
-    nameField.addEventListener('input', validateForm);
-    xField.addEventListener('input', validateForm);
-    yField.addEventListener('input', validateForm);
-    numPlanetsField.addEventListener('input', validateForm);
-    maxMoonsField.addEventListener('input', validateForm);
+    [nameField, xField, yField, numPlanetsField, maxMoonsField].forEach(function(field) {
+      if (field) field.addEventListener('input', function() { validateForm(true); });
+    });
 
     // Validate on form submission
     form.addEventListener('submit', function(e) {
-      if (!validateForm()) {
+      if (!validateForm(true)) {
         e.preventDefault();
         alert('Prosím opravte chyby ve formuláři před odesláním.');
       }
     });
 
-    // Initial validation
-    validateForm();
+    // Initial validation: set submit state without flashing errors
+    validateForm(false);
   });
 </script>
 

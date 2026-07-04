@@ -22,68 +22,28 @@
     <%= form_with url: meetings_path, method: :post, scope: :meeting, id: "inter-system-meeting-form", aria: { label: "Formulář pro plánování mezisystémové schůzky" } do |f| %>
       <%= f.hidden_field :is_inter_system, value: true %>
 
-      <!-- Time Fields -->
       <div class="form-group">
         <%= f.label :start_time, "Začátek (např. 12:00):", for: "meeting_start_time" %>
-        <%= f.text_field :start_time, placeholder: "12:00", id: "meeting_start_time", aria: { describedby: "start-time-error", required: "true" } %>
+        <%= f.text_field :start_time, value: params.dig(:meeting, :start_time), placeholder: "12:00", id: "meeting_start_time", aria: { describedby: "start-time-error", required: "true" } %>
         <div id="start-time-error" class="error-message" style="display: none;" role="alert" aria-live="polite"></div>
       </div>
 
       <div class="form-group">
         <%= f.label :end_time, "Konec (např. 13:30):", for: "meeting_end_time" %>
-        <%= f.text_field :end_time, placeholder: "13:30", id: "meeting_end_time", aria: { describedby: "end-time-error duration-display", required: "true" } %>
+        <%= f.text_field :end_time, value: params.dig(:meeting, :end_time), placeholder: "13:30", id: "meeting_end_time", aria: { describedby: "end-time-error duration-display", required: "true" } %>
         <div id="end-time-error" class="error-message" style="display: none;" role="alert" aria-live="polite"></div>
         <div id="duration-display" class="success-message" style="display: none;" role="status" aria-live="polite"></div>
       </div>
 
       <div class="form-group">
         <%= f.label :topic, "Téma (volitelné):", for: "meeting_topic" %>
-        <%= f.text_field :topic, placeholder: "Mezigalaktická diskuse...", id: "meeting_topic" %>
+        <%= f.text_field :topic, value: params.dig(:meeting, :topic), placeholder: "Mezigalaktická diskuse...", id: "meeting_topic" %>
       </div>
 
-      <!-- Multi-System Participant Selection -->
       <div class="form-group">
-        <fieldset>
-          <legend style="font-size: 1.1rem; margin-bottom: 1rem;">Účastníci z různých soustav (vyberte alespoň 2 z různých soustav):</legend>
-
-          <div id="participants-error" class="error-message" style="display: none; margin-bottom: 1rem;" role="alert" aria-live="polite"></div>
-
-          <% @systems_with_bodies.each do |system_id, system_info| %>
-            <div class="system-participant-group" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
-              <h4 style="margin: 0 0 0.75rem 0; color: var(--accent); display: flex; align-items: center; gap: 0.5rem;">
-                🪐 <%= system_info[:system].name %>
-                <small style="color: rgba(255, 255, 255, 0.6); font-weight: normal; font-size: 0.85rem;">
-                  (<%= system_info[:bodies].count %> těles)
-                </small>
-              </h4>
-
-              <div class="checkbox-group" role="group" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.5rem;">
-                <% system_info[:bodies].each_with_index do |body, index| %>
-                  <label class="checkbox-label" for="participant_<%= system_id %>_<%= index %>" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; background: rgba(255, 255, 255, 0.05); border-radius: 4px; transition: background 0.2s;">
-                    <%= check_box_tag "meeting[participants][]", body['name'], false,
-                        id: "participant_#{system_id}_#{index}",
-                        class: "participant-checkbox",
-                        data: {
-                          system_id: system_id,
-                          body_name: body['name']
-                        },
-                        aria: { required: "false" } %>
-                    <%= hidden_field_tag "meeting[participant_systems][#{body['name']}]", system_id, id: "system_#{system_id}_#{index}", disabled: true %>
-                    <span><%= body['name'] %></span>
-                    <small style="color: rgba(255, 255, 255, 0.5); margin-left: auto;">
-                      <%= body['type'] == 'star' ? '⭐' : body['type'] == 'planet' ? '🪐' : '🌙' %>
-                    </small>
-                  </label>
-                <% end %>
-              </div>
-            </div>
-          <% end %>
-
-          <div id="selection-summary" style="padding: 1rem; background: rgba(17, 153, 142, 0.1); border-radius: 6px; border-left: 4px solid var(--accent); display: none;">
-            <strong>Vybraní účastníci:</strong>
-            <div id="summary-content" style="margin-top: 0.5rem;"></div>
-          </div>
-        </fieldset>
+        <%= render "inter_system_participants",
+            systems_with_bodies: @systems_with_bodies,
+            selected_names: Array(params.dig(:meeting, :participants)) %>
       </div>
 
       <div class="actions">
@@ -111,121 +71,3 @@
 </div>
 
 <% end %>
-
-<!-- Include meeting form validation JavaScript -->
-<script src="<%= asset_path('meeting_form.js') %>"></script>
-
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('inter-system-meeting-form');
-    if (!form) return;
-
-    const checkboxes = form.querySelectorAll('.participant-checkbox');
-    const hiddenFields = form.querySelectorAll('input[name^="meeting[participant_systems]"]');
-    const summaryDiv = document.getElementById('selection-summary');
-    const summaryContent = document.getElementById('summary-content');
-    const participantsError = document.getElementById('participants-error');
-    const submitBtn = document.getElementById('submit-btn');
-
-    function updateSelectionSummary() {
-      const selected = Array.from(checkboxes).filter(cb => cb.checked);
-      const systemIds = new Set(selected.map(cb => cb.dataset.systemId));
-
-      // Enable/disable corresponding hidden fields
-      hiddenFields.forEach(field => {
-        const checkbox = Array.from(checkboxes).find(cb =>
-          field.id.includes(cb.dataset.systemId) &&
-          field.name.includes(cb.dataset.bodyName)
-        );
-        if (checkbox) {
-          field.disabled = !checkbox.checked;
-        }
-      });
-
-      if (selected.length === 0) {
-        summaryDiv.style.display = 'none';
-        participantsError.style.display = 'none';
-        return;
-      }
-
-      // Group by system
-      const bySystem = {};
-      selected.forEach(cb => {
-        const sysId = cb.dataset.systemId;
-        if (!bySystem[sysId]) {
-          bySystem[sysId] = {
-            name: cb.closest('.system-participant-group').querySelector('h4').textContent.trim().split('\n')[0].replace('🪐', '').trim(),
-            bodies: []
-          };
-        }
-        bySystem[sysId].bodies.push(cb.dataset.bodyName);
-      });
-
-      // Build summary
-      let summaryHTML = '<ul style="margin: 0; padding-left: 1.5rem;">';
-      Object.values(bySystem).forEach(sys => {
-        summaryHTML += `<li><strong>${sys.name}:</strong> ${sys.bodies.join(', ')}</li>`;
-      });
-      summaryHTML += '</ul>';
-      summaryContent.innerHTML = summaryHTML;
-      summaryDiv.style.display = 'block';
-
-      // Validation
-      if (selected.length < 2) {
-        participantsError.textContent = 'Vyberte alespoň 2 účastníky.';
-        participantsError.style.display = 'block';
-        submitBtn.disabled = true;
-      } else if (systemIds.size < 2) {
-        participantsError.textContent = 'Pro mezisystémovou schůzku musí být účastníci alespoň ze 2 různých soustav.';
-        participantsError.style.display = 'block';
-        submitBtn.disabled = true;
-      } else {
-        participantsError.style.display = 'none';
-        submitBtn.disabled = false;
-      }
-    }
-
-    checkboxes.forEach(cb => {
-      cb.addEventListener('change', updateSelectionSummary);
-    });
-
-    // Hover effect for labels
-    const labels = form.querySelectorAll('.checkbox-label');
-    labels.forEach(label => {
-      label.addEventListener('mouseenter', function() {
-        this.style.background = 'rgba(255, 255, 255, 0.1)';
-      });
-      label.addEventListener('mouseleave', function() {
-        this.style.background = 'rgba(255, 255, 255, 0.05)';
-      });
-    });
-
-    // Form submission validation
-    form.addEventListener('submit', function(e) {
-      const selected = Array.from(checkboxes).filter(cb => cb.checked);
-      const systemIds = new Set(selected.map(cb => cb.dataset.systemId));
-
-      if (selected.length < 2 || systemIds.size < 2) {
-        e.preventDefault();
-        participantsError.textContent = 'Vyberte alespoň 2 účastníky ze 2 různých soustav.';
-        participantsError.style.display = 'block';
-        participantsError.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        return false;
-      }
-    });
-
-    // Initial state
-    updateSelectionSummary();
-  });
-</script>
-
-<style>
-  .system-participant-group:hover {
-    border-color: rgba(255, 255, 255, 0.2);
-  }
-
-  .checkbox-label input[type="checkbox"]:checked + span {
-    color: var(--accent);
-    font-weight: bold;
-  }
-</style>

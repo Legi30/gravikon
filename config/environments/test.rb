@@ -50,3 +50,9 @@ Rails.application.configure do
   # Raise error when a before_action's only/except options reference missing actions.
   config.action_controller.raise_on_missing_callback_actions = true
 end
+
+# Generated galaxy/system data must never touch the real data/ and public/
+# directories — tests read and write these roots freely.
+# Parallel test workers get per-worker roots in test_helper.rb.
+Rails.application.config.x.gravikon.data_root = Rails.root.join("tmp/test_gravikon/data")
+Rails.application.config.x.gravikon.svg_root = Rails.root.join("tmp/test_gravikon/public")

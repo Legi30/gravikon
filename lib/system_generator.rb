@@ -12,10 +12,7 @@ end
 # Object-oriented system generator for creating solar systems
 # Can be used from Rails controllers, jobs, and command line
 class SystemGenerator
-  # Physics constants (matching generator.rb)
-  GRAVITATIONAL_CONSTANT = 0.0001 # 6.67430e-11
-  C = 10_000_000 # 299_792_458.0 m/s (speed of light)
-  STAR_POSITION = [400, 400].freeze
+  STAR_POSITION = [PhysicsConstants::SYSTEM_LOCAL_CENTER, PhysicsConstants::SYSTEM_LOCAL_CENTER].freeze
 
   # Name lists (expanded in T001)
   PLANET_NAMES = %w[
@@ -47,7 +44,7 @@ class SystemGenerator
   ].freeze
 
   attr_reader :system_id, :system_name, :system_x, :system_y, :num_planets, :max_moons_per_planet
-  attr_reader :custom_bodies, :errors, :galaxy_dilation_factor
+  attr_reader :custom_bodies, :errors
 
   # Initialize generator with parameters
   # @param system_id [String] Unique identifier for the system (UUID or slug)
@@ -68,17 +65,16 @@ class SystemGenerator
     @custom_bodies = custom_bodies
     @errors = []
     @used_names = []
-    @galaxy_dilation_factor = 1.0 # Default: no galaxy effect
   end
 
   # Generate the solar system
+  # Bodies store only their LOCAL surface dilation — the black hole's
+  # contribution is applied at calculation time by RelativisticCalculator,
+  # so moving a system never stales its data.
   # @return [Hash, nil] Generated system data or nil on error
   def generate
     # Validate parameters
     return nil unless validate_parameters
-
-    # Calculate galaxy black hole time dilation if position is provided
-    calculate_galaxy_dilation_factor if @system_x && @system_y
 
     # Check for name collisions across existing systems
     load_used_names_from_existing_systems
@@ -108,7 +104,7 @@ class SystemGenerator
     data = generate
     return false unless data
 
-    output_path = root_path('data', 'systems', "#{@system_id}.json")
+    output_path = GalaxyService.system_data_path(@system_id)
 
     # Ensure directory exists
     FileUtils.mkdir_p(File.dirname(output_path))
@@ -175,7 +171,7 @@ class SystemGenerator
 
   # Load names already used in existing systems
   def load_used_names_from_existing_systems
-    systems_dir = root_path('data', 'systems')
+    systems_dir = GalaxyService.systems_data_dir
     return unless Dir.exist?(systems_dir)
 
     Dir.glob(File.join(systems_dir, '*.json')).each do |file|
@@ -239,12 +235,6 @@ class SystemGenerator
     star_density = rand(1000..2000)
     star_mass = calculate_mass(star_radius, star_density)
 
-    # Calculate local time dilation (reference time for star)
-    local_dilation = time_dilation(0)
-
-    # Combine with galaxy black hole dilation (dual reference frames)
-    combined_dilation = local_dilation * @galaxy_dilation_factor
-
     {
       name: random_name(STAR_NAMES),
       type: 'star',
@@ -253,7 +243,8 @@ class SystemGenerator
       radius: star_radius,
       density: star_density,
       mass: star_mass,
-      dilation: combined_dilation
+      # The star is the system's local reference frame
+      dilation: 1.0
     }
   end
 
@@ -270,7 +261,10 @@ class SystemGenerator
       attempt += 1
 
       angle = rand * 2 * Math::PI
-      distance = 100 + index * 60 + rand(-20..20)
+      # Spacing shrinks with planet count so the outermost orbit always fits
+      # within OrbitValidator::MAX_ORBIT_RADIUS_FROM_STAR (370 units)
+      spacing = [(240.0 / [@num_planets - 1, 1].max).floor, 60].min
+      distance = 100 + index * spacing + rand(-10..10)
       planet_x = star[:x] + distance * Math.cos(angle)
       planet_y = star[:y] + distance * Math.sin(angle)
 
@@ -296,13 +290,6 @@ class SystemGenerator
       planet_radius = rand(1_000_000..4_000_000)
       planet_density = rand(3000..6000)
       planet_mass = calculate_mass(planet_radius, planet_density)
-      potential = gravitational_potential(planet_mass, planet_radius)
-
-      # Calculate local time dilation
-      local_dilation = time_dilation(potential)
-
-      # Combine with galaxy black hole dilation (dual reference frames)
-      combined_dilation = local_dilation * @galaxy_dilation_factor
 
       return {
         name: random_name(PLANET_NAMES),
@@ -312,7 +299,7 @@ class SystemGenerator
         radius: planet_radius,
         density: planet_density,
         mass: planet_mass,
-        dilation: combined_dilation
+        dilation: PhysicsConstants.surface_dilation(planet_mass, planet_radius)
       }
     end
   end
@@ -356,13 +343,6 @@ class SystemGenerator
       moon_radius = rand(300_000..800_000)
       moon_density = rand(2500..5000)
       moon_mass = calculate_mass(moon_radius, moon_density)
-      moon_potential = gravitational_potential(moon_mass, moon_radius)
-
-      # Calculate local time dilation
-      local_dilation = time_dilation(moon_potential)
-
-      # Combine with galaxy black hole dilation (dual reference frames)
-      combined_dilation = local_dilation * @galaxy_dilation_factor
 
       return {
         name: random_name(MOON_NAMES),
@@ -372,7 +352,7 @@ class SystemGenerator
         radius: moon_radius,
         density: moon_density,
         mass: moon_mass,
-        dilation: combined_dilation
+        dilation: PhysicsConstants.surface_dilation(moon_mass, moon_radius)
       }
     end
   end
@@ -398,13 +378,6 @@ class SystemGenerator
     y = (spec[:y] || spec['y'] || STAR_POSITION[1]).to_f
 
     mass = calculate_mass(radius, density)
-    potential = gravitational_potential(mass, radius)
-
-    # Calculate local time dilation
-    local_dilation = time_dilation(potential)
-
-    # Combine with galaxy black hole dilation (dual reference frames)
-    combined_dilation = local_dilation * @galaxy_dilation_factor
 
     {
       name: name,
@@ -414,7 +387,7 @@ class SystemGenerator
       radius: radius,
       density: density,
       mass: mass,
-      dilation: combined_dilation
+      dilation: body_type == 'star' ? 1.0 : PhysicsConstants.surface_dilation(mass, radius)
     }
   end
 
@@ -451,22 +424,6 @@ class SystemGenerator
     volume * density
   end
 
-  # Calculate gravitational potential
-  # @param mass [Float] Mass in kg
-  # @param r [Float] Radius in meters
-  # @return [Float] Gravitational potential
-  def gravitational_potential(mass, r)
-    return 0 if r == 0
-    -GRAVITATIONAL_CONSTANT * mass / r
-  end
-
-  # Calculate time dilation factor
-  # @param potential [Float] Gravitational potential
-  # @return [Float] Time dilation factor
-  def time_dilation(potential)
-    Math.sqrt(1 + 2 * potential / (C**2))
-  end
-
   # Get default radius for body type
   # @param type [String] Body type
   # @return [Integer] Default radius
@@ -488,65 +445,6 @@ class SystemGenerator
     when 'planet' then 4500
     when 'moon' then 3500
     else 3000
-    end
-  end
-
-  # Calculate galaxy black hole time dilation factor for this system
-  # This represents the gravitational time dilation effect from the galaxy's
-  # central black hole on the entire solar system (dual reference frame)
-  def calculate_galaxy_dilation_factor
-    return unless @system_x && @system_y
-
-    # Load galaxy data to get black hole properties
-    galaxy_data = load_galaxy_data
-    return unless galaxy_data && galaxy_data['black_hole']
-
-    black_hole = galaxy_data['black_hole']
-    bh_x = black_hole['x'] || 400
-    bh_y = black_hole['y'] || 400
-    bh_mass = black_hole['mass'] || 8.2e36
-
-    # Calculate distance from system to black hole center
-    distance = Math.sqrt((@system_x - bh_x)**2 + (@system_y - bh_y)**2)
-
-    # Prevent division by zero
-    return if distance < 1
-
-    # Calculate gravitational potential from black hole at this distance
-    galaxy_potential = gravitational_potential(bh_mass, distance * 1_000_000) # Convert to meters
-
-    # Calculate time dilation factor from galaxy black hole
-    @galaxy_dilation_factor = time_dilation(galaxy_potential)
-
-    log_info("Galaxy dilation factor calculated: #{@galaxy_dilation_factor} (distance from black hole: #{distance})")
-  rescue => e
-    log_warn("Failed to calculate galaxy dilation: #{e.message}")
-    @galaxy_dilation_factor = 1.0 # Fallback to no effect
-  end
-
-  # Load galaxy data from file
-  # @return [Hash, nil] Galaxy data or nil if not found
-  def load_galaxy_data
-    galaxy_file = root_path('data', 'galaxy_data.json')
-    return nil unless File.exist?(galaxy_file)
-
-    JSON.parse(File.read(galaxy_file))
-  rescue JSON::ParserError => e
-    log_error("Failed to parse galaxy data: #{e.message}")
-    nil
-  rescue => e
-    log_error("Failed to load galaxy data: #{e.message}")
-    nil
-  end
-
-  # Get root path (Rails.root or current directory)
-  # @param path_parts [Array<String>] Path components
-  # @return [String] Full path
-  def root_path(*path_parts)
-    if defined?(Rails)
-      Rails.root.join(*path_parts).to_s
-    else
-      File.join(Dir.pwd, *path_parts)
     end
   end
 

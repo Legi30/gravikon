@@ -32,15 +32,11 @@ class DashboardController < ApplicationController
     @longest_meeting = longest_meeting
     @highest_delay_meeting = highest_delay_meeting
 
-    # Load system data for context
-    @system_data = Rails.cache.fetch('system_data') do
-      JSON.parse(File.read(Rails.root.join("data/system_data.json")))
-    rescue Errno::ENOENT, JSON::ParserError => e
-      Rails.logger.error("DashboardController#index: Failed to load system_data - #{e.message}")
-      { "bodies" => [] }
+    # Total number of celestial bodies across all systems
+    @total_bodies = System.all.sum do |system|
+      system_data = system.load_system_data
+      system_data ? (system_data["bodies"]&.size || 0) : 0
     end
-
-    @total_bodies = @system_data["bodies"].length
   end
 
   def cache_stats

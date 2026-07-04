@@ -1,0 +1,160 @@
+<%# Participant picker for inter-system meetings.
+    locals:
+      systems_with_bodies - Hash of system_id => { system:, bodies: }
+      selected_names      - Array of participant names to pre-check %>
+<% selected_names = local_assigns.fetch(:selected_names, []) %>
+
+<fieldset>
+  <legend style="font-size: 1.1rem; margin-bottom: 1rem;">Účastníci z různých soustav (vyberte alespoň 2 z různých soustav):</legend>
+
+  <div id="participants-error" class="error-message" style="display: none; margin-bottom: 1rem;" role="alert" aria-live="polite"></div>
+
+  <% systems_with_bodies.each do |system_id, system_info| %>
+    <div class="system-participant-group" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+      <h4 style="margin: 0 0 0.75rem 0; color: var(--accent); display: flex; align-items: center; gap: 0.5rem;">
+        🪐 <%= system_info[:system].name %>
+        <small style="color: rgba(255, 255, 255, 0.6); font-weight: normal; font-size: 0.85rem;">
+          (<%= system_info[:bodies].count %> těles)
+        </small>
+      </h4>
+
+      <div class="checkbox-group" role="group" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.5rem;">
+        <% system_info[:bodies].each_with_index do |body, index| %>
+          <% checked = selected_names.include?(body['name']) %>
+          <% field_id = "ps_field_#{system_id}_#{index}" %>
+          <label class="checkbox-label" for="participant_<%= system_id %>_<%= index %>" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; background: rgba(255, 255, 255, 0.05); border-radius: 4px; transition: background 0.2s;">
+            <%= check_box_tag "meeting[participants][]", body['name'], checked,
+                id: "participant_#{system_id}_#{index}",
+                class: "participant-checkbox",
+                data: {
+                  system_id: system_id,
+                  body_name: body['name'],
+                  ps_field: field_id
+                },
+                aria: { required: "false" } %>
+            <%= hidden_field_tag "meeting[participant_systems][#{body['name']}]", system_id, id: field_id, disabled: !checked %>
+            <span><%= body['name'] %></span>
+            <small style="color: rgba(255, 255, 255, 0.5); margin-left: auto;">
+              <%= body['type'] == 'star' ? '⭐' : body['type'] == 'planet' ? '🪐' : '🌙' %>
+            </small>
+          </label>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <div id="selection-summary" style="padding: 1rem; background: rgba(17, 153, 142, 0.1); border-radius: 6px; border-left: 4px solid var(--accent); display: none;">
+    <strong>Vybraní účastníci:</strong>
+    <div id="summary-content" style="margin-top: 0.5rem;"></div>
+  </div>
+</fieldset>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('inter-system-meeting-form');
+    if (!form) return;
+
+    const checkboxes = Array.from(form.querySelectorAll('.participant-checkbox'));
+    const summaryDiv = document.getElementById('selection-summary');
+    const summaryContent = document.getElementById('summary-content');
+    const participantsError = document.getElementById('participants-error');
+    const submitBtn = document.getElementById('submit-btn');
+
+    function updateSelectionSummary() {
+      const selected = checkboxes.filter(cb => cb.checked);
+      const systemIds = new Set(selected.map(cb => cb.dataset.systemId));
+
+      // Each checkbox carries the id of its own hidden participant_systems
+      // field — only checked participants submit their system mapping.
+      checkboxes.forEach(cb => {
+        const field = document.getElementById(cb.dataset.psField);
+        if (field) field.disabled = !cb.checked;
+      });
+
+      if (selected.length === 0) {
+        summaryDiv.style.display = 'none';
+        participantsError.style.display = 'none';
+        return;
+      }
+
+      // Group by system
+      const bySystem = {};
+      selected.forEach(cb => {
+        const sysId = cb.dataset.systemId;
+        if (!bySystem[sysId]) {
+          bySystem[sysId] = {
+            name: cb.closest('.system-participant-group').querySelector('h4').textContent.trim().split('\n')[0].replace('🪐', '').trim(),
+            bodies: []
+          };
+        }
+        bySystem[sysId].bodies.push(cb.dataset.bodyName);
+      });
+
+      // Build summary
+      let summaryHTML = '<ul style="margin: 0; padding-left: 1.5rem;">';
+      Object.values(bySystem).forEach(sys => {
+        summaryHTML += `<li><strong>${sys.name}:</strong> ${sys.bodies.join(', ')}</li>`;
+      });
+      summaryHTML += '</ul>';
+      summaryContent.innerHTML = summaryHTML;
+      summaryDiv.style.display = 'block';
+
+      // Validation
+      if (selected.length < 2) {
+        participantsError.textContent = 'Vyberte alespoň 2 účastníky.';
+        participantsError.style.display = 'block';
+        if (submitBtn) submitBtn.disabled = true;
+      } else if (systemIds.size < 2) {
+        participantsError.textContent = 'Pro mezisystémovou schůzku musí být účastníci alespoň ze 2 různých soustav.';
+        participantsError.style.display = 'block';
+        if (submitBtn) submitBtn.disabled = true;
+      } else {
+        participantsError.style.display = 'none';
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    }
+
+    checkboxes.forEach(cb => {
+      cb.addEventListener('change', updateSelectionSummary);
+    });
+
+    // Hover effect for labels
+    const labels = form.querySelectorAll('.checkbox-label');
+    labels.forEach(label => {
+      label.addEventListener('mouseenter', function() {
+        this.style.background = 'rgba(255, 255, 255, 0.1)';
+      });
+      label.addEventListener('mouseleave', function() {
+        this.style.background = 'rgba(255, 255, 255, 0.05)';
+      });
+    });
+
+    // Form submission validation
+    form.addEventListener('submit', function(e) {
+      const selected = checkboxes.filter(cb => cb.checked);
+      const systemIds = new Set(selected.map(cb => cb.dataset.systemId));
+
+      if (selected.length < 2 || systemIds.size < 2) {
+        e.preventDefault();
+        participantsError.textContent = 'Vyberte alespoň 2 účastníky ze 2 různých soustav.';
+        participantsError.style.display = 'block';
+        participantsError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return false;
+      }
+    });
+
+    // Initial state
+    updateSelectionSummary();
+  });
+</script>
+
+<style>
+  .system-participant-group:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .checkbox-label input[type="checkbox"]:checked ~ span {
+    color: var(--accent);
+    font-weight: bold;
+  }
+</style>

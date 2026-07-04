@@ -7,10 +7,7 @@ require 'erb'
 # Handles loading, validation, and manipulation of galaxy data including
 # the central black hole and all solar systems
 class GalaxyService
-  # Physics constants (matching generator.rb)
-  GRAVITATIONAL_CONSTANT = 0.0001 # 6.67430e-11
-  C = 10_000_000 # 299_792_458.0 m/s (speed of light)
-  GALAXY_CENTER = [400, 400].freeze
+  GALAXY_CENTER = [PhysicsConstants::GALAXY_CENTER_X, PhysicsConstants::GALAXY_CENTER_Y].freeze
   CANVAS_SIZE = 800
 
   # Minimum distances for collision detection
@@ -21,6 +18,52 @@ class GalaxyService
   CACHE_VERSION = 'v2'
 
   class << self
+    # --- File locations -----------------------------------------------------
+    # Single source of truth for where generated galaxy/system data lives.
+    # Roots are configurable (config.x.gravikon.*) so tests can point them
+    # at tmp/ instead of destroying real data.
+
+    # Root directory for JSON data files
+    def data_root
+      Pathname.new(Rails.application.config.x.gravikon.data_root || Rails.root.join('data'))
+    end
+
+    # Root directory for generated SVG files (public/ in dev & production)
+    def svg_root
+      Pathname.new(Rails.application.config.x.gravikon.svg_root || Rails.root.join('public'))
+    end
+
+    def galaxy_data_path
+      data_root.join('galaxy_data.json')
+    end
+
+    def systems_data_dir
+      data_root.join('systems')
+    end
+
+    # @param file_id [String] System file id (UUID or slug, sanitized)
+    def system_data_path(file_id)
+      sanitized = sanitize_system_id(file_id)
+      return nil unless sanitized
+
+      systems_data_dir.join("#{sanitized}.json")
+    end
+
+    def galaxy_svg_path
+      svg_root.join('galaxy.svg')
+    end
+
+    def systems_svg_dir
+      svg_root.join('systems')
+    end
+
+    # @param file_id [String] System file id (UUID or slug, sanitized)
+    def system_svg_path(file_id)
+      sanitized = sanitize_system_id(file_id)
+      return nil unless sanitized
+
+      systems_svg_dir.join("#{sanitized}.svg")
+    end
     # Load galaxy data from file with versioned caching
     # Returns hash with black_hole and systems data
     def load_galaxy_data
@@ -54,8 +97,8 @@ class GalaxyService
     # @param y [Float] Y coordinate in galaxy
     # @return [Boolean] Success status
     def add_system(system_id, x, y)
-      # Validate position
-      validation_result = validate_system_position(x, y)
+      # Validate position (excluding this system's own entry when updating)
+      validation_result = validate_system_position(x, y, exclude_system_id: system_id)
       unless validation_result[:valid]
         Rails.logger.error("Cannot add system: #{validation_result[:errors].join(', ')}")
         return false
@@ -126,82 +169,11 @@ class GalaxyService
       }
     end
 
-    # Generate SVG visualization for galaxy map
-    # @return [String] SVG content
-    def generate_galaxy_svg
-      galaxy_data = load_galaxy_data
-      black_hole = galaxy_data['black_hole']
-      systems = galaxy_data['systems']
-
-      svg_parts = []
-
-      # SVG header
-      svg_parts << '<svg viewBox="0 0 800 800" xmlns="http://www.w3.org/2000/svg">'
-      svg_parts << '<rect width="800" height="800" fill="#000814"/>'
-
-      # Background stars (decorative)
-      svg_parts << '<g id="background-stars">'
-      20.times do
-        svg_parts << "<circle cx=\"#{rand(800)}\" cy=\"#{rand(800)}\" r=\"#{rand(1..2)}\" fill=\"white\" opacity=\"0.6\"/>"
-      end
-      svg_parts << '</g>'
-
-      # Draw orbital paths for systems
-      svg_parts << '<g id="orbital-paths">'
-      systems.each do |system|
-        distance = Math.sqrt((system['x'] - black_hole['x'])**2 + (system['y'] - black_hole['y'])**2)
-        svg_parts << "<circle cx=\"#{black_hole['x']}\" cy=\"#{black_hole['y']}\" r=\"#{distance}\" "
-        svg_parts << 'fill="none" stroke="#ffffff" stroke-width="0.5" opacity="0.3"/>'
-      end
-      svg_parts << '</g>'
-
-      # Draw black hole (event horizon)
-      svg_parts << '<g id="black-hole">'
-      svg_parts << "<circle cx=\"#{black_hole['x']}\" cy=\"#{black_hole['y']}\" r=\"30\" "
-      svg_parts << 'fill="url(#blackHoleGradient)" stroke="#8b5cf6" stroke-width="2"/>'
-      svg_parts << "<circle cx=\"#{black_hole['x']}\" cy=\"#{black_hole['y']}\" r=\"35\" "
-      svg_parts << 'fill="none" stroke="#8b5cf6" stroke-width="1" opacity="0.5"/>'
-      svg_parts << "<text x=\"#{black_hole['x']}\" y=\"#{black_hole['y'] - 45}\" "
-      svg_parts << 'text-anchor="middle" fill="#8b5cf6" font-size="12" font-weight="bold">'
-      svg_parts << ERB::Util.html_escape(black_hole['name'])
-      svg_parts << '</text>'
-      svg_parts << '</g>'
-
-      # Draw solar systems
-      svg_parts << '<g id="solar-systems">'
-      systems.each do |system|
-        svg_parts << "<circle cx=\"#{system['x']}\" cy=\"#{system['y']}\" r=\"15\" "
-        svg_parts << 'fill="#fbbf24" stroke="#f59e0b" stroke-width="2" class="system-marker" '
-        svg_parts << "data-system-id=\"#{ERB::Util.html_escape(system['id'])}\"/>"
-        svg_parts << "<text x=\"#{system['x']}\" y=\"#{system['y'] - 25}\" "
-        svg_parts << 'text-anchor="middle" fill="#fbbf24" font-size="10">'
-        svg_parts << ERB::Util.html_escape("System #{system['id']}")
-        svg_parts << '</text>'
-      end
-      svg_parts << '</g>'
-
-      # Gradients
-      svg_parts << '<defs>'
-      svg_parts << '<radialGradient id="blackHoleGradient">'
-      svg_parts << '<stop offset="0%" style="stop-color:#000000;stop-opacity:1" />'
-      svg_parts << '<stop offset="70%" style="stop-color:#1a1a2e;stop-opacity:1" />'
-      svg_parts << '<stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:0.8" />'
-      svg_parts << '</radialGradient>'
-      svg_parts << '</defs>'
-
-      svg_parts << '</svg>'
-
-      svg_parts.join("\n")
-    rescue => e
-      Rails.logger.error("Failed to generate galaxy SVG: #{e.message}")
-      '<svg viewBox="0 0 800 800" xmlns="http://www.w3.org/2000/svg"><text x="400" y="400" text-anchor="middle" fill="red">Error generating galaxy map</text></svg>'
-    end
-
     # Calculate Schwarzschild radius for a black hole
     # @param mass [Float] Mass of the black hole
     # @return [Float] Schwarzschild radius
     def calculate_schwarzschild_radius(mass)
-      2 * GRAVITATIONAL_CONSTANT * mass / (C**2)
+      PhysicsConstants.schwarzschild_radius(mass)
     end
 
     # Calculate time dilation at event horizon
@@ -272,13 +244,9 @@ class GalaxyService
       return cached_time if cached_time
 
       # Get from file modification time
-      file_path = if svg_type == :galaxy
-                    Rails.root.join('public', 'galaxy.svg')
-                  else
-                    Rails.root.join('public', 'systems', "#{system_id}.svg")
-                  end
+      file_path = svg_type == :galaxy ? galaxy_svg_path : system_svg_path(system_id)
 
-      timestamp = File.exist?(file_path) ? File.mtime(file_path).to_i : Time.current.to_i
+      timestamp = file_path && File.exist?(file_path) ? File.mtime(file_path).to_i : Time.current.to_i
       Rails.cache.write(cache_key, timestamp, expires_in: 1.hour)
       timestamp
     end
@@ -315,12 +283,36 @@ class GalaxyService
       Rails.logger.debug("Meeting stats cache invalidated for system #{system_id}")
     end
 
+    # Rebuild galaxy_data.json from the System database records.
+    # Self-healing: recreates the file (default black hole + one entry per
+    # DB system) when it is missing or out of sync.
+    # @return [Hash] The rebuilt galaxy data
+    def rebuild_galaxy_data!
+      galaxy_data = create_default_galaxy_data
+
+      System.find_each do |system|
+        file_id = system.system_id
+        next if file_id.blank?
+
+        galaxy_data['systems'] << {
+          'id' => file_id,
+          'x' => system.x.to_f,
+          'y' => system.y.to_f
+        }
+      end
+
+      save_galaxy_data(galaxy_data)
+      clear_galaxy_cache
+      Rails.logger.info("Galaxy data rebuilt from database (#{galaxy_data['systems'].size} systems)")
+      galaxy_data
+    end
+
     private
 
     # Load galaxy data from file without caching
     # @return [Hash] Galaxy data
     def load_galaxy_data_from_file
-      file_path = Rails.root.join('data', 'galaxy_data.json')
+      file_path = galaxy_data_path
 
       unless File.exist?(file_path)
         Rails.logger.warn("Galaxy data file not found, creating default")
@@ -339,7 +331,8 @@ class GalaxyService
     # Save galaxy data to file
     # @param galaxy_data [Hash] Galaxy data to save
     def save_galaxy_data(galaxy_data)
-      file_path = Rails.root.join('data', 'galaxy_data.json')
+      file_path = galaxy_data_path
+      FileUtils.mkdir_p(File.dirname(file_path))
       File.write(file_path, JSON.pretty_generate(galaxy_data))
       Rails.logger.info("Galaxy data saved to #{file_path}")
     end
@@ -370,14 +363,12 @@ class GalaxyService
     # @param system_id [String, Integer] System ID
     # @return [Hash, nil] System data or nil if not found
     def load_system_data_from_file(system_id)
-      # Security: Sanitize system_id to prevent path traversal
-      sanitized_id = sanitize_system_id(system_id)
-      unless sanitized_id
+      # Security: system_data_path sanitizes the id to prevent path traversal
+      file_path = system_data_path(system_id)
+      unless file_path
         Rails.logger.error("Security: Invalid system_id rejected: #{system_id}")
         return nil
       end
-
-      file_path = Rails.root.join('data', 'systems', "#{sanitized_id}.json")
 
       unless File.exist?(file_path)
         Rails.logger.warn("System data file not found: #{file_path}")
@@ -397,7 +388,7 @@ class GalaxyService
     # @return [Array<String>] List of all body names across systems
     def load_used_names_from_all_systems
       used_names = []
-      systems_dir = Rails.root.join('data', 'systems')
+      systems_dir = systems_data_dir
 
       return used_names unless Dir.exist?(systems_dir)
 

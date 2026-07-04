@@ -4,39 +4,40 @@ require 'json'
 require 'nokogiri'
 require 'fileutils'
 
-# === Třída tělesa ===
-class Body
-  attr_reader :name, :x, :y, :radius, :color, :type, :dilation
-  attr_accessor :parent
+# === Planetární systém ===
+# Renders a single solar system's SVG visualization from its JSON data file.
+class PlanetarySystem
+  # === Třída tělesa ===
+  class Body
+    attr_reader :name, :x, :y, :radius, :color, :type, :dilation
+    attr_accessor :parent
 
-  def initialize(data)
-    @name = data["name"]
-    @x = data["x"]
-    @y = data["y"]
-    @radius = data["radius"]
-    @type = data["type"]
-    @dilation = data["dilation"]
-    @color = color_for_type
-    @parent = nil
-  end
+    def initialize(data)
+      @name = data["name"]
+      @x = data["x"]
+      @y = data["y"]
+      @radius = data["radius"]
+      @type = data["type"]
+      @dilation = data["dilation"]
+      @color = color_for_type
+      @parent = nil
+    end
 
-  def orbit_radius
-    return nil unless parent
-    Math.sqrt((x - parent.x)**2 + (y - parent.y)**2)
-  end
+    def orbit_radius
+      return nil unless parent
+      Math.sqrt((x - parent.x)**2 + (y - parent.y)**2)
+    end
 
-  def color_for_type
-    case type
-    when "star" then "#ffff66"
-    when "planet" then "#66ccff"
-    when "moon" then "#cccccc"
-    else "#ffffff"
+    def color_for_type
+      case type
+      when "star" then "#ffff66"
+      when "planet" then "#66ccff"
+      when "moon" then "#cccccc"
+      else "#ffffff"
+      end
     end
   end
-end
 
-# === Planetární systém ===
-class PlanetarySystem
   attr_reader :bodies, :background, :raw_bodies, :system_id, :system_name, :system_x, :system_y
 
   # Initialize planetary system
@@ -46,8 +47,8 @@ class PlanetarySystem
     data = JSON.parse(File.read(json_path))
     @raw_bodies = data["bodies"]
 
-    # Extract system metadata if available (for multi-system support)
-    @system_id = system_id || data["system_id"] || extract_system_id_from_path(json_path)
+    # Extract system metadata if available
+    @system_id = system_id || data["system_id"] || File.basename(json_path.to_s, '.json')
     @system_name = data["system_name"] || "System #{@system_id}"
     @system_x = data["system_x"]
     @system_y = data["system_y"]
@@ -84,12 +85,11 @@ class PlanetarySystem
   end
 
   # Generate SVG visualization of the system
-  # @param schedule_json_path [String, nil] Optional schedule JSON path (legacy parameter)
   # @param output [String, nil] Output path for SVG file
   # @return [String] Path to generated SVG file
-  def to_svg(schedule_json_path = nil, output = nil)
-    # Determine output path based on system_id
-    output ||= determine_output_path
+  def to_svg(output = nil)
+    output ||= GalaxyService.system_svg_path(system_id)
+    raise ArgumentError, "No output path for system #{system_id}" unless output
 
     # Ensure directory exists
     FileUtils.mkdir_p(File.dirname(output))
@@ -188,8 +188,8 @@ class PlanetarySystem
     end
 
     File.write(output, builder.to_xml)
-    puts "Vykresleno do #{output}"
-    output
+    Rails.logger.info("PlanetarySystem: SVG rendered to #{output}") if defined?(Rails)
+    output.to_s
   end
 
   # Class method for convenience - generate SVG from system file
@@ -199,61 +199,6 @@ class PlanetarySystem
   # @return [String] Path to generated SVG
   def self.generate(json_path:, system_id: nil, output_path: nil)
     system = new(json_path, system_id: system_id)
-    system.to_svg(nil, output_path)
-  end
-
-  private
-
-  # Extract system ID from file path
-  # @param path [String] File path
-  # @return [String] Extracted system ID or 'default'
-  def extract_system_id_from_path(path)
-    if path.include?('systems/')
-      # Extract from path like: data/systems/alpha.json -> alpha
-      File.basename(path, '.json')
-    else
-      'default'
-    end
-  end
-
-  # Determine output path based on system ID
-  # @return [String] Output path for SVG
-  def determine_output_path
-    if system_id == 'default'
-      # Backward compatibility: default system goes to public/system.svg
-      root_path('public', 'system.svg')
-    else
-      # Multi-system: individual systems go to public/systems/<id>.svg
-      root_path('public', 'systems', "#{system_id}.svg")
-    end
-  end
-
-  # Get root path (Rails-aware)
-  # @param path_parts [Array<String>] Path components
-  # @return [String] Full path
-  def root_path(*path_parts)
-    if defined?(Rails)
-      Rails.root.join(*path_parts).to_s
-    else
-      File.join(Dir.pwd, *path_parts)
-    end
-  end
-end
-
-# === Spuštění ===
-# Command-line execution with support for system ID parameter
-if __FILE__ == $PROGRAM_NAME
-  begin
-    # Parse command-line arguments
-    input_path = ARGV[0] || 'data/system_data.json'
-    system_id = ARGV[1] # Optional system ID
-    output_path = ARGV[2] # Optional output path
-
-    system = PlanetarySystem.new(input_path, system_id: system_id)
-    system.to_svg(nil, output_path)
-  rescue => e
-    STDERR.puts "Error: #{e.message}"
-    STDERR.puts e.backtrace.join("\n") if ENV['DEBUG']
-    exit 1
+    system.to_svg(output_path)
   end
 end

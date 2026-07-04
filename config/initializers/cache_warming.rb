@@ -25,7 +25,7 @@ Rails.application.config.after_initialize do
 
       # Warm individual system caches
       # Only load first 10 systems to avoid excessive startup time
-      System.limit(10).find_each do |system|
+      System.order(:id).limit(10).each do |system|
         system_file_id = File.basename(system.json_file_path, '.json')
         system_data = GalaxyService.load_system_data(system_file_id)
 
@@ -46,7 +46,7 @@ Rails.application.config.after_initialize do
       Rails.logger.info("Cache warming: Galaxy SVG timestamp loaded")
 
       # Warm meeting stats for first few systems
-      System.limit(5).find_each do |system|
+      System.order(:id).limit(5).each do |system|
         stats = GalaxyService.get_system_meeting_stats(system.id)
         Rails.logger.info("Cache warming: Meeting stats for '#{system.name}' loaded (#{stats[:total_meetings]} meetings)")
       end

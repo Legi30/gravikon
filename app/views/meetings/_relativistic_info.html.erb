@@ -1,8 +1,9 @@
 <%
-  # Accept system_data and is_inter_system as explicit local variables
-  system_data ||= { "bodies" => [] }
   is_inter_system = local_assigns.fetch(:is_inter_system, false)
   show_system_column = local_assigns.fetch(:show_system_column, false)
+  calculator = @relativistic_calculator || RelativisticCalculator.new
+  base_duration = meeting.duration_minutes
+  participant_systems_hash = meeting.participant_systems_hash
 %>
 <tr class="relativistic-details" id="relativistic-<%= dom_id(meeting) %>" style="display: none;">
   <td colspan="<%= show_system_column ? 7 : 6 %>">
@@ -40,41 +41,29 @@
           <% participants = meeting.participants_array %>
           <% participants.each do |participant_name| %>
             <%
-              # For inter-system meetings, need to load from participant's specific system
-              if is_inter_system && meeting.participant_systems.present?
-                system_id = meeting.participant_systems[participant_name]
-                if system_id
-                  participant_system = @systems_by_id[system_id]
-                  if participant_system
-                    participant_system_data = participant_system.load_system_data
-                    body = participant_system_data&.dig('bodies')&.find { |b| b['name'] == participant_name }
-                  end
-                end
-                body ||= { 'dilation' => 1.0 }
+              # Resolve the participant's system and body data
+              if is_inter_system && participant_systems_hash.present?
+                participant_system_id = participant_systems_hash[participant_name]
               else
-                # Single-system meeting: use passed system_data
-                bodies = system_data && system_data["bodies"].is_a?(Array) ? system_data["bodies"] : nil
-                body = bodies&.find { |b| b["name"] == participant_name }
+                participant_system_id = meeting.system_id
               end
 
-              dilation = body && body["dilation"] ? body["dilation"] : 1.0
+              participant_system = participant_system_id ? (@systems_by_id&.dig(participant_system_id) || System.find_by(id: participant_system_id)) : nil
+              participant_system_data = participant_system&.load_system_data
+              body = participant_system_data&.dig('bodies')&.find { |b| b['name'] == participant_name }
 
-              # Calculate local duration for this body (with nil safety)
-              local_duration = meeting.local_avg_duration && dilation > 0 ? (meeting.local_avg_duration / dilation) : 0
+              # Combined dilation: local stellar effect × black hole effect
+              dilation = calculator.calculate_time_dilation(body, participant_system_id)
+
+              # Proper time elapsed for this participant during the meeting
+              local_duration = base_duration * dilation
 
               # Color based on dilation (green = low, red = high)
               color_value = ((1.0 - dilation) * 255).to_i.clamp(0, 255)
               bar_color = "rgb(#{color_value}, #{255 - color_value}, 50)"
 
               # For inter-system, show system name
-              system_label = if is_inter_system && meeting.participant_systems.present?
-                               participant_systems_hash = meeting.participant_systems_hash
-                               system_id = participant_systems_hash[participant_name]
-                               participant_system = @systems_by_id[system_id]
-                               participant_system ? participant_system.name : ""
-                             else
-                               ""
-                             end
+              system_label = is_inter_system && participant_system ? participant_system.name : ""
             %>
 
             <div class="time-bar-item">
@@ -86,9 +75,9 @@
               </span>
               <div class="time-bar-wrapper">
                 <div class="time-bar"
-                     style="width: <%= meeting.local_avg_duration && meeting.local_avg_duration > 0 ? (local_duration / meeting.local_avg_duration * 100).clamp(0, 150) : 0 %>%; background-color: <%= bar_color %>;"
+                     style="width: <%= (dilation * 100).clamp(0, 100).round(1) %>%; background-color: <%= bar_color %>;"
                      data-duration="<%= local_duration.round(2) %>"
-                     data-dilation="<%= dilation %>">
+                     data-dilation="<%= dilation.round(4) %>">
                 </div>
                 <span class="time-value"><%= local_duration.round(2) %> min</span>
               </div>
@@ -126,10 +115,8 @@
                 <%
                   # For inter-system meetings, indicate if participants are from different systems
                   different_systems = false
-                  if is_inter_system && meeting.participant_systems.present?
-                    sys1 = meeting.participant_systems[p1]
-                    sys2 = meeting.participant_systems[p2]
-                    different_systems = (sys1 != sys2)
+                  if is_inter_system && participant_systems_hash.present?
+                    different_systems = participant_systems_hash[p1] != participant_systems_hash[p2]
                   end
                 %>
                 <div class="signal-path" data-from="<%= p1 %>" data-to="<%= p2 %>">

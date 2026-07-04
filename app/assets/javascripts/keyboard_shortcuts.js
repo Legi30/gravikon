@@ -6,7 +6,7 @@ class KeyboardShortcuts {
     this.shortcuts = {
       'd': { action: () => this.navigate('/dashboard'), description: 'Otevřít Přehled' },
       's': { action: () => this.navigate('/meetings'), description: 'Otevřít seznam Schůzek' },
-      'm': { action: () => this.navigate('/systems'), description: 'Otevřít Mapu soustavy' },
+      'g': { action: () => this.navigate('/galaxy'), description: 'Otevřít mapu Galaxie' },
       'n': { action: () => this.navigate('/meetings/new'), description: 'Nová schůzka' },
       '?': { action: () => this.showHelp(), description: 'Zobrazit nápovědu klávesových zkratek' },
       'Escape': { action: () => this.hideHelp(), description: 'Zavřít nápovědu', hidden: true }

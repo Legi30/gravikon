@@ -143,24 +143,6 @@ class Rack::Attack
     end
   end
 
-  # Add custom tracking to include rate limit headers in successful responses
-  ActiveSupport::Notifications.subscribe('process_action.action_controller') do |_name, _start, _finish, _request_id, payload|
-    request = payload[:request]
-    next unless request
-
-    # Add rate limit info to response headers for monitored endpoints
-    if request.path == '/galaxy/systems' && request.post?
-      throttle_data = Rack::Attack::Request.new(request.env).throttle_data('system_creation/ip')
-      if throttle_data
-        request.env['rack.attack.throttle_data'] = {
-          discriminator: 'system_creation/ip',
-          count: throttle_data[:count],
-          limit: 5,
-          period: 3600
-        }
-      end
-    end
-  end
 end
 
 # Enable Rack::Attack middleware

@@ -5,9 +5,9 @@ require_relative '../validators/orbit_validator'
 class System < ApplicationRecord
   # Callbacks
   before_validation :normalize_name
-  before_validation :generate_unique_id, on: :create
   before_validation :set_default_json_file_path, on: :create
   before_destroy :cleanup_system_files
+  before_destroy :remove_from_galaxy
   after_commit :clear_system_cache
 
   # Validations
@@ -58,10 +58,8 @@ class System < ApplicationRecord
   # Load system's JSON data from file system
   # Returns hash with system data or nil if file doesn't exist
   def load_system_data
-    return nil unless json_file_path.present?
-
-    file_path = Rails.root.join(json_file_path)
-    return nil unless File.exist?(file_path)
+    file_path = data_file_path
+    return nil unless file_path && File.exist?(file_path)
 
     JSON.parse(File.read(file_path))
   rescue JSON::ParserError => e
@@ -74,8 +72,16 @@ class System < ApplicationRecord
 
   # Check if system data file exists
   def data_file_exists?
-    return false unless json_file_path.present?
-    File.exist?(Rails.root.join(json_file_path))
+    file_path = data_file_path
+    file_path.present? && File.exist?(file_path)
+  end
+
+  # Absolute path to this system's JSON data file (resolved through the
+  # configured data root — json_file_path stores only the logical identity)
+  def data_file_path
+    return nil if system_id.blank?
+
+    GalaxyService.system_data_path(system_id)
   end
 
   # Get slug-friendly version of name for use in file paths
@@ -112,12 +118,6 @@ class System < ApplicationRecord
     self.name = name.strip.squeeze(' ')
   end
 
-  # Generate unique ID (slug) from name if not provided
-  def generate_unique_id
-    return if name.blank?
-    # Slug is generated on-the-fly from name, no need to store it
-  end
-
   # Set default JSON file path based on system name
   def set_default_json_file_path
     return if json_file_path.present? || name.blank?
@@ -134,11 +134,12 @@ class System < ApplicationRecord
     # Load galaxy data for validation
     galaxy_data = load_galaxy_data_for_validation
 
-    # Validate using OrbitValidator
+    # Validate using OrbitValidator — exclude this system's own galaxy entry
+    # (galaxy_data keys systems by file id, not database id)
     result = OrbitValidator.validate_system_orbit(
       x, y,
       galaxy_data,
-      exclude_system_id: id || slug
+      exclude_system_id: system_id || slug
     )
 
     # Add errors to model if validation failed
@@ -154,21 +155,7 @@ class System < ApplicationRecord
 
   # Load galaxy data for validation (with fallback to default)
   def load_galaxy_data_for_validation
-    if defined?(GalaxyService)
-      GalaxyService.send(:load_galaxy_data_from_file)
-    else
-      # Fallback: load directly from file
-      file_path = Rails.root.join('data', 'galaxy_data.json')
-      if File.exist?(file_path)
-        JSON.parse(File.read(file_path))
-      else
-        # Return default structure
-        {
-          'black_hole' => { 'x' => 400, 'y' => 400 },
-          'systems' => []
-        }
-      end
-    end
+    GalaxyService.send(:load_galaxy_data_from_file)
   rescue => e
     Rails.logger.warn("Failed to load galaxy data for validation: #{e.message}")
     # Return default structure on error
@@ -238,20 +225,18 @@ class System < ApplicationRecord
   # Clean up associated files before destroying system record
   # Removes system data JSON file and SVG file
   def cleanup_system_files
-    return unless json_file_path.present?
-
-    system_id = File.basename(json_file_path, '.json')
+    return if system_id.blank?
 
     # Delete system data JSON file
-    data_file = Rails.root.join(json_file_path)
-    if File.exist?(data_file)
+    data_file = GalaxyService.system_data_path(system_id)
+    if data_file && File.exist?(data_file)
       File.delete(data_file)
       Rails.logger.info("Deleted system data file: #{data_file}")
     end
 
     # Delete system SVG file
-    svg_file = Rails.root.join('public', 'systems', "#{system_id}.svg")
-    if File.exist?(svg_file)
+    svg_file = GalaxyService.system_svg_path(system_id)
+    if svg_file && File.exist?(svg_file)
       File.delete(svg_file)
       Rails.logger.info("Deleted system SVG file: #{svg_file}")
     end
@@ -259,6 +244,16 @@ class System < ApplicationRecord
     Rails.logger.error("Failed to cleanup system files: #{e.message}")
     # Don't fail the destroy if file cleanup fails
     # Files will be orphaned but system record is removed
+  end
+
+  # Remove this system's entry from galaxy_data.json so no ghost entry
+  # blocks future systems at this position
+  def remove_from_galaxy
+    return if system_id.blank?
+
+    GalaxyService.remove_system(system_id)
+  rescue => e
+    Rails.logger.error("Failed to remove system #{system_id} from galaxy data: #{e.message}")
   end
 
   # Clear cache for this specific system when it changes

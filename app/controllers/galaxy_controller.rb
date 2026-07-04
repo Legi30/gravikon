@@ -15,7 +15,7 @@ class GalaxyController < ApplicationController
     generate_galaxy_svg_if_needed
 
     # Load galaxy SVG content for embedding in view
-    @galaxy_svg = File.read(Rails.root.join('public', 'galaxy.svg')) rescue nil
+    @galaxy_svg = File.read(GalaxyService.galaxy_svg_path) rescue nil
 
     respond_to do |format|
       format.html
@@ -41,10 +41,9 @@ class GalaxyController < ApplicationController
     # Generate system SVG if needed
     generate_system_svg_if_needed(@system)
 
-    # Load system SVG content for embedding in view
-    system_id = File.basename(@system.json_file_path, '.json')
-    svg_path = Rails.root.join('public', 'systems', "#{system_id}.svg")
-    @system_svg = File.read(svg_path) rescue nil
+    # Load system SVG content for embedding in view (path is sanitized)
+    svg_path = GalaxyService.system_svg_path(@system.system_id)
+    @system_svg = svg_path && File.exist?(svg_path) ? File.read(svg_path) : nil
 
     # Load all meetings for filtering in view
     @meetings = Meeting.all
@@ -61,15 +60,7 @@ class GalaxyController < ApplicationController
   # Show form for creating a new system
   def new
     @system = System.new
-    @galaxy_data = load_galaxy_data
-    @systems = System.all
-
-    # Load galaxy SVG for position picker
-    galaxy_svg_path = Rails.root.join('public', 'galaxy.svg')
-    @galaxy_svg = File.exist?(galaxy_svg_path) ? File.read(galaxy_svg_path) : nil
-
-    # Provide suggested position (avoid collisions)
-    @suggested_position = suggest_system_position
+    prepare_new_form
   end
 
   # POST /galaxy/systems
@@ -93,9 +84,8 @@ class GalaxyController < ApplicationController
       Rails.logger.warn("System creation failed - numeric validation errors: #{validation_errors.join(', ')} | Name: #{name} | Params: #{num_planets} planets, #{max_moons} moons")
       flash.now[:alert] = "Neplatné parametry: #{validation_errors.join(', ')}"
       @system = System.new(name: name, x: x, y: y)
-      @galaxy_data = load_galaxy_data
-      @suggested_position = suggest_system_position
-      render :new and return
+      prepare_new_form
+      render :new, status: :unprocessable_entity and return
     end
 
     # Validate position using GalaxyService
@@ -104,9 +94,8 @@ class GalaxyController < ApplicationController
       Rails.logger.warn("System creation failed - position validation errors: #{validation[:errors].join(', ')} | Name: #{name} | Position: (#{x}, #{y})")
       flash.now[:alert] = "Neplatná pozice: #{validation[:errors].join(', ')}"
       @system = System.new(name: name, x: x, y: y)
-      @galaxy_data = load_galaxy_data
-      @suggested_position = suggest_system_position
-      render :new and return
+      prepare_new_form
+      render :new, status: :unprocessable_entity and return
     end
 
     # Create System database record first (job will populate data)
@@ -139,14 +128,14 @@ class GalaxyController < ApplicationController
         @system.destroy
         Rails.logger.error("Failed to enqueue system generation job: #{e.message}\n#{e.backtrace.join("\n")}")
         flash.now[:alert] = "Chyba při spuštění generování systému: #{e.message}"
-        render :new
+        prepare_new_form
+        render :new, status: :unprocessable_entity
       end
     else
       Rails.logger.error("System creation failed - database save errors: #{@system.errors.full_messages.join(', ')} | Name: #{name} | Position: (#{x}, #{y})")
-      @galaxy_data = load_galaxy_data
-      @suggested_position = suggest_system_position
       flash.now[:alert] = "Nepodařilo se uložit systém: #{@system.errors.full_messages.join(', ')}"
-      render :new
+      prepare_new_form
+      render :new, status: :unprocessable_entity
     end
   end
 
@@ -179,8 +168,7 @@ class GalaxyController < ApplicationController
     new_y = system_params_hash[:y].to_f
 
     if new_x != old_x || new_y != old_y
-      # Extract system_id (UUID) from file path for validation
-      system_id = File.basename(@system.json_file_path, '.json')
+      system_id = @system.system_id
       validation = GalaxyService.validate_system_position(new_x, new_y, exclude_system_id: system_id)
       unless validation[:valid]
         Rails.logger.warn("System update failed - position validation errors: #{validation[:errors].join(', ')} | System: #{@system.name} (ID: #{system_id}) | New position: (#{new_x}, #{new_y})")
@@ -191,11 +179,12 @@ class GalaxyController < ApplicationController
       end
     end
 
-    # Update system record
-    if @system.update(system_params_hash)
+    # Update system record (only real model attributes — num_planets and
+    # max_moons_per_planet are generation parameters, not columns)
+    if @system.update(system_params_hash.slice(:name, :x, :y))
       # If position changed, update galaxy_data.json
       if new_x != old_x || new_y != old_y
-        system_id = File.basename(@system.json_file_path, '.json')
+        system_id = @system.system_id
         unless GalaxyService.add_system(system_id, new_x, new_y)
           # Rollback database changes if galaxy_data.json update fails
           Rails.logger.error("System update failed - galaxy_data.json update failed | System: #{@system.name} (ID: #{system_id}) | Position: (#{new_x}, #{new_y}) | Rolled back to: (#{old_x}, #{old_y})")
@@ -207,24 +196,8 @@ class GalaxyController < ApplicationController
         end
       end
 
-      # Regenerate system if parameters provided (async)
-      if params[:regenerate] == 'true'
-        system_id = File.basename(@system.json_file_path, '.json')
-        num_planets = system_params_hash[:num_planets]&.to_i || 5
-        max_moons = system_params_hash[:max_moons_per_planet]&.to_i || 2
-        custom_bodies = system_params_hash[:custom_bodies]
-
-        RegenerateSystemJob.perform_later(
-          system_id: @system.id,
-          num_planets: num_planets,
-          max_moons: max_moons,
-          custom_bodies: custom_bodies
-        )
-        Rails.logger.info("System regeneration job enqueued during update for #{@system.name}")
-      end
-
       # Regenerate SVGs (lightweight, can stay sync)
-      system_id = File.basename(@system.json_file_path, '.json')
+      system_id = @system.system_id
       generate_system_svg(@system)
       generate_galaxy_svg
 
@@ -237,8 +210,7 @@ class GalaxyController < ApplicationController
 
       redirect_to galaxy_system_path(@system), notice: "Systém #{@system.name} byl aktualizován."
     else
-      system_id = File.basename(@system.json_file_path, '.json')
-      Rails.logger.error("System update failed - database save errors: #{@system.errors.full_messages.join(', ')} | System: #{@system.name} (ID: #{system_id})")
+      Rails.logger.error("System update failed - database save errors: #{@system.errors.full_messages.join(', ')} | System: #{@system.name} (ID: #{@system.system_id})")
       @system_data = @system.load_system_data
       @galaxy_data = load_galaxy_data
       flash.now[:alert] = "Nepodařilo se aktualizovat systém: #{@system.errors.full_messages.join(', ')}"
@@ -255,20 +227,11 @@ class GalaxyController < ApplicationController
     end
 
     system_name = @system.name
-    system_id = File.basename(@system.json_file_path, '.json')
+    system_id = @system.system_id
 
     begin
-      # Remove from galaxy_data.json
-      unless GalaxyService.remove_system(system_id)
-        # If galaxy_data.json update fails, don't delete anything
-        Rails.logger.error("Failed to remove system #{system_id} from galaxy_data.json")
-        redirect_to galaxy_index_path, alert: "Nepodařilo se odstranit systém z galaxie." and return
-      end
-
-      # Handle associated meetings (optional: delete or keep)
-      # For now, meetings remain but may reference non-existent systems
-
-      # Delete database record (before_destroy callback will clean up files)
+      # Delete database record (before_destroy callbacks clean up the data
+      # files and the galaxy_data.json entry)
       @system.destroy
 
       # Regenerate galaxy SVG
@@ -307,8 +270,6 @@ class GalaxyController < ApplicationController
     custom_bodies = regenerate_params_hash[:custom_bodies]
 
     begin
-      system_id = File.basename(@system.json_file_path, '.json')
-
       # Trigger background job for regeneration (async)
       RegenerateSystemJob.perform_later(
         system_id: @system.id,
@@ -317,7 +278,7 @@ class GalaxyController < ApplicationController
         custom_bodies: custom_bodies
       )
 
-      Rails.logger.info("System regeneration job enqueued for #{@system.name} (ID: #{system_id})")
+      Rails.logger.info("System regeneration job enqueued for #{@system.name} (ID: #{@system.system_id})")
 
       redirect_to galaxy_system_path(@system), notice: "Systém #{@system.name} se regeneruje na pozadí. Obnovte stránku za chvíli."
     rescue => e
@@ -382,6 +343,16 @@ class GalaxyController < ApplicationController
     { 'black_hole' => {}, 'systems' => [] }
   end
 
+  # Set up everything the new-system form needs (also used when re-rendering
+  # after validation failures so the position mini-map keeps working)
+  def prepare_new_form
+    @systems = System.all
+    @suggested_position = suggest_system_position
+
+    galaxy_svg_path = GalaxyService.galaxy_svg_path
+    @galaxy_svg = File.exist?(galaxy_svg_path) ? File.read(galaxy_svg_path) : nil
+  end
+
   # Suggest a valid system position (simple algorithm)
   def suggest_system_position
     # Start with a random position in safe zone
@@ -404,10 +375,12 @@ class GalaxyController < ApplicationController
     { x: 300, y: 300 }
   end
 
-  # Generate galaxy SVG if needed
+  # Generate galaxy SVG if needed (self-heals a missing galaxy_data.json)
   def generate_galaxy_svg_if_needed
-    svg_path = Rails.root.join('public', 'galaxy.svg')
-    galaxy_data_path = Rails.root.join('data', 'galaxy_data.json')
+    svg_path = GalaxyService.galaxy_svg_path
+    galaxy_data_path = GalaxyService.galaxy_data_path
+
+    GalaxyService.rebuild_galaxy_data! unless File.exist?(galaxy_data_path)
 
     # Regenerate if SVG doesn't exist or is older than galaxy data
     if !File.exist?(svg_path) || (File.exist?(galaxy_data_path) && File.mtime(svg_path) < File.mtime(galaxy_data_path))
@@ -419,6 +392,7 @@ class GalaxyController < ApplicationController
   def generate_galaxy_svg
     begin
       GalaxyVisualizer.generate
+      GalaxyService.update_svg_timestamp(:galaxy)
       Rails.logger.info("Galaxy SVG generated successfully")
     rescue => e
       Rails.logger.error("Failed to generate galaxy SVG: #{e.message}")
@@ -427,28 +401,27 @@ class GalaxyController < ApplicationController
 
   # Generate system SVG if needed
   def generate_system_svg_if_needed(system)
-    system_id = File.basename(system.json_file_path, '.json')
-    svg_path = Rails.root.join('public', 'systems', "#{system_id}.svg")
-    data_path = Rails.root.join(system.json_file_path)
+    svg_path = GalaxyService.system_svg_path(system.system_id)
+    data_path = system.data_file_path
+    return unless svg_path && data_path
 
     # Regenerate if SVG doesn't exist or is older than data
     if !File.exist?(svg_path) || (File.exist?(data_path) && File.mtime(svg_path) < File.mtime(data_path))
-      generate_system_svg(system, system_id)
+      generate_system_svg(system)
     end
   end
 
   # Generate system SVG
-  def generate_system_svg(system, system_id = nil)
+  def generate_system_svg(system)
     begin
-      system_id ||= File.basename(system.json_file_path, '.json')
-      data_path = Rails.root.join(system.json_file_path)
+      data_path = system.data_file_path
 
-      if File.exist?(data_path)
+      if data_path && File.exist?(data_path)
         PlanetarySystem.generate(
           json_path: data_path.to_s,
-          system_id: system_id
+          system_id: system.system_id
         )
-        Rails.logger.info("System SVG generated for #{system_id}")
+        Rails.logger.info("System SVG generated for #{system.system_id}")
       end
     rescue => e
       Rails.logger.error("Failed to generate system SVG: #{e.message}")

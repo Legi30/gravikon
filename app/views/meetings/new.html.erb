@@ -39,29 +39,30 @@
 
       <div class="form-group">
         <%= f.label :start_time, "Začátek (např. 12:00):", for: "meeting_start_time" %>
-        <%= f.text_field :start_time, placeholder: "12:00", id: "meeting_start_time", aria: { describedby: "start-time-error", required: "true" } %>
+        <%= f.text_field :start_time, value: params.dig(:meeting, :start_time), placeholder: "12:00", id: "meeting_start_time", aria: { describedby: "start-time-error", required: "true" } %>
         <div id="start-time-error" class="error-message" style="display: none;" role="alert" aria-live="polite"></div>
       </div>
 
       <div class="form-group">
         <%= f.label :end_time, "Konec (např. 13:30):", for: "meeting_end_time" %>
-        <%= f.text_field :end_time, placeholder: "13:30", id: "meeting_end_time", aria: { describedby: "end-time-error duration-display", required: "true" } %>
+        <%= f.text_field :end_time, value: params.dig(:meeting, :end_time), placeholder: "13:30", id: "meeting_end_time", aria: { describedby: "end-time-error duration-display", required: "true" } %>
         <div id="end-time-error" class="error-message" style="display: none;" role="alert" aria-live="polite"></div>
         <div id="duration-display" class="success-message" style="display: none;" role="status" aria-live="polite"></div>
       </div>
 
       <div class="form-group">
         <%= f.label :topic, "Téma (volitelné):", for: "meeting_topic" %>
-        <%= f.text_field :topic, placeholder: "Diskuse o gravitaci...", id: "meeting_topic" %>
+        <%= f.text_field :topic, value: params.dig(:meeting, :topic), placeholder: "Diskuse o gravitaci...", id: "meeting_topic" %>
       </div>
 
       <div class="form-group">
         <fieldset>
           <legend>Účastníci (vyberte alespoň 2)<% if @system.present? %> z <%= @system.name %><% end %>:</legend>
           <div class="checkbox-group" role="group" aria-describedby="participants-error">
+            <% selected_participants = Array(params.dig(:meeting, :participants)) %>
             <% @bodies.each_with_index do |name, index| %>
               <label class="checkbox-label" for="participant_<%= index %>">
-                <%= check_box_tag "meeting[participants][]", name, false, id: "participant_#{index}", aria: { required: index < 2 ? "true" : "false" } %>
+                <%= check_box_tag "meeting[participants][]", name, selected_participants.include?(name), id: "participant_#{index}", aria: { required: index < 2 ? "true" : "false" } %>
                 <%= name %>
               </label>
             <% end %>
@@ -73,15 +74,12 @@
       <div class="actions">
         <%= f.submit "Naplánovat", class: "btn btn-primary" %>
         <%= link_to "Zrušit", meetings_path, class: "btn btn-secondary" %>
-        <% if @systems.present? && @systems.count >= 2 %>
-          <%= link_to "🌌 Mezisystémová schůzka", new_inter_system_meetings_path, class: "btn btn-accent" %>
-        <% end %>
       </div>
     <% end %>
   </div>
 </div>
 
-<% end %>
-
 <!-- Include meeting form validation JavaScript -->
 <script src="<%= asset_path('meeting_form.js') %>"></script>
+
+<% end %>

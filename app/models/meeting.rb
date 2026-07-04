@@ -37,10 +37,6 @@ class Meeting < ApplicationRecord
   # Validate inter-system meetings have valid participant_systems mapping
   validate :validate_inter_system_participant_systems
 
-  # Scopes
-  # Note: This is a placeholder for when date support is added
-  scope :upcoming, -> { where("created_at > ?", Time.current) }
-
   # Instance methods
 
   # Returns parsed participants JSON as array
@@ -84,110 +80,19 @@ class Meeting < ApplicationRecord
     end
   end
 
-  # Check if meeting has complete data (for displaying legacy records)
-  def complete_data?
-    start_time.present? &&
-      end_time.present? &&
-      participants.present? &&
-      local_avg_duration.present? &&
-      avg_delay.present?
-  end
-
-  # Get display-safe participants array (never crashes)
-  def safe_participants_display
-    arr = participants_array
-    return "(neznámí účastníci)" if arr.empty?
-    arr.join(", ")
-  end
-
-  # Returns participant bodies with their system context
-  # For single-system meetings: returns bodies from the associated system
-  # For inter-system meetings: returns bodies from multiple systems with system_id
-  # Returns array of hashes: [{ name: "Earth", system_id: 1, system_name: "Sol", body_data: {...} }, ...]
-  def participant_bodies_with_systems
-    bodies = []
-    participants = participants_array
-
-    if is_inter_system
-      # Inter-system meeting: map each participant to their system
-      participant_systems_hash = participant_systems_hash()
-
-      participants.each do |participant_name|
-        system_id = participant_systems_hash[participant_name]
-        next unless system_id
-
-        participant_system = System.find_by(id: system_id)
-        next unless participant_system
-
-        system_data = participant_system.load_system_data
-        next unless system_data
-
-        body = system_data['bodies']&.find { |b| b['name'] == participant_name }
-        next unless body
-
-        bodies << {
-          name: participant_name,
-          system_id: participant_system.id,
-          system_name: participant_system.name,
-          body_data: body
-        }
-      end
-    else
-      # Single-system meeting: all participants from same system
-      if system
-        # New multi-system approach
-        system_data = system.load_system_data
-        return [] unless system_data
-
-        participants.each do |participant_name|
-          body = system_data['bodies']&.find { |b| b['name'] == participant_name }
-          next unless body
-
-          bodies << {
-            name: participant_name,
-            system_id: system.id,
-            system_name: system.name,
-            body_data: body
-          }
-        end
-      else
-        # Legacy meeting without system_id: load from data/system_data.json
-        begin
-          system_data = Rails.cache.fetch('system_data') do
-            JSON.parse(File.read(Rails.root.join("data/system_data.json")))
-          rescue Errno::ENOENT, JSON::ParserError => e
-            Rails.logger.error("Meeting#participant_bodies_with_systems: Failed to load legacy system_data - #{e.message}")
-            { "bodies" => [] }
-          end
-
-          participants.each do |participant_name|
-            body = system_data['bodies']&.find { |b| b['name'] == participant_name }
-            next unless body
-
-            bodies << {
-              name: participant_name,
-              system_id: nil,
-              system_name: "Legacy System",
-              body_data: body
-            }
-          end
-        rescue => e
-          Rails.logger.error("Failed to load legacy meeting participants: #{e.message}")
-        end
-      end
-    end
-
-    bodies
-  end
-
-  # Returns parsed participant_systems JSON as hash
-  # Returns empty hash if parsing fails or field is blank
+  # Returns parsed participant_systems JSON as hash mapping participant
+  # names to integer system ids. Returns empty hash if parsing fails.
   def participant_systems_hash
     return {} if participant_systems.blank?
 
-    JSON.parse(participant_systems)
+    JSON.parse(participant_systems).transform_values { |v| v.to_i }
   rescue JSON::ParserError
     {}
+  end
+
+  # Scheduled duration in minutes (from HH:MM times, with midnight wraparound)
+  def duration_minutes
+    RelativisticCalculator.duration_minutes(start_time, end_time)
   end
 
   private

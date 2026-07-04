@@ -22,6 +22,12 @@ gem "rack-attack", groups: [:development, :production]
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem "tzinfo-data", platforms: %i[ windows jruby ]
 
+# Mail dependencies (the system Ruby's default net-smtp install is broken;
+# bundling them guarantees working copies)
+gem "net-smtp", require: false
+gem "net-imap", require: false
+gem "net-pop", require: false
+
 # Use the database-backed adapters for Rails.cache, Active Job, and Action Cable
 gem "solid_cache"
 gem "solid_queue"

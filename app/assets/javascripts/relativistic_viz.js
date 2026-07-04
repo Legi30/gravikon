@@ -4,9 +4,6 @@
 document.addEventListener('DOMContentLoaded', function() {
   // Add toggle buttons to meeting rows
   initializeRelativistics();
-
-  // Handle dynamic content (Turbo Streams)
-  document.addEventListener('turbo:load', initializeRelativistics);
 });
 
 function initializeRelativistics() {
@@ -45,6 +42,7 @@ function initializeRelativistics() {
       if (detailsRow) {
         if (detailsRow.style.display === 'none') {
           detailsRow.style.display = 'table-row';
+          detailsRow.classList.add('open');
           toggleButton.textContent = '📊 Skrýt';
           toggleButton.classList.add('active');
           toggleButton.setAttribute('aria-expanded', 'true');
@@ -54,6 +52,7 @@ function initializeRelativistics() {
           animateSignalPulses(detailsRow);
         } else {
           detailsRow.style.display = 'none';
+          detailsRow.classList.remove('open');
           toggleButton.textContent = '📊 Relativistika';
           toggleButton.classList.remove('active');
           toggleButton.setAttribute('aria-expanded', 'false');

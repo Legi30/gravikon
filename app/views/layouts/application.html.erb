@@ -51,10 +51,6 @@
             <span class="nav-icon" aria-hidden="true">📅</span>
             <span>Schůzky</span>
           <% end %>
-          <%= link_to systems_path, class: "nav-link #{'active' if current_page?(systems_path)}", "aria-label" => "Mapa soustavy - klávesová zkratka M", title: "Mapa soustavy (klávesová zkratka: M)" do %>
-            <span class="nav-icon" aria-hidden="true">🗺</span>
-            <span>Mapa</span>
-          <% end %>
           <%= link_to dashboard_path, class: "nav-link #{'active' if current_page?(dashboard_path)}", "aria-label" => "Přehled - klávesová zkratka D", title: "Přehled (klávesová zkratka: D)" do %>
             <span class="nav-icon" aria-hidden="true">📊</span>
             <span>Přehled</span>
@@ -69,6 +65,9 @@
 
     <!-- Main content -->
     <main id="main-content" class="container" role="main" aria-label="Hlavní obsah">
+      <% flash.each do |type, message| %>
+        <div class="flash flash-<%= type %>" role="alert"><%= message %></div>
+      <% end %>
       <%= yield %>
     </main>
 

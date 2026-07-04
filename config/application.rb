@@ -38,5 +38,10 @@ module Gravikon
 
     # Don't generate system test files.
     config.generators.system_tests = nil
+
+    # Roots for generated galaxy/system data. Tests override these to tmp/
+    # so the suite can never touch real data (see config/environments/test.rb).
+    config.x.gravikon.data_root = Rails.root.join("data")
+    config.x.gravikon.svg_root = Rails.root.join("public")
   end
 end

@@ -13,15 +13,15 @@
 #   calculator = RelativisticCalculator.new
 #   dilation = calculator.calculate_time_dilation(body, system_id)
 #   distance = calculator.calculate_inter_system_distance(system_id_1, system_id_2)
-#   stats = calculator.calculate_meeting_statistics(participants_with_systems)
+#   stats = calculator.calculate_meeting_statistics(participants_with_systems,
+#                                                   start_time: "10:00", end_time: "11:30")
 class RelativisticCalculator
-  # Physics constants (matching SystemGenerator for consistency)
-  GRAVITATIONAL_CONSTANT = 0.0001 # 6.67430e-11 (scaled for simulation)
-  C = 10_000_000 # 299_792_458.0 m/s (speed of light, scaled)
-
   # Galaxy center coordinates (default black hole position)
-  GALAXY_CENTER_X = 400
-  GALAXY_CENTER_Y = 400
+  GALAXY_CENTER_X = PhysicsConstants::GALAXY_CENTER_X
+  GALAXY_CENTER_Y = PhysicsConstants::GALAXY_CENTER_Y
+
+  # System-local coordinates are centered on the star at (400, 400)
+  SYSTEM_LOCAL_CENTER = PhysicsConstants::SYSTEM_LOCAL_CENTER
 
   # Initialize calculator with optional galaxy data
   # @param galaxy_data [Hash] Optional galaxy configuration (loads from file if not provided)
@@ -31,7 +31,8 @@ class RelativisticCalculator
   end
 
   # Calculate total time dilation for a body in a system
-  # Accounts for BOTH local stellar gravity (from body data) and black hole gravity
+  # Combines local stellar dilation (stored in body data) with black hole
+  # dilation derived from the system's current position in the galaxy.
   #
   # @param body [Hash] Body data with 'dilation' field (local stellar dilation)
   # @param system_id [String, Integer] System ID to locate system in galaxy
@@ -39,21 +40,17 @@ class RelativisticCalculator
   def calculate_time_dilation(body, system_id)
     return 1.0 if body.nil? || system_id.nil?
 
-    # Get local stellar time dilation from body data
-    # This already accounts for the body's local gravitational field
+    # Local stellar time dilation from body data
     local_dilation = body['dilation'] || body[:dilation] || 1.0
 
-    # Calculate black hole time dilation based on system's position in galaxy
+    # Black hole time dilation based on system's position in galaxy
     system = find_system(system_id)
     return local_dilation unless system
 
     black_hole_dilation = calculate_black_hole_dilation(system.x, system.y)
 
     # Combine both effects (multiplicative - dual reference frames)
-    # Total dilation = local stellar effect × galaxy black hole effect
-    combined_dilation = local_dilation * black_hole_dilation
-
-    combined_dilation
+    local_dilation * black_hole_dilation
   rescue => e
     Rails.logger.error("Failed to calculate time dilation: #{e.message}")
     1.0 # Fallback to no dilation
@@ -101,18 +98,18 @@ class RelativisticCalculator
       )
     end
 
-    # Different systems: transform to galaxy coordinates
+    # Different systems: transform to galaxy coordinates.
+    # Body coordinates are local to their system's canvas, centered on the
+    # star at (400, 400), so the offset from the star is (body - 400).
     system_1 = find_system(system_id_1)
     system_2 = find_system(system_id_2)
 
     return 0.0 unless system_1 && system_2
 
-    # Transform local body coordinates to galaxy coordinates
-    # galaxy_x = system.x + body.x, galaxy_y = system.y + body.y
-    body1_galaxy_x = system_1.x + (body1['x'] || body1[:x] || 0)
-    body1_galaxy_y = system_1.y + (body1['y'] || body1[:y] || 0)
-    body2_galaxy_x = system_2.x + (body2['x'] || body2[:x] || 0)
-    body2_galaxy_y = system_2.y + (body2['y'] || body2[:y] || 0)
+    body1_galaxy_x = system_1.x + ((body1['x'] || body1[:x] || SYSTEM_LOCAL_CENTER) - SYSTEM_LOCAL_CENTER)
+    body1_galaxy_y = system_1.y + ((body1['y'] || body1[:y] || SYSTEM_LOCAL_CENTER) - SYSTEM_LOCAL_CENTER)
+    body2_galaxy_x = system_2.x + ((body2['x'] || body2[:x] || SYSTEM_LOCAL_CENTER) - SYSTEM_LOCAL_CENTER)
+    body2_galaxy_y = system_2.y + ((body2['y'] || body2[:y] || SYSTEM_LOCAL_CENTER) - SYSTEM_LOCAL_CENTER)
 
     # Calculate distance in galaxy coordinates
     euclidean_distance(body1_galaxy_x, body1_galaxy_y, body2_galaxy_x, body2_galaxy_y)
@@ -125,41 +122,43 @@ class RelativisticCalculator
   # Signal delay = distance / c
   #
   # @param distance [Float] Distance in coordinate units
-  # @return [Float] Signal delay time
+  # @return [Float] Signal delay time in seconds
   def calculate_signal_delay(distance)
     return 0.0 if distance <= 0
 
-    # Signal delay = distance / speed of light
-    distance / C.to_f
+    # Convert coordinate units to meters, then divide by speed of light
+    (distance * PhysicsConstants::UNIT_METERS) / PhysicsConstants::C
   rescue => e
     Rails.logger.error("Failed to calculate signal delay: #{e.message}")
     0.0
   end
 
   # Calculate meeting statistics for participants across multiple systems
-  # Returns average duration and average signal delay accounting for all relativistic effects
+  #
+  # avg_duration: the scheduled duration (from start/end time) multiplied by
+  # the average time-dilation factor of the participants — i.e. how long the
+  # meeting lasts on average in the participants' local (proper) time, in minutes.
+  # avg_delay: average pairwise signal delay in seconds.
   #
   # @param participants_with_systems [Array<Hash>] Array of {body: Hash, system_id: String/Integer}
+  # @param start_time [String] Meeting start in HH:MM
+  # @param end_time [String] Meeting end in HH:MM
   # @return [Hash] { avg_duration: Float, avg_delay: Float }
-  def calculate_meeting_statistics(participants_with_systems)
+  def calculate_meeting_statistics(participants_with_systems, start_time: nil, end_time: nil)
     return { avg_duration: 0.0, avg_delay: 0.0 } if participants_with_systems.blank?
 
-    local_durations = []
+    base_duration = self.class.duration_minutes(start_time, end_time)
+
+    dilations = []
     distances = []
 
-    # Calculate local duration for each participant (accounting for time dilation)
     participants_with_systems.each do |participant|
       body = participant[:body] || participant['body']
       system_id = participant[:system_id] || participant['system_id']
 
       next if body.nil? || system_id.nil?
 
-      # Calculate total time dilation (local + black hole)
-      dilation = calculate_time_dilation(body, system_id)
-
-      # Local duration = universal duration × dilation factor
-      # If dilation is 0.99, time passes slower, so local duration is less
-      local_durations << dilation
+      dilations << calculate_time_dilation(body, system_id)
     end
 
     # Calculate pairwise distances for all participants
@@ -171,16 +170,10 @@ class RelativisticCalculator
 
       next if body1.nil? || system_id_1.nil? || body2.nil? || system_id_2.nil?
 
-      distance = calculate_body_to_body_distance(body1, system_id_1, body2, system_id_2)
-      distances << distance
+      distances << calculate_body_to_body_distance(body1, system_id_1, body2, system_id_2)
     end
 
-    # Calculate averages
-    avg_duration = if local_durations.any?
-                     local_durations.sum / local_durations.size.to_f
-                   else
-                     1.0
-                   end
+    avg_dilation = dilations.any? ? dilations.sum / dilations.size.to_f : 1.0
 
     avg_delay = if distances.any?
                   distances.map { |d| calculate_signal_delay(d) }.sum / distances.size.to_f
@@ -189,12 +182,50 @@ class RelativisticCalculator
                 end
 
     {
-      avg_duration: avg_duration.round(6),
-      avg_delay: avg_delay.round(6)
+      avg_duration: (base_duration * avg_dilation).round(2),
+      avg_delay: avg_delay.round(2)
     }
   rescue => e
     Rails.logger.error("Failed to calculate meeting statistics: #{e.message}")
-    { avg_duration: 1.0, avg_delay: 0.0 }
+    { avg_duration: 0.0, avg_delay: 0.0 }
+  end
+
+  # Duration between two HH:MM times in minutes, with midnight wraparound
+  # (23:00 -> 01:00 is 120 minutes). Returns 0.0 for missing/invalid input.
+  def self.duration_minutes(start_time, end_time)
+    return 0.0 if start_time.blank? || end_time.blank?
+
+    start_parts = start_time.split(":")
+    end_parts = end_time.split(":")
+    return 0.0 unless start_parts.length == 2 && end_parts.length == 2
+
+    start_minutes = start_parts[0].to_i * 60 + start_parts[1].to_i
+    end_minutes = end_parts[0].to_i * 60 + end_parts[1].to_i
+
+    minutes = end_minutes - start_minutes
+    minutes += 24 * 60 if minutes.negative?
+    minutes.to_f
+  end
+
+  # Calculate time dilation from black hole at given position
+  # Uses gravitational time dilation: sqrt(1 - 2GM/(r*c^2))
+  #
+  # @param system_x [Float] System X coordinate in galaxy
+  # @param system_y [Float] System Y coordinate in galaxy
+  # @return [Float] Black hole time dilation factor
+  def calculate_black_hole_dilation(system_x, system_y)
+    return 1.0 unless @black_hole
+
+    bh_x = @black_hole['x'] || GALAXY_CENTER_X
+    bh_y = @black_hole['y'] || GALAXY_CENTER_Y
+    bh_mass = @black_hole['mass'] || PhysicsConstants::BLACK_HOLE_MASS
+
+    distance = euclidean_distance(system_x, system_y, bh_x, bh_y)
+
+    PhysicsConstants.gravitational_dilation(bh_mass, distance)
+  rescue => e
+    Rails.logger.error("Failed to calculate black hole dilation: #{e.message}")
+    1.0 # Fallback to no dilation
   end
 
   private
@@ -202,7 +233,7 @@ class RelativisticCalculator
   # Load galaxy data from file
   # @return [Hash] Galaxy data with black hole configuration
   def load_galaxy_data
-    galaxy_file = Rails.root.join('data', 'galaxy_data.json')
+    galaxy_file = GalaxyService.galaxy_data_path
     return nil unless File.exist?(galaxy_file)
 
     JSON.parse(File.read(galaxy_file))
@@ -219,7 +250,7 @@ class RelativisticCalculator
   def default_black_hole
     {
       'name' => 'Sagittarius Omega',
-      'mass' => 8.2e36,
+      'mass' => PhysicsConstants::BLACK_HOLE_MASS,
       'x' => GALAXY_CENTER_X,
       'y' => GALAXY_CENTER_Y,
       'type' => 'black_hole'
@@ -236,7 +267,7 @@ class RelativisticCalculator
     system = System.find_by(id: system_id)
     return system if system
 
-    # Fallback: try to find by name or slug if system_id is a string
+    # Fallback: try to find by name or file id if system_id is a string
     if system_id.is_a?(String)
       System.find_by(name: system_id) || System.find_by(json_file_path: "data/systems/#{system_id}.json")
     else
@@ -245,42 +276,6 @@ class RelativisticCalculator
   rescue => e
     Rails.logger.error("Failed to find system #{system_id}: #{e.message}")
     nil
-  end
-
-  # Calculate time dilation from black hole at given position
-  # Uses gravitational time dilation formula: sqrt(1 + 2*Φ/c²)
-  #
-  # @param system_x [Float] System X coordinate in galaxy
-  # @param system_y [Float] System Y coordinate in galaxy
-  # @return [Float] Black hole time dilation factor
-  def calculate_black_hole_dilation(system_x, system_y)
-    return 1.0 unless @black_hole
-
-    bh_x = @black_hole['x'] || GALAXY_CENTER_X
-    bh_y = @black_hole['y'] || GALAXY_CENTER_Y
-    bh_mass = @black_hole['mass'] || 8.2e36
-
-    # Calculate distance from system to black hole center
-    distance = euclidean_distance(system_x, system_y, bh_x, bh_y)
-
-    # Prevent division by zero (system at black hole center)
-    return 0.0 if distance < 1
-
-    # Calculate gravitational potential from black hole at this distance
-    # Convert distance to meters (assume 1 coordinate unit = 1,000,000 meters)
-    distance_meters = distance * 1_000_000
-
-    # Φ = -GM/r
-    potential = -GRAVITATIONAL_CONSTANT * bh_mass / distance_meters
-
-    # Time dilation factor: sqrt(1 + 2*Φ/c²)
-    dilation = Math.sqrt(1 + 2 * potential / (C**2))
-
-    # Clamp to valid range [0, 1]
-    [[dilation, 0.0].max, 1.0].min
-  rescue => e
-    Rails.logger.error("Failed to calculate black hole dilation: #{e.message}")
-    1.0 # Fallback to no dilation
   end
 
   # Calculate Euclidean distance between two points

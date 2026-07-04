@@ -373,6 +373,9 @@ DEPENDENCIES
   jbuilder
   kamal
   mocha
+  net-imap
+  net-pop
+  net-smtp
   propshaft
   puma (>= 5.0)
   rack-attack

@@ -10,7 +10,7 @@ Rails.application.routes.draw do
   get "/dashboard/job_performance", to: "dashboard#job_performance", as: "dashboard_job_performance"
 
   # Meetings - global and inter-system
-  resources :meetings do
+  resources :meetings, except: [ :show ] do
     collection do
       get 'new_inter_system'
     end
@@ -32,15 +32,6 @@ Rails.application.routes.draw do
     delete '/systems/:id', to: 'galaxy#destroy_system'
     post '/systems/:id/regenerate', to: 'galaxy#regenerate_system', as: :regenerate_galaxy_system
   end
-
-  # Legacy single-system routes (backwards compatibility)
-  # Gravitační soustava – SVG mapa
-  get "/systems", to: "systems#show", as: "systems"
-  post "/systems/regenerate", to: "systems#regenerate", as: "regenerate_system"
-
-  # System-aware meeting creation routes
-  # Allows creating meetings within a specific system context
-  get "/systems/:system_id/meetings/new", to: "meetings#new", as: "new_system_meeting"
 
   # Domovská stránka - Galaxy as the main landing page
   root to: "galaxy#index"

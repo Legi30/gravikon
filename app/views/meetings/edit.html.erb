@@ -1,10 +1,15 @@
 <div class="page-header">
-  <h1>Upravit schůzku</h1>
+  <h1>Upravit schůzku<% if @meeting.is_inter_system %> 🌌<% end %></h1>
 </div>
 
 <div class="content-section">
   <div class="card fade-in">
-    <%= form_with model: @meeting, url: meeting_path(@meeting), method: :put, aria: { label: "Formulář pro úpravu schůzky" } do |form| %>
+    <%= form_with model: @meeting, url: meeting_path(@meeting), method: :put, id: (@meeting.is_inter_system ? "inter-system-meeting-form" : nil), aria: { label: "Formulář pro úpravu schůzky" } do |form| %>
+      <%= form.hidden_field :is_inter_system, value: @meeting.is_inter_system %>
+      <% unless @meeting.is_inter_system %>
+        <%= form.hidden_field :system_id, value: @meeting.system_id %>
+      <% end %>
+
       <div class="form-group">
         <%= form.label :start_time, "Začátek:", for: "meeting_start_time" %>
         <%= form.text_field :start_time, value: @meeting.start_time, placeholder: "12:00", id: "meeting_start_time", aria: { describedby: "start-time-error", required: "true" } %>
@@ -24,27 +29,35 @@
       </div>
 
       <div class="form-group">
-        <fieldset>
-          <legend>Účastníci (vyberte alespoň 2):</legend>
-          <div class="checkbox-group" role="group" aria-describedby="participants-error">
-            <% @bodies.each_with_index do |name, index| %>
-              <label class="checkbox-label" for="edit_participant_<%= index %>">
-                <%= check_box_tag "meeting[participants][]", name, @meeting.participants_array.include?(name), id: "edit_participant_#{index}", aria: { required: index < 2 ? "true" : "false" } %>
-                <%= name %>
-              </label>
-            <% end %>
-          </div>
-          <div id="participants-error" class="error-message" style="display: none;" role="alert" aria-live="polite"></div>
-        </fieldset>
+        <% if @meeting.is_inter_system %>
+          <%= render "inter_system_participants",
+              systems_with_bodies: @systems_with_bodies,
+              selected_names: @meeting.participants_array %>
+        <% else %>
+          <fieldset>
+            <legend>Účastníci (vyberte alespoň 2):</legend>
+            <div class="checkbox-group" role="group" aria-describedby="participants-error">
+              <% @bodies.each_with_index do |name, index| %>
+                <label class="checkbox-label" for="edit_participant_<%= index %>">
+                  <%= check_box_tag "meeting[participants][]", name, @meeting.participants_array.include?(name), id: "edit_participant_#{index}", aria: { required: index < 2 ? "true" : "false" } %>
+                  <%= name %>
+                </label>
+              <% end %>
+            </div>
+            <div id="participants-error" class="error-message" style="display: none;" role="alert" aria-live="polite"></div>
+          </fieldset>
+        <% end %>
       </div>
 
       <div class="actions">
-        <%= form.submit "Uložit změny", class: "btn btn-success" %>
+        <%= form.submit "Uložit změny", class: "btn btn-success", id: (@meeting.is_inter_system ? "submit-btn" : nil) %>
         <%= link_to "Zrušit", meetings_path, class: "btn btn-secondary" %>
       </div>
     <% end %>
   </div>
 </div>
 
-<!-- Include meeting form validation JavaScript -->
-<script src="<%= asset_path('meeting_form.js') %>"></script>
+<% unless @meeting.is_inter_system %>
+  <!-- Include meeting form validation JavaScript -->
+  <script src="<%= asset_path('meeting_form.js') %>"></script>
+<% end %>

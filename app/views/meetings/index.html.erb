@@ -42,7 +42,7 @@
         </tr>
       </thead>
       <tbody id="meetings-table">
-        <%= render partial: 'meeting', collection: @meetings, locals: { system_data: @system_data, show_system_column: (@systems.present? && @systems.count > 0) } %>
+        <%= render partial: 'meeting', collection: @meetings, locals: { show_system_column: (@systems.present? && @systems.count > 0) } %>
       </tbody>
     </table>
 
@@ -63,10 +63,6 @@
   <%= link_to "Naplánovat novou schůzku", new_meeting_path, class: "btn btn-primary", "aria-label" => "Naplánovat novou schůzku - klávesová zkratka N", title: "Naplánovat novou schůzku (klávesová zkratka: N)" %>
   <% if @systems.present? && @systems.count >= 2 %>
     <%= link_to "🌌 Mezisystémová schůzka", new_inter_system_meetings_path, class: "btn btn-accent", "aria-label" => "Naplánovat schůzku mezi soustavami" %>
-  <% end %>
-  <%= link_to "Podívat se na mapu", systems_path, class: "btn btn-secondary", "aria-label" => "Podívat se na mapu soustavy" %>
-  <% if @systems.present? && @systems.count > 0 %>
-    <%= link_to "Mapa galaxie", galaxy_index_path, class: "btn btn-secondary", "aria-label" => "Podívat se na mapu galaxie" %>
   <% end %>
 </nav>
 
@@ -104,7 +100,7 @@
             row.style.display = '';
             const relativisticRow = document.getElementById('relativistic-' + row.id);
             if (relativisticRow) {
-              relativisticRow.style.display = relativisticRow.classList.contains('show') ? '' : 'none';
+              relativisticRow.style.display = relativisticRow.classList.contains('open') ? 'table-row' : 'none';
             }
           } else {
             row.style.display = 'none';
