@@ -3,20 +3,20 @@
     {
       "warning_type": "File Access",
       "warning_code": 16,
-      "fingerprint": "9c8a055a2f89c240765f9cb8c884e00177a6703696b3f8c01920fc264e28bd50",
+      "fingerprint": "1a5fa4267a84605cb3d5373e24e97feb8d09ad4d0747361ef6ebed9a31bc3904",
       "check_name": "FileAccess",
-      "message": "Model attribute used in file name",
+      "message": "Parameter value used in file name",
       "file": "app/controllers/galaxy_controller.rb",
       "line": 46,
       "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
-      "code": "File.read(GalaxyService.system_svg_path(System.find_by(:id => params[:id]).system_id))",
+      "code": "File.read(GalaxyService.system_svg_path(find_system_record(params[:id]).system_id))",
       "render_path": null,
       "location": {
         "type": "method",
         "class": "GalaxyController",
         "method": "show_system"
       },
-      "user_input": "System.find_by(:id => params[:id]).system_id",
+      "user_input": "params[:id]",
       "confidence": "Weak",
       "cwe_id": [
         22

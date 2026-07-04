@@ -13,8 +13,8 @@
           <label for="system-filter" style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Podle soustavy:</label>
           <select id="system-filter" class="form-control" style="min-width: 200px;" aria-label="Filtrovat podle soustavy">
             <option value="">Všechny schůzky</option>
-            <option value="inter-system">🌌 Pouze mezisystémové</option>
-            <option value="single-system">🪐 Pouze v rámci soustavy</option>
+            <option value="inter-system">Pouze mezisystémové</option>
+            <option value="single-system">Pouze v rámci soustavy</option>
             <% @systems.each do |system| %>
               <option value="system-<%= system.id %>"><%= system.name %></option>
             <% end %>

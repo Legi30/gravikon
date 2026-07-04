@@ -19,7 +19,7 @@ class PlanetarySystem
       @radius = data["radius"]
       @type = data["type"]
       @dilation = data["dilation"]
-      @color = color_for_type
+      @color = color_for_body
       @parent = nil
     end
 
@@ -28,11 +28,15 @@ class PlanetarySystem
       Math.sqrt((x - parent.x)**2 + (y - parent.y)**2)
     end
 
-    def color_for_type
+    # Deterministic per-body color (seeded by name, stable across renders):
+    # stars white-yellow, planets blue-green spectrum, moons shades of gray
+    def color_for_body
+      seed = @name.to_s.each_byte.reduce(0) { |acc, b| (acc * 31 + b) % 1_000_000 }
+
       case type
-      when "star" then "#ffff66"
-      when "planet" then "#66ccff"
-      when "moon" then "#cccccc"
+      when "star"   then "hsl(#{45 + seed % 10}, 95%, #{68 + seed % 20}%)"
+      when "planet" then "hsl(#{150 + seed % 75}, #{55 + seed % 25}%, #{48 + seed % 16}%)"
+      when "moon"   then "hsl(0, 0%, #{52 + seed % 28}%)"
       else "#ffffff"
       end
     end

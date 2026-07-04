@@ -52,11 +52,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
       // Build tooltip content
       tooltip.innerHTML = `
-        <strong>${name}</strong><br>
-        Typ: ${typeCzech}<br>
-        Poloměr: ${radiusFormatted} m<br>
-        Hmotnost: ${massFormatted} kg<br>
-        Dilatace času: ${dilationFormatted}
+        <div class="tooltip-title">${name}</div>
+        <div class="tooltip-row"><span>Typ</span><span>${typeCzech}</span></div>
+        <div class="tooltip-row"><span>Poloměr</span><span>${radiusFormatted} m</span></div>
+        <div class="tooltip-row"><span>Hmotnost</span><span>${massFormatted} kg</span></div>
+        <div class="tooltip-row"><span>Dilatace času</span><span>${dilationFormatted}×</span></div>
       `;
 
       // Show tooltip

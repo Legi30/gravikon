@@ -11,6 +11,7 @@
     init() {
       this.initSystemNavigation();
       this.initSystemTooltips();
+      this.initGalaxyOrbits();
       this.initPositionSelector();
 
       if (window.Logger) window.Logger.log('Galaxy interactions initialized');
@@ -34,31 +35,47 @@
             return;
           }
 
-          // Navigate to system show page
-          // Try to use Turbo if available, otherwise fall back to standard navigation
-          const url = `/galaxy/systems/${systemId}`;
-
-          if (typeof Turbo !== 'undefined' && Turbo.visit) {
-            Turbo.visit(url);
-          } else {
-            window.location.href = url;
-          }
-        });
-
-        // Add visual feedback on hover
-        marker.addEventListener('mouseenter', () => {
-          marker.style.opacity = '0.8';
-          marker.style.transform = 'scale(1.1)';
-          marker.style.transition = 'all 0.2s ease';
-        });
-
-        marker.addEventListener('mouseleave', () => {
-          marker.style.opacity = '1';
-          marker.style.transform = 'scale(1)';
+          window.location.href = `/galaxy/systems/${systemId}`;
         });
       });
 
       if (window.Logger) window.Logger.log(`Initialized navigation for ${systemMarkers.length} system markers`);
+    },
+
+    // Real-time orbit animation: systems revolve around the black hole.
+    // Positions derive from wall-clock time, so a refresh continues the
+    // motion instead of resetting it.
+    initGalaxyOrbits() {
+      const markers = Array.from(document.querySelectorAll('#solar-systems .system-marker'));
+      if (markers.length === 0) return;
+
+      const CENTER_X = 400;
+      const CENTER_Y = 400;
+
+      const orbiting = markers.map(marker => ({
+        marker: marker,
+        orbitRadius: parseFloat(marker.getAttribute('data-orbit-radius')) || 0,
+        initialAngle: parseFloat(marker.getAttribute('data-initial-angle')) || 0,
+        orbitalPeriod: parseFloat(marker.getAttribute('data-orbital-period')) || 0
+      })).filter(m => m.orbitRadius > 1 && m.orbitalPeriod > 0);
+
+      if (orbiting.length === 0) return;
+
+      function tick() {
+        const epochSeconds = Date.now() / 1000;
+
+        orbiting.forEach(m => {
+          const angle = m.initialAngle + (2 * Math.PI * epochSeconds) / m.orbitalPeriod;
+          const x = CENTER_X + m.orbitRadius * Math.cos(angle);
+          const y = CENTER_Y + m.orbitRadius * Math.sin(angle);
+          m.marker.setAttribute('transform', `translate(${x.toFixed(2)}, ${y.toFixed(2)})`);
+        });
+
+        requestAnimationFrame(tick);
+      }
+
+      requestAnimationFrame(tick);
+      if (window.Logger) window.Logger.log(`Galaxy orbit animation running for ${orbiting.length} systems`);
     },
 
     // Initialize tooltips for system markers
@@ -79,27 +96,13 @@
         marker.addEventListener('mouseenter', (e) => {
           const systemName = marker.getAttribute('data-system-name') || 'Neznámá soustava';
           const bodyCount = marker.getAttribute('data-body-count') || '0';
-          const x = marker.getAttribute('data-x') || '0';
-          const y = marker.getAttribute('data-y') || '0';
-          const totalMass = marker.getAttribute('data-total-mass') || '0';
+          const orbitRadius = parseFloat(marker.getAttribute('data-orbit-radius')) || 0;
 
-          // Calculate distance from black hole (center at 400, 400)
-          const distance = Math.sqrt(
-            Math.pow(parseFloat(x) - 400, 2) +
-            Math.pow(parseFloat(y) - 400, 2)
-          ).toFixed(1);
-
-          // Format total mass
-          const massFormatted = parseFloat(totalMass).toExponential(2);
-
-          // Build tooltip content
           tooltip.innerHTML = `
-            <strong>${systemName}</strong><br>
-            Počet těles: ${bodyCount}<br>
-            Pozice: (${parseFloat(x).toFixed(1)}, ${parseFloat(y).toFixed(1)})<br>
-            Vzdálenost od černé díry: ${distance}<br>
-            Celková hmotnost: ${massFormatted} kg<br>
-            <em style="font-size: 0.85em; opacity: 0.8;">Klikněte pro zobrazení</em>
+            <div class="tooltip-title">${systemName}</div>
+            <div class="tooltip-row"><span>Počet těles</span><span>${bodyCount}</span></div>
+            <div class="tooltip-row"><span>Vzdálenost od černé díry</span><span>${orbitRadius.toFixed(0)} j.</span></div>
+            <div class="tooltip-hint">Klikněte pro detail soustavy</div>
           `;
 
           tooltip.style.display = 'block';
@@ -118,23 +121,25 @@
       if (window.Logger) window.Logger.log('Initialized tooltips for system markers');
     },
 
-    // Position tooltip near cursor, preventing off-screen positioning
+    // Position tooltip above-right of the cursor so it never covers the
+    // marker being pointed at; flips to the other side near viewport edges.
     positionTooltip(event, tooltip) {
-      const offsetX = 15;
-      const offsetY = 15;
-
-      let x = event.clientX + offsetX;
-      let y = event.clientY + offsetY;
-
+      const offset = 14;
       const tooltipRect = tooltip.getBoundingClientRect();
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
 
+      let x = event.clientX + offset;
+      let y = event.clientY - tooltipRect.height - offset;
+
       if (x + tooltipRect.width > viewportWidth) {
-        x = event.clientX - tooltipRect.width - offsetX;
+        x = event.clientX - tooltipRect.width - offset;
+      }
+      if (y < 0) {
+        y = event.clientY + offset;
       }
       if (y + tooltipRect.height > viewportHeight) {
-        y = event.clientY - tooltipRect.height - offsetY;
+        y = viewportHeight - tooltipRect.height - 8;
       }
 
       tooltip.style.left = x + 'px';
@@ -267,11 +272,6 @@
     document.addEventListener('DOMContentLoaded', () => GalaxyInteractions.init());
   } else {
     GalaxyInteractions.init();
-  }
-
-  // Re-initialize on Turbo navigation if available
-  if (typeof Turbo !== 'undefined') {
-    document.addEventListener('turbo:load', () => GalaxyInteractions.init());
   }
 
   // Export for external access if needed

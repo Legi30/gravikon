@@ -90,32 +90,20 @@ class KeyboardShortcuts {
         <div class="modal-overlay" aria-hidden="true"></div>
         <div class="modal-content">
           <div class="modal-header">
-            <h2 id="modal-title">⌨️ Klávesové zkratky</h2>
-            <button class="modal-close" aria-label="Zavřít nápovědu" onclick="window.keyboardShortcuts.hideHelp()">
+            <h2 id="modal-title">Klávesové zkratky</h2>
+            <button class="modal-close" aria-label="Zavřít nápovědu (Esc)" title="Zavřít (Esc)" onclick="window.keyboardShortcuts.hideHelp()">
               <span aria-hidden="true">×</span>
             </button>
           </div>
           <div class="modal-body">
-            <p class="modal-description">Použijte tyto klávesové zkratky pro rychlejší navigaci v aplikaci:</p>
             <table class="shortcuts-table" role="table">
-              <thead>
-                <tr>
-                  <th scope="col">Klávesa</th>
-                  <th scope="col">Akce</th>
-                </tr>
-              </thead>
               <tbody>
                 ${this.generateShortcutsTable()}
               </tbody>
             </table>
             <p class="modal-note">
-              <small>Tip: Klávesové zkratky nefungují, když píšete do formulářových polí.</small>
+              <small>Zkratky nefungují při psaní do formulářových polí. Zavřete klávesou Esc.</small>
             </p>
-          </div>
-          <div class="modal-footer">
-            <button class="btn btn-accent" onclick="window.keyboardShortcuts.hideHelp()">
-              Zavřít (Esc)
-            </button>
           </div>
         </div>
       </div>

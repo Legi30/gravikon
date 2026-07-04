@@ -256,7 +256,7 @@ class GalaxyController < ApplicationController
   # POST /galaxy/systems/:id/regenerate
   # Regenerate system with new parameters (triggers background job)
   def regenerate_system
-    @system = System.find_by(id: params[:id])
+    @system = find_system_record(params[:id])
 
     unless @system
       redirect_to galaxy_index_path, alert: "Systém nebyl nalezen."
@@ -289,9 +289,18 @@ class GalaxyController < ApplicationController
 
   private
 
-  # Set system from params
+  # Set system from params. Accepts either the database id (numeric, used by
+  # links in views) or the system's file id (UUID/slug, used by the SVG map
+  # markers whose data comes from galaxy_data.json).
   def set_system
-    @system = System.find_by(id: params[:id])
+    @system = find_system_record(params[:id])
+  end
+
+  def find_system_record(param)
+    return System.find_by(id: param) if param.to_s.match?(/\A\d+\z/)
+
+    file_id = GalaxyService.sanitize_system_id(param)
+    file_id ? System.find_by(json_file_path: "data/systems/#{file_id}.json") : nil
   end
 
   # Strong parameters for system

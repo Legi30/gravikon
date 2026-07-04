@@ -307,6 +307,45 @@ class GalaxyService
       galaxy_data
     end
 
+    # Security: Sanitize system_id to prevent path traversal attacks
+    # @param system_id [String, Integer] System ID to sanitize
+    # @return [String, nil] Sanitized system_id or nil if invalid
+    def sanitize_system_id(system_id)
+      return nil if system_id.blank?
+
+      id_str = system_id.to_s
+
+      # Reject paths containing '..' (path traversal)
+      if id_str.include?("..")
+        Rails.logger.warn("Security: Path traversal attempt in system_id: #{id_str}")
+        return nil
+      end
+
+      # Reject paths containing '/' (directory traversal)
+      if id_str.include?("/")
+        Rails.logger.warn("Security: Directory traversal attempt in system_id: #{id_str}")
+        return nil
+      end
+
+      # Reject paths containing '\' (Windows path separator)
+      if id_str.include?("\\")
+        Rails.logger.warn("Security: Backslash in system_id: #{id_str}")
+        return nil
+      end
+
+      # Validate format: UUID (8-4-4-4-12) or alphanumeric slug
+      # UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+      # Slug format: alphanumeric and underscores only
+      if id_str.match?(/\A[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\z/i)
+        id_str.downcase
+      elsif id_str.match?(/\A[a-z0-9_]+\z/i)
+        id_str.downcase
+      else
+        Rails.logger.warn("Security: Invalid system_id format: #{id_str}")
+        nil
+      end
+    end
+
     private
 
     # Load galaxy data from file without caching
@@ -444,45 +483,6 @@ class GalaxyService
     def log_cache_miss(key)
       return unless Rails.env.development?
       Rails.logger.debug("CACHE MISS: #{key}")
-    end
-
-    # Security: Sanitize system_id to prevent path traversal attacks
-    # @param system_id [String, Integer] System ID to sanitize
-    # @return [String, nil] Sanitized system_id or nil if invalid
-    def sanitize_system_id(system_id)
-      return nil if system_id.blank?
-
-      id_str = system_id.to_s
-
-      # Reject paths containing '..' (path traversal)
-      if id_str.include?("..")
-        Rails.logger.warn("Security: Path traversal attempt in system_id: #{id_str}")
-        return nil
-      end
-
-      # Reject paths containing '/' (directory traversal)
-      if id_str.include?("/")
-        Rails.logger.warn("Security: Directory traversal attempt in system_id: #{id_str}")
-        return nil
-      end
-
-      # Reject paths containing '\' (Windows path separator)
-      if id_str.include?("\\")
-        Rails.logger.warn("Security: Backslash in system_id: #{id_str}")
-        return nil
-      end
-
-      # Validate format: UUID (8-4-4-4-12) or alphanumeric slug
-      # UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-      # Slug format: alphanumeric and underscores only
-      if id_str.match?(/\A[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\z/i)
-        id_str.downcase
-      elsif id_str.match?(/\A[a-z0-9_]+\z/i)
-        id_str.downcase
-      else
-        Rails.logger.warn("Security: Invalid system_id format: #{id_str}")
-        nil
-      end
     end
   end
 end

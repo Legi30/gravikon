@@ -1,14 +1,18 @@
-// Orbital Animation Engine
-// Animates celestial bodies along their orbits using requestAnimationFrame
+// Orbital Animation Engine — real-time synchronous mode
+//
+// Body positions are a pure function of wall-clock time:
+//   angle = initialAngle + 2π × (epochSeconds / orbitalPeriod)
+// so a page refresh (or another browser) shows the orbits exactly where
+// they "really" are — the animation continues instead of restarting.
+// Pausing only freezes the display; resuming jumps to the current
+// real-time position (the system "catches up").
 
 class OrbitalAnimator {
   constructor() {
     this.isAnimating = false;
     this.animationId = null;
-    this.startTime = null;
-    this.pausedTime = 0;
     this.bodies = [];
-    this.speedMultiplier = 1.0; // Animation speed control
+    this.bodyLookup = {};
 
     // FPS monitoring
     this.frameCount = 0;
@@ -45,15 +49,10 @@ class OrbitalAnimator {
       // Pre-cache text element reference to avoid DOM traversal every frame
       const textElement = element.nextElementSibling;
       const hasTextLabel = textElement && textElement.tagName === 'text';
-      const radius = hasTextLabel ? parseFloat(element.getAttribute('r')) || 5 : 0;
-
-      // Pre-calculate angular velocity (constant per body)
-      const angularVelocity = orbitalPeriod > 0 ? (2 * Math.PI) / orbitalPeriod : 0;
+      const radius = parseFloat(element.getAttribute('r')) || 5;
 
       // Find orbit path element for this body (if it exists)
       const orbitPath = document.querySelector(`.orbit-path[data-body-name="${bodyName}"]`);
-      const orbitPathOriginalX = orbitPath ? parseFloat(orbitPath.getAttribute('cx')) : 0;
-      const orbitPathOriginalY = orbitPath ? parseFloat(orbitPath.getAttribute('cy')) : 0;
 
       return {
         element: element,
@@ -67,15 +66,12 @@ class OrbitalAnimator {
         orbitRadius: orbitRadius,
         initialAngle: initialAngle,
         orbitalPeriod: orbitalPeriod,
-        angularVelocity: angularVelocity,
         originalX: originalX,
         originalY: originalY,
-        hasOrbit: orbitRadius > 0 && parentName !== "",
+        hasOrbit: orbitRadius > 0 && orbitalPeriod > 0 && parentName !== "",
         currentX: originalX,
         currentY: originalY,
-        orbitPath: orbitPath,
-        orbitPathOriginalX: orbitPathOriginalX,
-        orbitPathOriginalY: orbitPathOriginalY
+        orbitPath: orbitPath
       };
     });
 
@@ -96,7 +92,7 @@ class OrbitalAnimator {
       }
     });
 
-    if (window.Logger) window.Logger.log(`Initialized orbital animation for ${this.bodies.length} bodies`);
+    if (window.Logger) window.Logger.log(`Initialized real-time orbital animation for ${this.bodies.length} bodies`);
     return true;
   }
 
@@ -104,68 +100,36 @@ class OrbitalAnimator {
     if (this.isAnimating) return;
 
     this.isAnimating = true;
-    this.startTime = performance.now() - this.pausedTime;
     this.animate();
 
-    if (window.Logger) window.Logger.log('Orbital animation started');
+    if (window.Logger) window.Logger.log('Orbital animation running (real-time)');
   }
 
   pause() {
     if (!this.isAnimating) return;
 
     this.isAnimating = false;
-    this.pausedTime = performance.now() - this.startTime;
 
     if (this.animationId) {
       cancelAnimationFrame(this.animationId);
       this.animationId = null;
     }
 
-    if (window.Logger) window.Logger.log('Orbital animation paused');
-  }
-
-  reset() {
-    this.pause();
-    this.pausedTime = 0;
-
-    // Reset all bodies to original positions
-    this.bodies.forEach(body => {
-      body.element.setAttribute('cx', body.originalX);
-      body.element.setAttribute('cy', body.originalY);
-      body.currentX = body.originalX;
-      body.currentY = body.originalY;
-
-      // Reset text labels if they exist
-      if (body.textElement) {
-        body.textElement.setAttribute('x', body.originalX + body.radius + 5);
-        body.textElement.setAttribute('y', body.originalY - body.radius - 5);
-      }
-
-      // Reset orbit paths if they exist
-      if (body.orbitPath) {
-        body.orbitPath.setAttribute('cx', body.orbitPathOriginalX);
-        body.orbitPath.setAttribute('cy', body.orbitPathOriginalY);
-      }
-    });
-
-    if (window.Logger) window.Logger.log('Orbital animation reset');
-  }
-
-  setSpeed(multiplier) {
-    this.speedMultiplier = Math.max(0.1, Math.min(10, multiplier));
-    if (window.Logger) window.Logger.log(`Animation speed set to ${this.speedMultiplier}x`);
+    if (window.Logger) window.Logger.log('Orbital animation paused (will catch up on resume)');
   }
 
   animate() {
     if (!this.isAnimating) return;
 
-    const currentTime = performance.now();
-    const elapsedTime = (currentTime - this.startTime) / 1000; // Convert to seconds
+    const now = performance.now();
+
+    // Positions derive from wall-clock time — identical across refreshes
+    const epochSeconds = Date.now() / 1000;
 
     // FPS monitoring
     this.frameCount++;
-    if (currentTime - this.lastFpsUpdate >= 1000) {
-      this.currentFps = Math.round(this.frameCount * 1000 / (currentTime - this.lastFpsUpdate));
+    if (now - this.lastFpsUpdate >= 1000) {
+      this.currentFps = Math.round(this.frameCount * 1000 / (now - this.lastFpsUpdate));
       this.fpsHistory.push(this.currentFps);
       if (this.fpsHistory.length > 10) this.fpsHistory.shift();
 
@@ -183,11 +147,10 @@ class OrbitalAnimator {
       }
 
       this.frameCount = 0;
-      this.lastFpsUpdate = currentTime;
+      this.lastFpsUpdate = now;
     }
 
-    // Batch DOM updates using a single reflow
-    // Pre-calculate all positions, then update DOM
+    // Batch DOM updates: pre-calculate all positions, then update DOM
     const updates = [];
 
     for (let i = 0; i < this.bodies.length; i++) {
@@ -200,8 +163,8 @@ class OrbitalAnimator {
         continue;
       }
 
-      // Calculate current angle using pre-calculated angular velocity
-      const currentAngle = body.initialAngle + (body.angularVelocity * elapsedTime * this.speedMultiplier);
+      // Real-time angle: full revolutions since epoch plus the body's phase
+      const currentAngle = body.initialAngle + (2 * Math.PI * epochSeconds) / body.orbitalPeriod;
 
       // Get parent's current position (for moons orbiting planets that are also moving)
       let parentX = body.parentX;
@@ -209,7 +172,6 @@ class OrbitalAnimator {
 
       if (body.parentName && this.bodyLookup[body.parentName]) {
         const parentBody = this.bodyLookup[body.parentName];
-        // Use parent's current position if available
         parentX = parentBody.currentX;
         parentY = parentBody.currentY;
       }
@@ -240,15 +202,13 @@ class OrbitalAnimator {
       }
     }
 
-    // Update orbit paths for moons (their orbit circles need to follow parent planets)
+    // Update orbit paths for moons (their orbit circles follow parent planets)
     for (let i = 0; i < this.bodies.length; i++) {
       const body = this.bodies[i];
 
-      // Only update orbit paths for moons (type === 'moon')
       if (body.type === 'moon' && body.orbitPath && body.parentName) {
         const parentBody = this.bodyLookup[body.parentName];
         if (parentBody) {
-          // Move the moon's orbit circle to follow the parent planet
           body.orbitPath.setAttribute('cx', parentBody.currentX.toFixed(2));
           body.orbitPath.setAttribute('cy', parentBody.currentY.toFixed(2));
         }
@@ -302,30 +262,13 @@ document.addEventListener('DOMContentLoaded', function() {
     orbitalAnimator = new OrbitalAnimator();
 
     if (orbitalAnimator.initialize()) {
-      // Set up control buttons if they exist
+      // Set up play/pause control if it exists
       const playPauseBtn = document.getElementById('orbit-play-pause');
-      const resetBtn = document.getElementById('orbit-reset');
-      const speedControl = document.getElementById('orbit-speed');
 
       if (playPauseBtn) {
         playPauseBtn.addEventListener('click', function() {
           orbitalAnimator.toggle();
           updatePlayPauseButton();
-        });
-      }
-
-      if (resetBtn) {
-        resetBtn.addEventListener('click', function() {
-          orbitalAnimator.reset();
-          updatePlayPauseButton();
-        });
-      }
-
-      if (speedControl) {
-        speedControl.addEventListener('input', function() {
-          const speed = parseFloat(this.value);
-          orbitalAnimator.setSpeed(speed);
-          updateSpeedLabel(speed);
         });
       }
 
@@ -350,14 +293,6 @@ function updatePlayPauseButton() {
   }
 }
 
-// Helper function to update speed label
-function updateSpeedLabel(speed) {
-  const label = document.getElementById('speed-label');
-  if (label) {
-    label.textContent = `${speed.toFixed(1)}×`;
-  }
-}
-
 // Global function to check animation performance (for console/debugging)
 window.getAnimationPerformance = function() {
   if (!orbitalAnimator) {
@@ -367,25 +302,7 @@ window.getAnimationPerformance = function() {
 
   const report = orbitalAnimator.getPerformanceReport();
   if (window.Logger) {
-    window.Logger.log('='.repeat(60));
-    window.Logger.log('ORBITAL ANIMATION PERFORMANCE REPORT');
-    window.Logger.log('='.repeat(60));
-    window.Logger.log(`Current FPS:      ${report.currentFps}`);
-    window.Logger.log(`Average FPS:      ${report.averageFps} (last 10 seconds)`);
-    window.Logger.log(`Bodies Animated:  ${report.bodiesAnimated}/${report.totalBodies}`);
-    window.Logger.log(`Performance:      ${report.performance}`);
-    window.Logger.log(`60 FPS Target:    ${report.targetMet ? '✓ MET' : '✗ NOT MET'}`);
-    window.Logger.log('='.repeat(60));
-
-    if (report.averageFps < 55) {
-      window.Logger.warn('⚠️  Animation is not maintaining 60 FPS');
-      window.Logger.warn('   Recommendations:');
-      window.Logger.warn('   - Check Chrome DevTools Performance tab');
-      window.Logger.warn('   - Reduce number of celestial bodies');
-      window.Logger.warn('   - Close other browser tabs/applications');
-    } else {
-      window.Logger.log('✅ Animation performance is excellent');
-    }
+    window.Logger.log(`FPS: ${report.currentFps} (avg ${report.averageFps}), bodies: ${report.bodiesAnimated}/${report.totalBodies}, ${report.performance}`);
   }
 
   return report;

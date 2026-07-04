@@ -32,9 +32,16 @@ lint_cmd: rubocop
 security_scan_cmd: brakeman -q -i config/brakeman.ignore
 server_cmd: rails server
 rebuild_data_cmd: rails galaxy:rebuild   # self-heals galaxy_data.json, system JSONs and SVGs from DB
+demo_reset_cmd: rails demo:reset         # wipe everything, seed the predefined demo galaxy
 ```
 
 Other rake tasks: `cache:stats`, `cache:warm`, `cache:clear_all`, `job:benchmark`, `assets:verify_js`, `assets:verify_css`.
+
+**Nightly demo reset:** `rails demo:reset` (lib/tasks/demo.rake) wipes all systems,
+meetings and generated files, then seeds 4 predefined systems (Alfa Centauri,
+Kepler-442, Trappist, Proxima — fixed names/positions, randomly generated bodies)
+plus 3 intra-system and 1 inter-system meeting. Intended cron:
+`0 3 * * * cd /path/to/gravikon && RAILS_ENV=production bin/rails demo:reset >> log/demo_reset.log 2>&1`
 
 ## Architecture — key decisions
 
@@ -91,12 +98,33 @@ inter-system meetings historically).
 **Views/JS:** `application.css` is the single CSS manifest (@imports gravikon →
 galaxy → systems → meetings). Layout loads logger.js, keyboard_shortcuts.js,
 galaxy.js globally; system detail pages load system_map.js (tooltips) +
-orbital_animation.js (the ONLY animation engine, with play/pause/speed controls);
-meeting forms load meeting_form.js; the inter-system participant picker lives in
+orbital_animation.js (the ONLY animation engine); meeting forms load
+meeting_form.js; the inter-system participant picker lives in
 `meetings/_inter_system_participants.html.erb` (shared by new + edit, pairs each
 checkbox to its hidden `participant_systems` field by element id). Chart.js is
 vendored at `app/assets/javascripts/vendor/chart.umd.min.js`. Flash messages are
 rendered by the layout (`.flash-notice` / `.flash-alert` in gravikon.css).
+
+**Real-time orbits.** ALL orbital animation (galaxy map systems around the black
+hole, bodies inside a system) is a pure function of wall-clock time:
+`angle = initialAngle + 2π·(Date.now()/1000)/orbitalPeriod`. A refresh therefore
+continues the motion instead of resetting, and every client shows the same
+positions. There is deliberately NO speed control and NO reset — only
+play/pause on the system page (resume recomputes from the clock, i.e. catches
+up). Galaxy markers are `<g class="system-marker">` groups positioned via
+`transform` (GalaxyVisualizer emits orbit-radius/initial-angle/orbital-period
+data attributes); galaxy.js animates them. The galaxy map is the landing-page
+hero; system detail pages animate `.celestial-body` circles via
+orbital_animation.js. Displayed positions intentionally diverge from the stored
+x/y (physics/collisions use the stored values).
+
+**Body colors** are deterministic per name (hash-seeded HSL in
+`PlanetarySystem::Body#color_for_body`): stars white-yellow, planets blue-green
+spectrum, moons gray shades.
+
+**System lookup:** galaxy map markers navigate with the FILE id (UUID) while
+view links use the DB id — `GalaxyController#find_system_record` accepts both.
+Keep it that way for any new system routes.
 
 **Jobs:** `GenerateSystemJob`, `RegenerateSystemJob`, `GenerateGalaxyVisualizationJob`
 — fail loudly (no retry_on/discard_on swallowing), clear the *versioned* cache keys

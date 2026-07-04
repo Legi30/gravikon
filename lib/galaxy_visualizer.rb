@@ -208,7 +208,9 @@ class GalaxyVisualizer
           )
         end
 
-        # Solar systems
+        # Solar systems — each system is one <g> group (glow + marker + labels)
+        # positioned via transform, so the real-time orbit animation in
+        # galaxy.js can move the whole system by updating a single attribute.
         svg.g(id: "solar-systems") do
           @systems.each do |system|
             system_id = system["id"]
@@ -216,66 +218,77 @@ class GalaxyVisualizer
 
             x = system["x"].to_f
             y = system["y"].to_f
+            orbit_radius = calculate_orbit_radius(system)
+            initial_angle = Math.atan2(y - @black_hole["y"].to_f, x - @black_hole["x"].to_f)
+            # Kepler-like: farther systems orbit slower (seconds per revolution)
+            orbital_period = orbit_radius > 1 ? ((orbit_radius / 50.0)**1.5 * 60).round(1) : 0
 
             # Calculate system size based on body count (larger systems = more bodies)
             body_count = details[:body_count] || 0
             base_radius = 12
             radius = [ base_radius + (body_count * 0.8), 25 ].min # Cap at 25
 
-            # System glow (outer halo)
-            svg.circle(
-              cx: x,
-              cy: y,
-              r: radius + 8,
-              fill: "url(#systemGlow)",
-              opacity: "0.3",
-              class: "system-glow"
-            )
-
-            # System circle
-            system_color = details[:has_star] ? "#fbbf24" : "#94a3b8"
-            svg.circle(
-              cx: x,
-              cy: y,
-              r: radius,
-              fill: system_color,
-              stroke: "#f59e0b",
-              'stroke-width': "2",
+            svg.g(
               class: "system-marker",
+              transform: "translate(#{x.round(2)}, #{y.round(2)})",
               'data-system-id': system_id,
               'data-system-name': details[:name],
               'data-x': x.round(2),
               'data-y': y.round(2),
               'data-body-count': body_count,
               'data-total-mass': details[:total_mass],
+              'data-orbit-radius': orbit_radius.round(2),
+              'data-initial-angle': initial_angle.round(4),
+              'data-orbital-period': orbital_period,
               style: "cursor: pointer;"
-            )
-
-            # System label
-            label_y = y - radius - 10
-            svg.text_(
-              details[:name],
-              x: x,
-              y: label_y,
-              'text-anchor': "middle",
-              fill: "#fbbf24",
-              'font-size': "11",
-              'font-weight': "500",
-              class: "system-label",
-              'data-system-id': system_id
-            )
-
-            # Body count indicator (small text below system name)
-            if body_count > 0
-              svg.text_(
-                "#{body_count} #{body_count == 1 ? 'body' : 'bodies'}",
-                x: x,
-                y: label_y + 12,
-                'text-anchor': "middle",
-                fill: "#94a3b8",
-                'font-size': "9",
-                class: "body-count-label"
+            ) do
+              # System glow (outer halo)
+              svg.circle(
+                cx: 0,
+                cy: 0,
+                r: radius + 8,
+                fill: "url(#systemGlow)",
+                opacity: "0.3",
+                class: "system-glow"
               )
+
+              # System circle
+              system_color = details[:has_star] ? "#fbbf24" : "#94a3b8"
+              svg.circle(
+                cx: 0,
+                cy: 0,
+                r: radius,
+                fill: system_color,
+                stroke: "#f59e0b",
+                'stroke-width': "2",
+                class: "system-core"
+              )
+
+              # System label
+              label_y = -radius - 10
+              svg.text_(
+                details[:name],
+                x: 0,
+                y: label_y,
+                'text-anchor': "middle",
+                fill: "#fbbf24",
+                'font-size': "11",
+                'font-weight': "500",
+                class: "system-label"
+              )
+
+              # Body count indicator (small text below system name)
+              if body_count > 0
+                svg.text_(
+                  "#{body_count} #{body_count == 1 ? 'těleso' : 'těles'}",
+                  x: 0,
+                  y: label_y + 12,
+                  'text-anchor': "middle",
+                  fill: "#94a3b8",
+                  'font-size': "9",
+                  class: "body-count-label"
+                )
+              end
             end
           end
         end
@@ -283,12 +296,12 @@ class GalaxyVisualizer
         # Add CSS for hover effects
         svg.style do
           svg.text <<~CSS
-            .system-marker:hover {
+            .system-marker:hover .system-core {
               stroke: #facc15;
               stroke-width: 3;
               filter: brightness(1.2);
             }
-            .system-marker.selected {
+            .system-marker.selected .system-core {
               stroke: #22c55e;
               stroke-width: 3;
               filter: brightness(1.3);
