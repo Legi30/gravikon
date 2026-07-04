@@ -41,11 +41,13 @@ class GalaxyVisualizer
           system_data = JSON.parse(File.read(system_file))
           bodies = system_data["bodies"] || []
 
+          star = bodies.find { |b| b["type"] == "star" }
           @system_details[system_id] = {
             name: system_data["system_name"] || "System #{system_id}",
             body_count: bodies.length,
             total_mass: bodies.sum { |b| b["mass"] || 0 },
-            has_star: bodies.any? { |b| b["type"] == "star" }
+            has_star: !star.nil?,
+            star_name: star&.dig("name")
           }
         rescue => e
           log_warn("Failed to load system #{system_id}: #{e.message}")
@@ -252,8 +254,12 @@ class GalaxyVisualizer
                 class: "system-glow"
               )
 
-              # System circle
-              system_color = details[:has_star] ? "#fbbf24" : "#94a3b8"
+              # System circle — colored like the system's actual star
+              system_color = if details[:star_name]
+                PlanetarySystem::Body.color_for(details[:star_name], "star")
+              else
+                "#94a3b8"
+              end
               svg.circle(
                 cx: 0,
                 cy: 0,

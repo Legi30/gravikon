@@ -29,16 +29,22 @@ class PlanetarySystem
     end
 
     # Deterministic per-body color (seeded by name, stable across renders):
-    # stars white-yellow, planets blue-green spectrum, moons shades of gray
-    def color_for_body
-      seed = @name.to_s.each_byte.reduce(0) { |acc, b| (acc * 31 + b) % 1_000_000 }
+    # stars white-yellow, planets blue-green spectrum, moons shades of gray.
+    # Shared with GalaxyVisualizer so a system's marker on the galaxy map
+    # matches the color of its actual star.
+    def self.color_for(name, type)
+      seed = name.to_s.each_byte.reduce(0) { |acc, b| (acc * 31 + b) % 1_000_000 }
 
       case type
-      when "star"   then "hsl(#{45 + seed % 10}, 95%, #{68 + seed % 20}%)"
+      when "star"   then "hsl(#{38 + seed % 22}, #{80 + seed % 20}%, #{58 + seed % 32}%)"
       when "planet" then "hsl(#{150 + seed % 75}, #{55 + seed % 25}%, #{48 + seed % 16}%)"
       when "moon"   then "hsl(0, 0%, #{52 + seed % 28}%)"
       else "#ffffff"
       end
+    end
+
+    def color_for_body
+      self.class.color_for(@name, @type)
     end
   end
 

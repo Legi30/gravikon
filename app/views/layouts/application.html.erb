@@ -28,7 +28,7 @@
     <%= stylesheet_link_tag "application" %>
   </head>
 
-  <body>
+  <body class="<%= yield :body_class %>">
     <!-- Skip to main content link for screen readers -->
     <a href="#main-content" class="skip-to-content">Přeskočit na hlavní obsah</a>
 

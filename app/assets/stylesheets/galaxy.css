@@ -628,3 +628,48 @@
   color: rgba(224, 224, 224, 0.7);
   margin-bottom: var(--spacing-md);
 }
+
+/* === Immersive galaxy page ===================================================
+   The landing page background continues the map SVG's deep-space look
+   (same #000814 base + starfield), and the hero SVG gets a soft radial
+   vignette so its edges dissolve into the page instead of ending in a box. */
+body.galaxy-page {
+  background: #000814;
+  background-image:
+    radial-gradient(1px 1px at 25px 8px, rgba(255, 255, 255, 0.8), transparent),
+    radial-gradient(1px 1px at 120px 60px, rgba(255, 255, 255, 0.45), transparent),
+    radial-gradient(1.5px 1.5px at 210px 140px, rgba(255, 255, 255, 0.7), transparent),
+    radial-gradient(1px 1px at 80px 190px, rgba(255, 255, 255, 0.35), transparent),
+    radial-gradient(2px 2px at 300px 90px, rgba(170, 204, 255, 0.6), transparent),
+    radial-gradient(1px 1px at 260px 230px, rgba(255, 255, 255, 0.5), transparent),
+    radial-gradient(1px 1px at 160px 290px, rgba(255, 255, 255, 0.4), transparent);
+  background-size:
+    340px 340px,
+    340px 340px,
+    340px 340px,
+    340px 340px,
+    520px 520px,
+    520px 520px,
+    520px 520px;
+}
+
+body.galaxy-page .galaxy-hero {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+body.galaxy-page .galaxy-hero svg {
+  -webkit-mask-image: radial-gradient(ellipse 75% 75% at 50% 50%, black 65%, transparent 100%);
+  mask-image: radial-gradient(ellipse 75% 75% at 50% 50%, black 65%, transparent 100%);
+}
+
+/* Position picker on the new-system form: the embedded galaxy SVG carries
+   explicit width/height attributes — constrain it to its 500px box so it
+   cannot overflow the card */
+#position-preview svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}

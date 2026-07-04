@@ -92,8 +92,19 @@
         return;
       }
 
+      // Same behaviour as celestial bodies in the system view (system_map.js):
+      // highlight on hover, tooltip follows the cursor below-right.
       systemMarkers.forEach(marker => {
-        marker.addEventListener('mouseenter', (e) => {
+        const core = marker.querySelector('.system-core');
+        const originalStroke = core ? core.getAttribute('stroke') : null;
+        const originalStrokeWidth = core ? core.getAttribute('stroke-width') : null;
+
+        marker.addEventListener('mouseover', (e) => {
+          if (core) {
+            core.setAttribute('stroke', '#ffd700');
+            core.setAttribute('stroke-width', '3');
+          }
+
           const systemName = marker.getAttribute('data-system-name') || 'Neznámá soustava';
           const bodyCount = marker.getAttribute('data-body-count') || '0';
           const orbitRadius = parseFloat(marker.getAttribute('data-orbit-radius')) || 0;
@@ -113,7 +124,11 @@
           this.positionTooltip(e, tooltip);
         });
 
-        marker.addEventListener('mouseleave', () => {
+        marker.addEventListener('mouseout', () => {
+          if (core) {
+            core.setAttribute('stroke', originalStroke);
+            core.setAttribute('stroke-width', originalStrokeWidth);
+          }
           tooltip.style.display = 'none';
         });
       });
@@ -121,25 +136,24 @@
       if (window.Logger) window.Logger.log('Initialized tooltips for system markers');
     },
 
-    // Position tooltip above-right of the cursor so it never covers the
-    // marker being pointed at; flips to the other side near viewport edges.
+    // Position tooltip near cursor (identical to system_map.js), preventing
+    // off-screen placement.
     positionTooltip(event, tooltip) {
-      const offset = 14;
+      const offsetX = 15;
+      const offsetY = 15;
+
+      let x = event.clientX + offsetX;
+      let y = event.clientY + offsetY;
+
       const tooltipRect = tooltip.getBoundingClientRect();
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
 
-      let x = event.clientX + offset;
-      let y = event.clientY - tooltipRect.height - offset;
-
       if (x + tooltipRect.width > viewportWidth) {
-        x = event.clientX - tooltipRect.width - offset;
-      }
-      if (y < 0) {
-        y = event.clientY + offset;
+        x = event.clientX - tooltipRect.width - offsetX;
       }
       if (y + tooltipRect.height > viewportHeight) {
-        y = viewportHeight - tooltipRect.height - 8;
+        y = event.clientY - tooltipRect.height - offsetY;
       }
 
       tooltip.style.left = x + 'px';

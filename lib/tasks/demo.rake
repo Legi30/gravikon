@@ -8,13 +8,15 @@
 #   0 3 * * * cd /path/to/gravikon && RAILS_ENV=production bin/rails demo:reset >> log/demo_reset.log 2>&1
 namespace :demo do
   # Predefined demo galaxy: positions are spread safely (>= 50 units from the
-  # black hole at (400,400), >= 40 units apart). Bodies are generated randomly
-  # each reset, so the demo stays varied while the structure is stable.
+  # black hole at (400,400), >= 40 units apart) and deliberately sit at
+  # DIFFERENT distances from the black hole so each system has its own orbit
+  # ring (radii ~140 / 220 / 300 / 350). Bodies are generated randomly each
+  # reset, so the demo stays varied while the structure is stable.
   DEMO_SYSTEMS = [
-    { name: "Alfa Centauri", x: 240.0, y: 190.0, planets: 5, moons: 2 },
-    { name: "Kepler-442",    x: 610.0, y: 250.0, planets: 7, moons: 1 },
-    { name: "Trappist",      x: 180.0, y: 560.0, planets: 4, moons: 3 },
-    { name: "Proxima",       x: 560.0, y: 610.0, planets: 3, moons: 2 }
+    { name: "Alfa Centauri", x: 279.0, y: 330.0, planets: 5, moons: 2 },
+    { name: "Kepler-442",    x: 607.0, y: 475.0, planets: 7, moons: 1 },
+    { name: "Trappist",      x: 250.0, y: 660.0, planets: 4, moons: 3 },
+    { name: "Proxima",       x: 668.0, y: 175.0, planets: 3, moons: 2 }
   ].freeze
 
   desc "Reset the whole database and generated files to the predefined demo state"
