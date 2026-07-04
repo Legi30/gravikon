@@ -92,16 +92,19 @@
     <h3>🜛 Hádanka: Xentorský čas</h3>
     <p>
       V pravém horním rohu mapy galaxie tikají čtyři runy — <span class="rune-sample">ᚠᚢ:ᚦᚨ</span>.
-      Jsou to xentorské hodiny. Nefungují ale jako ty pozemské: neměří čas, ale <em>prostor</em>…
-      a přesto čas ukazují.
+      Jsou to xentorské hodiny. Nefungují ale jako ty pozemské...
     </p>
     <p><strong>Dokážete přijít na to, jak xentorský čas funguje?</strong></p>
-    <ul class="about-list">
-      <li>Každá runa se mění jinou rychlostí.</li>
-      <li>Pořadí run není náhodné.</li>
-      <li>Odpověď nenajdete v číslech — najdete ji na obloze.</li>
-      <li>Když zanikne soustava, hodiny přijdou o číslici.</li>
-    </ul>
+
+    <details class="riddle-reveal">
+      <summary>Nápověda</summary>
+      <ul class="about-list">
+        <li>Každá runa se mění jinou rychlostí.</li>
+        <li>Pořadí run není náhodné.</li>
+        <li>Odpověď nenajdete v číslech — najdete ji na obloze.</li>
+        <li>Když zanikne soustava, hodiny přijdou o číslici.</li>
+      </ul>
+    </details>
 
     <details class="riddle-reveal">
       <summary>Prozradit řešení</summary>
@@ -267,12 +270,18 @@
     text-decoration: underline;
   }
 
-  .riddle-reveal p {
+  .riddle-reveal p,
+  .riddle-reveal ul {
     margin-top: 0.75rem;
     padding: 1rem;
     background: rgba(45, 212, 191, 0.05);
     border: 1px solid rgba(45, 212, 191, 0.25);
     border-radius: 8px;
+  }
+
+  .riddle-reveal ul {
+    padding-left: 2.25rem;
+    line-height: 1.9;
   }
 
   .about-closing {
