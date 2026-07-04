@@ -89,6 +89,34 @@
   </section>
 
   <section>
+    <h3>🜛 Hádanka: Xentorský čas</h3>
+    <p>
+      V pravém horním rohu mapy galaxie tikají čtyři runy — <span class="rune-sample">ᚠᚢ:ᚦᚨ</span>.
+      Jsou to xentorské hodiny. Nefungují ale jako ty pozemské: neměří čas, ale <em>prostor</em>…
+      a přesto čas ukazují.
+    </p>
+    <p><strong>Dokážete přijít na to, jak xentorský čas funguje?</strong></p>
+    <ul class="about-list">
+      <li>Každá runa se mění jinou rychlostí.</li>
+      <li>Pořadí run není náhodné.</li>
+      <li>Odpověď nenajdete v číslech — najdete ji na obloze.</li>
+      <li>Když zanikne soustava, hodiny přijdou o číslici.</li>
+    </ul>
+
+    <details class="riddle-reveal">
+      <summary>Prozradit řešení</summary>
+      <p>
+        Každá runa je <strong>okamžitá poloha jedné planetární soustavy na její orbitě</strong> kolem
+        černé díry, rozdělené na 12 výsečí (dvanáctková soustava, nula na galaktickém severu, po směru
+        hodinových ručiček). Zleva jsou soustavy od nejvzdálenější po nejbližší — nejpravější runa se
+        proto mění nejrychleji, jako vteřinová ručička. Hodiny tak čtete z <em>konfigurace prostoru</em>,
+        která je ale díky oběžným dobám zároveň jednoznačným údajem o čase — stejné runy uvidí každý
+        návštěvník, kdekoli a po libovolném obnovení stránky. Zanikne-li soustava, její číslice zmizí: „–".
+      </p>
+    </details>
+  </section>
+
+  <section>
     <h3>⌨️ Klávesové zkratky</h3>
     <p>Pro rychlejší navigaci můžete kdekoli v aplikaci použít tyto klávesy:</p>
     <table class="shortcuts-table" role="table" style="max-width: 480px;">
@@ -215,6 +243,36 @@
     font-size: 0.9rem;
     color: rgba(255, 255, 255, 0.55);
     font-style: italic;
+  }
+
+  .rune-sample {
+    color: #2dd4bf;
+    text-shadow: 0 0 8px rgba(45, 212, 191, 0.5);
+    font-weight: 700;
+    letter-spacing: 0.15rem;
+  }
+
+  .riddle-reveal {
+    margin-top: 1rem;
+  }
+
+  .riddle-reveal summary {
+    cursor: pointer;
+    color: var(--accent);
+    font-weight: 600;
+    width: fit-content;
+  }
+
+  .riddle-reveal summary:hover {
+    text-decoration: underline;
+  }
+
+  .riddle-reveal p {
+    margin-top: 0.75rem;
+    padding: 1rem;
+    background: rgba(45, 212, 191, 0.05);
+    border: 1px solid rgba(45, 212, 191, 0.25);
+    border-radius: 8px;
   }
 
   .about-closing {
