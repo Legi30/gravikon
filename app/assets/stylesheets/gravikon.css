@@ -1116,10 +1116,18 @@ tr:hover td {
   width: 100%;
   border-collapse: collapse;
   margin: var(--spacing-md) 0;
+  /* Frameless: opt out of the global boxed table look (surface bg + shadow
+     whose top edge reads as a stray line above the first row) */
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
 }
 
 .shortcuts-table td {
   padding: 0.55rem var(--spacing-sm);
+  /* Global td adds a border-top — without this override the first row
+     draws a stray line above itself and separators double up */
+  border-top: none;
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
 
