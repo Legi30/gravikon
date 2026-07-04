@@ -3,8 +3,9 @@
   <p class="about-subtitle">Schůzkovač pro pokročilé civilizace</p>
 </div>
 
-<div class="content-section">
-  <div class="card fade-in">
+<%# Single flat content block — deliberately NOT a .card (no boxes, no hover effects) %>
+<div class="about-content fade-in">
+  <section>
     <h3>📖 Příběh</h3>
     <p>
       Ve vzdálené galaxii, v planetární soustavě <strong>Xentor</strong>, žije technologicky vyspělá
@@ -16,11 +17,9 @@
       Vzhledem ke komplikovaným podmínkám (zakřivení času vlivem gravitace, konečná rychlost signálu)
       požádali Zemi o pomoc s vytvořením aplikace pro plánování schůzek: <strong>Gravikon</strong>.
     </p>
-  </div>
-</div>
+  </section>
 
-<div class="content-section">
-  <div class="card fade-in">
+  <section>
     <h3>🧮 Fyzikální model</h3>
     <p>
       Každé těleso (planeta, měsíc) má určitou hmotnost <var>M</var>, která zakřivuje časoprostor.
@@ -63,11 +62,9 @@
       Konstanty v aplikaci jsou pedagogicky přeškálované, aby byly relativistické efekty na mapě
       viditelné — vzorce ale odpovídají skutečné obecné relativitě.
     </p>
-  </div>
-</div>
+  </section>
 
-<div class="content-section">
-  <div class="card fade-in">
+  <section>
     <h3>🛠 Co Gravikon dělá</h3>
     <p>Uživatel zadá účastníky schůzky, začátek, konec a téma. Gravikon:</p>
     <ul class="about-list">
@@ -75,11 +72,9 @@
       <li>pro každého účastníka aplikuje <em>dilatační faktor času</em> a zobrazí <strong>lokální délku schůzky</strong>,</li>
       <li>vypočítá <strong>průměrné zpoždění signálu</strong> mezi stanicemi.</li>
     </ul>
-  </div>
-</div>
+  </section>
 
-<div class="content-section">
-  <div class="card fade-in">
+  <section>
     <h3>🚀 Od zadání k dnešní podobě</h3>
     <p>Původní zadání navrhovalo i možná rozšíření — většina z nich je dnes součástí aplikace:</p>
     <ul class="about-list">
@@ -91,11 +86,11 @@
     <p style="margin-top: 1rem;">
       <%= link_to "Původní zadání (PDF)", "/Gravikon.pdf", class: "btn btn-secondary btn-sm", target: "_blank", rel: "noopener" %>
     </p>
-  </div>
+  </section>
 </div>
 
 <div class="content-section">
-  <div class="card fade-in about-closing">
+  <div class="card about-closing">
     <p>
       <em>Gravikon je první krok ke komunikaci mezi planetami — propojuje relativistickou fyziku
       s každodenní potřebou: domluvit si schůzku. Až budete příště plánovat Zoom call, buďte rádi,
@@ -115,6 +110,14 @@
     font-size: 1.1rem;
     margin-top: -1rem;
     letter-spacing: 1px;
+  }
+
+  .about-content {
+    max-width: 880px;
+  }
+
+  .about-content section {
+    margin-bottom: 3rem;
   }
 
   .formula-display {
@@ -205,7 +208,13 @@
 
   .about-closing {
     text-align: center;
-    border-left: 4px solid var(--accent);
+  }
+
+  /* The closing box stays a box but must not react to hovering */
+  .about-closing:hover {
+    transform: none;
+    box-shadow: var(--shadow-md);
+    border-color: rgba(255, 215, 0, 0.2);
   }
 
   @media (max-width: 640px) {
