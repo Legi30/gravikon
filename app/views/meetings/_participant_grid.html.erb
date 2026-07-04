@@ -1,0 +1,20 @@
+<%# Participant picker for single-system meetings — same card-checkbox style
+    as the inter-system picker, just without the system grouping.
+    locals:
+      bodies         - Array of body hashes (name/type/...)
+      selected_names - Array of participant names to pre-check
+      id_prefix      - String prefix for checkbox element ids %>
+<div class="checkbox-group participant-grid" role="group" aria-describedby="participants-error">
+  <% bodies.each_with_index do |body, index| %>
+    <label class="checkbox-label participant-tile" for="<%= id_prefix %>_<%= index %>">
+      <%= check_box_tag "meeting[participants][]", body['name'], selected_names.include?(body['name']),
+          id: "#{id_prefix}_#{index}",
+          aria: { required: index < 2 ? "true" : "false" } %>
+      <span><%= body['name'] %></span>
+      <small class="participant-type" aria-hidden="true">
+        <%= body['type'] == 'star' ? '⭐' : body['type'] == 'planet' ? '🪐' : '🌙' %>
+      </small>
+    </label>
+  <% end %>
+</div>
+<div id="participants-error" class="error-message" style="display: none;" role="alert" aria-live="polite"></div>

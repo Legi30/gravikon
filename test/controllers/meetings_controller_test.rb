@@ -57,9 +57,10 @@ class MeetingsControllerTest < ActionDispatch::IntegrationTest
     get new_meeting_url
     assert_response :success
     assert_equal system, assigns(:system)
-    assert_includes assigns(:bodies), "Sol"
-    assert_includes assigns(:bodies), "Earth"
-    assert_includes assigns(:bodies), "Mars"
+    body_names = assigns(:bodies).map { |b| b["name"] }
+    assert_includes body_names, "Sol"
+    assert_includes body_names, "Earth"
+    assert_includes body_names, "Mars"
   end
 
   test "new shows system selector when multiple systems exist" do
@@ -77,8 +78,9 @@ class MeetingsControllerTest < ActionDispatch::IntegrationTest
 
     get new_meeting_url(system_id: system.id)
     assert_response :success
-    assert_includes assigns(:bodies), "Jupiter"
-    assert_not_includes assigns(:bodies), "Earth"
+    body_names = assigns(:bodies).map { |b| b["name"] }
+    assert_includes body_names, "Jupiter"
+    assert_not_includes body_names, "Earth"
   end
 
   # === POST create ===

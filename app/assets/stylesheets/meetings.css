@@ -587,3 +587,115 @@
     font-size: 2rem;
   }
 }
+
+/* === Participant picker (single-system) — mirrors the inter-system tiles === */
+.participant-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.5rem;
+}
+
+.participant-tile {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.participant-tile:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.participant-tile input[type="checkbox"]:checked ~ span {
+  color: var(--accent);
+  font-weight: bold;
+}
+
+.participant-tile .participant-type {
+  color: rgba(255, 255, 255, 0.5);
+  margin-left: auto;
+}
+
+/* === Relativistic details — aligned data grids === */
+.rel-grid {
+  display: grid;
+  gap: 0.45rem 1.25rem;
+  align-items: center;
+  margin-top: 0.75rem;
+}
+
+.rel-grid-dilation {
+  grid-template-columns: minmax(130px, max-content) 1fr 100px 80px;
+}
+
+.rel-grid-delay {
+  grid-template-columns: minmax(180px, max-content) 1fr 90px;
+}
+
+.rel-head {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.45);
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.rel-name {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.rel-system {
+  color: rgba(255, 255, 255, 0.55);
+  font-weight: 400;
+  margin-left: 0.25rem;
+}
+
+.rel-bar-track {
+  display: block;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.rel-bar {
+  display: block;
+  height: 100%;
+  border-radius: 5px;
+  min-width: 2px;
+}
+
+.rel-bar-delay {
+  background: linear-gradient(90deg, #4a90e2, #7b68ee);
+}
+
+.rel-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.rel-value {
+  font-weight: 700;
+}
+
+.rel-factor {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.9rem;
+}
+
+.rel-summary {
+  margin-top: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.rel-footnote {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.5);
+}

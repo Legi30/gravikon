@@ -292,19 +292,6 @@ class GalaxyVisualizer
                 'font-weight': "500",
                 class: "system-label"
               )
-
-              # Body count indicator (small text below system name)
-              if body_count > 0
-                svg.text_(
-                  "#{body_count} #{body_count == 1 ? 'těleso' : 'těles'}",
-                  x: 0,
-                  y: label_y + 12,
-                  'text-anchor': "middle",
-                  fill: "#94a3b8",
-                  'font-size': "9",
-                  class: "body-count-label"
-                )
-              end
             end
           end
         end

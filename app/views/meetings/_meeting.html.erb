@@ -37,9 +37,6 @@
     <% end %>
   </td>
   <td>
-    <% if is_inter_system %>
-      <span style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.85rem; margin-right: 0.5rem;" title="Mezisystémová schůzka">🌌</span>
-    <% end %>
     <%= meeting.topic.presence || "(bez tématu)" %>
   </td>
   <% if show_system_column %>

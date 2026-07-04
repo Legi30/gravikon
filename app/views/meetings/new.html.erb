@@ -58,16 +58,10 @@
       <div class="form-group">
         <fieldset>
           <legend>Účastníci (vyberte alespoň 2)<% if @system.present? %> z <%= @system.name %><% end %>:</legend>
-          <div class="checkbox-group" role="group" aria-describedby="participants-error">
-            <% selected_participants = Array(params.dig(:meeting, :participants)) %>
-            <% @bodies.each_with_index do |name, index| %>
-              <label class="checkbox-label" for="participant_<%= index %>">
-                <%= check_box_tag "meeting[participants][]", name, selected_participants.include?(name), id: "participant_#{index}", aria: { required: index < 2 ? "true" : "false" } %>
-                <%= name %>
-              </label>
-            <% end %>
-          </div>
-          <div id="participants-error" class="error-message" style="display: none;" role="alert" aria-live="polite"></div>
+          <%= render "participant_grid",
+              bodies: @bodies,
+              selected_names: Array(params.dig(:meeting, :participants)),
+              id_prefix: "participant" %>
         </fieldset>
       </div>
 

@@ -2,7 +2,7 @@
 
 <%# === Short intro link for first-time visitors === %>
 <p class="galaxy-intro fade-in">
-  <%= link_to "Co je Gravikon? →", about_path, class: "galaxy-intro-link" %>
+  <%= link_to "Co je Gravikon?", about_path, class: "galaxy-intro-link" %>
 </p>
 
 <%# === Galaxy map hero — the map is the landing page === %>
@@ -137,7 +137,7 @@
 
   .galaxy-stat {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 0.5rem;
   }
 
@@ -160,7 +160,7 @@
     background: radial-gradient(circle, #000 35%, #330066 70%, #8b5cf6 100%);
     box-shadow: 0 0 8px rgba(139, 92, 246, 0.9);
     display: inline-block;
-    align-self: center;
+    flex: none;
   }
 
   .system-card {

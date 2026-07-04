@@ -1,13 +1,49 @@
-<div class="page-header">
-  <nav aria-label="Breadcrumb" style="margin-bottom: 1rem;">
-    <ol style="list-style: none; padding: 0; display: flex; gap: 0.5rem; font-size: 0.9rem; color: rgba(255, 255, 255, 0.7);">
-      <li><%= link_to "Mapa galaxie", galaxy_index_path, style: "color: var(--accent); text-decoration: none;" %></li>
-      <li aria-hidden="true">/</li>
-      <li aria-current="page"><%= @system.name %></li>
-    </ol>
+<div class="page-header system-page-header">
+  <div>
+    <nav aria-label="Breadcrumb" style="margin-bottom: 1rem;">
+      <ol style="list-style: none; padding: 0; display: flex; gap: 0.5rem; font-size: 0.9rem; color: rgba(255, 255, 255, 0.7);">
+        <li><%= link_to "Mapa galaxie", galaxy_index_path, style: "color: var(--accent); text-decoration: none;" %></li>
+        <li aria-hidden="true">/</li>
+        <li aria-current="page"><%= @system.name %></li>
+      </ol>
+    </nav>
+    <h1><%= @system.name %></h1>
+  </div>
+
+  <nav class="system-header-actions" role="navigation" aria-label="Akce se soustavou">
+    <%= link_to "Upravit soustavu", edit_galaxy_system_path(@system), class: "btn btn-primary", "aria-label" => "Upravit parametry soustavy" %>
+    <%= button_to "Smazat", galaxy_system_path(@system), method: :delete, form: { onsubmit: "return confirm('Opravdu chcete smazat soustavu #{j @system.name}? Tato akce je nevratná.');", style: "display: contents;" }, class: "btn btn-danger", "aria-label" => "Smazat soustavu" %>
+    <%= link_to "Zpět na galaxii", galaxy_index_path, class: "btn btn-secondary", "aria-label" => "Návrat na mapu galaxie" %>
   </nav>
-  <h1><%= @system.name %></h1>
 </div>
+
+<style>
+  .system-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .system-header-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  /* Uniform control height regardless of <a> vs <button> rendering */
+  .system-header-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 42px;
+    padding-top: 0;
+    padding-bottom: 0;
+    border: none;
+    font-size: 0.9rem;
+  }
+</style>
 
 <div class="content-section">
   <div class="card fade-in">
@@ -121,6 +157,8 @@
           <% end %>
         </tbody>
       </table>
+
+      <%= link_to "Naplánovat schůzku", new_meeting_path(system_id: @system.id), class: "btn btn-primary", style: "margin-top: 1.25rem;", "aria-label" => "Naplánovat novou schůzku v této soustavě" %>
     <% end %>
   </div>
 </div>
@@ -152,12 +190,6 @@
     <% end %>
   </div>
 </div>
-
-<nav class="actions" role="navigation" aria-label="Akce se soustavou">
-  <%= link_to "Upravit soustavu", edit_galaxy_system_path(@system), class: "btn btn-primary", "aria-label" => "Upravit parametry soustavy" %>
-  <%= button_to "Smazat", galaxy_system_path(@system), method: :delete, form: { onsubmit: "return confirm('Opravdu chcete smazat soustavu #{j @system.name}? Tato akce je nevratná.');" }, class: "btn btn-danger", "aria-label" => "Smazat soustavu" %>
-  <%= link_to "Zpět na galaxii", galaxy_index_path, class: "btn btn-secondary", "aria-label" => "Návrat na mapu galaxie" %>
-</nav>
 
 <% if @system_svg.present? %>
   <div class="svg-container fade-in" role="img" aria-label="Interaktivní mapa planetární soustavy <%= @system.name %>">

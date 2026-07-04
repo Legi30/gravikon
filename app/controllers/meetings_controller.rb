@@ -108,9 +108,9 @@ class MeetingsController < ApplicationController
 
   private
 
-  # Extract body names from a specific system
+  # Extract bodies (full hashes with name/type/...) from a specific system
   # @param system_id [Integer] System ID to load from
-  # @return [Array<String>] Array of body names
+  # @return [Array<Hash>] Array of body hashes
   def extract_bodies_from_system(system_id)
     system = System.find_by(id: system_id)
     return [] unless system
@@ -120,7 +120,7 @@ class MeetingsController < ApplicationController
     system_data = GalaxyService.load_system_data(system_file_id)
     return [] unless system_data
 
-    system_data["bodies"]&.map { |b| b["name"] } || []
+    system_data["bodies"] || []
   end
 
   # Extract bodies from multiple systems, grouped by system

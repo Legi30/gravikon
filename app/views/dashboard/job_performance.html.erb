@@ -5,18 +5,18 @@
 
 <% if @job_history.empty? %>
   <div class="content-section">
-    <div class="card fade-in" style="border-left: 4px solid #667eea;">
+    <div class="card fade-in">
       ℹ️ <strong>Žádná data o výkonu</strong> — zatím neproběhla žádná generace. Vytvořte nebo regenerujte soustavu pro sběr metrik.
     </div>
   </div>
 <% else %>
   <div class="content-section">
     <% if @target_percentage >= 90 %>
-      <div class="card fade-in" style="border-left: 4px solid #2ed573;">
+      <div class="card fade-in">
         ✅ <strong>Výkon: výborný</strong> — <%= @target_percentage %> % úloh dokončeno do 30 s
       </div>
     <% else %>
-      <div class="card fade-in" style="border-left: 4px solid #f39c12;">
+      <div class="card fade-in">
         ⚠️ <strong>Výkon: pod cílem</strong> — pouze <%= @target_percentage %> % úloh do 30 s (cíl: &gt;90 %)
       </div>
     <% end %>

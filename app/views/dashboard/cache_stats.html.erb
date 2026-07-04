@@ -4,16 +4,16 @@
 </div>
 
 <div class="content-section">
-  <% if @cache_report[:cache_hit_rate].to_f >= 90 %>
-    <div class="card fade-in" style="border-left: 4px solid #2ed573;">
-      ✅ <strong>Výkon cache: výborný</strong> — úspěšnost je <%= @cache_report[:cache_hit_rate] %> (cíl: &gt;90 %)
+  <% if @cache_report[:cache_hit_rate].to_f >= 70 %>
+    <div class="card fade-in">
+      ✅ <strong>Výkon cache: výborný</strong> — úspěšnost je <%= @cache_report[:cache_hit_rate] %> (cíl: &gt;70 %)
     </div>
   <% elsif @cache_report[:cache_hit_rate].to_f > 0 %>
-    <div class="card fade-in" style="border-left: 4px solid #f39c12;">
-      ⚠️ <strong>Výkon cache: pod cílem</strong> — úspěšnost je <%= @cache_report[:cache_hit_rate] %> (cíl: &gt;90 %). Zvažte kontrolu frekvence invalidace cache.
+    <div class="card fade-in">
+      ⚠️ <strong>Výkon cache: pod cílem</strong> — úspěšnost je <%= @cache_report[:cache_hit_rate] %> (cíl: &gt;70 %). Zvažte kontrolu frekvence invalidace cache.
     </div>
   <% else %>
-    <div class="card fade-in" style="border-left: 4px solid #667eea;">
+    <div class="card fade-in">
       ℹ️ <strong>Žádná aktivita cache</strong> — zatím nebyly zaznamenány žádné požadavky. Navštivte několik stránek pro sběr metrik.
     </div>
   <% end %>
@@ -24,7 +24,7 @@
     <div class="card stat-card">
       <div class="stat-label">Úspěšnost cache</div>
       <div class="stat-value"><%= @cache_report[:cache_hit_rate] %></div>
-      <div class="stat-detail">Cíl: &gt;90 %</div>
+      <div class="stat-detail">Cíl: &gt;70 %</div>
     </div>
 
     <div class="card stat-card">
