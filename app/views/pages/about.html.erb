@@ -1,0 +1,216 @@
+<div class="page-header">
+  <h1>Gravikon</h1>
+  <p class="about-subtitle">Schůzkovač pro pokročilé civilizace</p>
+</div>
+
+<div class="content-section">
+  <div class="card fade-in">
+    <h3>📖 Příběh</h3>
+    <p>
+      Ve vzdálené galaxii, v planetární soustavě <strong>Xentor</strong>, žije technologicky vyspělá
+      civilizace, která ovládla svou sluneční soustavu. Její členové sídlí na mnoha různých planetách
+      a měsících, kde probíhá výzkum, těžba a řízení jejich společnosti. Potřebují se však pravidelně
+      spojovat pomocí meziplanetárních videokonferencí – typicky přes <em>Zoom</em>.
+    </p>
+    <p>
+      Vzhledem ke komplikovaným podmínkám (zakřivení času vlivem gravitace, konečná rychlost signálu)
+      požádali Zemi o pomoc s vytvořením aplikace pro plánování schůzek: <strong>Gravikon</strong>.
+    </p>
+  </div>
+</div>
+
+<div class="content-section">
+  <div class="card fade-in">
+    <h3>🧮 Fyzikální model</h3>
+    <p>
+      Každé těleso (planeta, měsíc) má určitou hmotnost <var>M</var>, která zakřivuje časoprostor.
+      Lokální plynutí času na tělese ovlivňuje <strong>gravitační dilatace času</strong>, popsaná vztahem:
+    </p>
+
+    <div class="formula-display" role="math" aria-label="tau se rovná t krát odmocnina z jedna mínus dva G M lomeno R c na druhou">
+      <span class="formula">
+        <var>τ</var>&nbsp;=&nbsp;<var>t</var>&nbsp;<span class="sqrt-sign">√</span><span class="sqrt-body">1 −
+          <span class="frac"><span class="frac-top">2<var>GM</var></span><span class="frac-bottom"><var>Rc</var><sup>2</sup></span></span>
+        </span>
+      </span>
+    </div>
+
+    <ul class="formula-legend">
+      <li><var>τ</var> — skutečná doba schůzky (lokální čas účastníka)</li>
+      <li><var>t</var> — doba schůzky z hlediska vesmírného pozorovatele</li>
+      <li><var>G</var> — gravitační konstanta</li>
+      <li><var>M</var> — hmotnost tělesa</li>
+      <li><var>R</var> — vzdálenost od středu hmotného tělesa (typicky poloměr planety či měsíce)</li>
+      <li><var>c</var> — rychlost signálu</li>
+    </ul>
+
+    <p style="margin-top: 1.5rem;">
+      Zároveň je třeba zohlednit <strong>zpoždění signálu</strong> mezi účastníky, které je úměrné
+      jejich vzájemné vzdálenosti:
+    </p>
+
+    <div class="formula-display" role="math" aria-label="delta t se rovná d lomeno c">
+      <span class="formula">
+        Δ<var>t</var>&nbsp;=&nbsp;<span class="frac"><span class="frac-top"><var>d</var></span><span class="frac-bottom"><var>c</var></span></span>
+      </span>
+    </div>
+
+    <ul class="formula-legend">
+      <li><var>d</var> — vzdálenost mezi dvěma účastníky</li>
+    </ul>
+
+    <p class="about-note">
+      Konstanty v aplikaci jsou pedagogicky přeškálované, aby byly relativistické efekty na mapě
+      viditelné — vzorce ale odpovídají skutečné obecné relativitě.
+    </p>
+  </div>
+</div>
+
+<div class="content-section">
+  <div class="card fade-in">
+    <h3>🛠 Co Gravikon dělá</h3>
+    <p>Uživatel zadá účastníky schůzky, začátek, konec a téma. Gravikon:</p>
+    <ul class="about-list">
+      <li>načte planetární soustavu (a celou galaxii soustav obíhajících kolem černé díry),</li>
+      <li>pro každého účastníka aplikuje <em>dilatační faktor času</em> a zobrazí <strong>lokální délku schůzky</strong>,</li>
+      <li>vypočítá <strong>průměrné zpoždění signálu</strong> mezi stanicemi.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="content-section">
+  <div class="card fade-in">
+    <h3>🚀 Od zadání k dnešní podobě</h3>
+    <p>Původní zadání navrhovalo i možná rozšíření — většina z nich je dnes součástí aplikace:</p>
+    <ul class="about-list">
+      <li>✅ <strong>Robustnost:</strong> validace vstupů a chybové hlášky</li>
+      <li>✅ <strong>Velikost:</strong> více planetárních soustav v galaxii kolem centrální černé díry, včetně mezisystémových schůzek</li>
+      <li>✅ <strong>Dynamika &amp; simulace:</strong> tělesa i soustavy obíhají v reálném čase — vizualizace běží synchronně s hodinami, obnovení stránky pohyb nepřeruší</li>
+      <li>⏳ <strong>Optimalizace:</strong> algoritmus hledající nejlepší okamžik pro schůzku (nejmenší zpoždění signálu) — zatím čeká na implementaci</li>
+    </ul>
+    <p style="margin-top: 1rem;">
+      <%= link_to "Původní zadání (PDF)", "/Gravikon.pdf", class: "btn btn-secondary btn-sm", target: "_blank", rel: "noopener" %>
+    </p>
+  </div>
+</div>
+
+<div class="content-section">
+  <div class="card fade-in about-closing">
+    <p>
+      <em>Gravikon je první krok ke komunikaci mezi planetami — propojuje relativistickou fyziku
+      s každodenní potřebou: domluvit si schůzku. Až budete příště plánovat Zoom call, buďte rádi,
+      že nejste na měsíci vzdáleném několik světelných let.</em>
+    </p>
+    <div class="actions" style="justify-content: center; margin-top: 1.5rem;">
+      <%= link_to "🌌 Prozkoumat galaxii", galaxy_index_path, class: "btn btn-primary" %>
+      <%= link_to "📅 Naplánovat schůzku", new_meeting_path, class: "btn btn-accent" %>
+    </div>
+  </div>
+</div>
+
+<style>
+  .about-subtitle {
+    font-family: 'Orbitron', sans-serif;
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 1.1rem;
+    margin-top: -1rem;
+    letter-spacing: 1px;
+  }
+
+  .formula-display {
+    display: flex;
+    justify-content: center;
+    padding: 1.5rem;
+    margin: 1rem 0;
+    background: rgba(0, 8, 20, 0.6);
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    border-radius: 8px;
+    font-size: 1.5rem;
+  }
+
+  .formula {
+    display: inline-flex;
+    align-items: center;
+    font-family: 'Georgia', 'Times New Roman', serif;
+  }
+
+  .formula var {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .sqrt-sign {
+    font-size: 2.2rem;
+    line-height: 1;
+    margin-right: 2px;
+  }
+
+  .sqrt-body {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border-top: 1.5px solid currentColor;
+    padding: 0.15rem 0.4rem 0 0.2rem;
+  }
+
+  .frac {
+    display: inline-flex;
+    flex-direction: column;
+    text-align: center;
+    vertical-align: middle;
+    font-size: 0.85em;
+  }
+
+  .frac-top {
+    border-bottom: 1.5px solid currentColor;
+    padding: 0 0.35rem 0.1rem;
+  }
+
+  .frac-bottom {
+    padding: 0.1rem 0.35rem 0;
+  }
+
+  .formula-legend {
+    list-style: none;
+    margin: 0.5rem 0 0;
+    padding: 0;
+    columns: 2;
+    column-gap: 2rem;
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  .formula-legend li {
+    padding: 0.25rem 0;
+    break-inside: avoid;
+  }
+
+  .formula-legend var {
+    font-style: italic;
+    color: var(--accent);
+    margin-right: 0.25rem;
+  }
+
+  .about-list {
+    margin: 0.5rem 0 0 1.5rem;
+    line-height: 1.9;
+  }
+
+  .about-note {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.55);
+    font-style: italic;
+  }
+
+  .about-closing {
+    text-align: center;
+    border-left: 4px solid var(--accent);
+  }
+
+  @media (max-width: 640px) {
+    .formula-legend {
+      columns: 1;
+    }
+  }
+</style>

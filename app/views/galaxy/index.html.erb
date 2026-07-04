@@ -1,5 +1,11 @@
 <% content_for :body_class, "galaxy-page" %>
 
+<%# === Short intro for first-time visitors === %>
+<p class="galaxy-intro fade-in">
+  Gravikon je plánovač schůzek pro civilizace obývající více planet — počítá s gravitační dilatací
+  času i zpožděním signálu mezi tělesy.
+  <%= link_to "Co je Gravikon? →", about_path, class: "galaxy-intro-link" %>
+</p>
 
 <%# === Galaxy map hero — the map is the landing page === %>
 <% if @galaxy_svg.present? %>
@@ -91,6 +97,24 @@
 
   .galaxy-hero {
     margin-top: 0.5rem;
+  }
+
+  .galaxy-intro {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.95rem;
+    max-width: 720px;
+    margin: 0.5rem auto 0;
+  }
+
+  .galaxy-intro-link {
+    color: var(--accent);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .galaxy-intro-link:hover {
+    text-decoration: underline;
   }
 
   .galaxy-hero-hint {

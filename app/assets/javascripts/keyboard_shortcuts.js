@@ -8,6 +8,7 @@ class KeyboardShortcuts {
       's': { action: () => this.navigate('/meetings'), description: 'Otevřít seznam Schůzek' },
       'g': { action: () => this.navigate('/galaxy'), description: 'Otevřít mapu Galaxie' },
       'n': { action: () => this.navigate('/meetings/new'), description: 'Nová schůzka' },
+      'o': { action: () => this.navigate('/o-aplikaci'), description: 'O aplikaci' },
       '?': { action: () => this.showHelp(), description: 'Zobrazit nápovědu klávesových zkratek' },
       'Escape': { action: () => this.hideHelp(), description: 'Zavřít nápovědu', hidden: true }
     };

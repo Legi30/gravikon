@@ -46,3 +46,6 @@
 /data/.migration_complete
 /public/galaxy.svg
 /public/systems/
+
+# Source document (served copy lives in public/)
+/Gravikon.pdf

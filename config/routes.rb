@@ -33,6 +33,9 @@ Rails.application.routes.draw do
     post "/systems/:id/regenerate", to: "galaxy#regenerate_system", as: :regenerate_galaxy_system
   end
 
+  # O aplikaci - příběh, fyzikální model a účel Gravikonu
+  get "/o-aplikaci", to: "pages#about", as: "about"
+
   # Domovská stránka - Galaxy as the main landing page
   root to: "galaxy#index"
 end

@@ -54,6 +54,10 @@
             <span class="nav-icon" aria-hidden="true">📊</span>
             <span>Přehled</span>
           <% end %>
+          <%= link_to about_path, class: "nav-link #{'active' if current_page?(about_path)}", "aria-label" => "O aplikaci - klávesová zkratka O", title: "O aplikaci (klávesová zkratka: O)" do %>
+            <span class="nav-icon" aria-hidden="true">🚀</span>
+            <span>O aplikaci</span>
+          <% end %>
           <button class="nav-link help-button" onclick="window.keyboardShortcuts?.showHelp()" aria-label="Zobrazit nápovědu klávesových zkratek" title="Nápověda (klávesová zkratka: ?)">
             <span class="nav-icon" aria-hidden="true">❓</span>
             <span>Nápověda</span>

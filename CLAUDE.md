@@ -126,6 +126,12 @@ spectrum, moons gray shades.
 view links use the DB id — `GalaxyController#find_system_record` accepts both.
 Keep it that way for any new system routes.
 
+**About page:** `/o-aplikaci` (`PagesController#about`) webifies the original
+assignment (Gravikon.pdf — served copy at `public/Gravikon.pdf`, source in the
+repo root is git-ignored): the Xentor story, the physics formulas (CSS-rendered,
+no MathJax) and the extension checklist. Linked from the nav (🚀 O aplikaci,
+shortcut `O`) and from a one-line intro above the galaxy landing map.
+
 **Jobs:** `GenerateSystemJob`, `RegenerateSystemJob`, `GenerateGalaxyVisualizationJob`
 — fail loudly (no retry_on/discard_on swallowing), clear the *versioned* cache keys
 via GalaxyService, update SVG timestamps, record metrics to
