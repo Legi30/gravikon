@@ -6,8 +6,8 @@ class SecurityValidationsTest < ActiveSupport::TestCase
   def setup
     Rails.cache.clear
 
-    # Create test galaxy data
-    @test_galaxy_file = Rails.root.join("data", "galaxy_data.json")
+    # Create test galaxy data (inside the isolated test data root)
+    @test_galaxy_file = GalaxyService.galaxy_data_path
     @test_galaxy_data = {
       "black_hole" => { "name" => "Sagittarius Omega", "mass" => 8.2e36, "x" => 400, "y" => 400 },
       "systems" => []
