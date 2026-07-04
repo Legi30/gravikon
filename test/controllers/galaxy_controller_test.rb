@@ -44,6 +44,7 @@ class GalaxyControllerTest < ActionDispatch::IntegrationTest
     get galaxy_index_path
     assert_response :success
     assert_select ".galaxy-hero svg"
+    assert_select "#space-clock .space-clock-digit", 4
     assert_select "h3", /Seznam soustav/
   end
 

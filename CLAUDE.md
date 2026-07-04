@@ -122,6 +122,14 @@ x/y (physics/collisions use the stored values).
 `PlanetarySystem::Body#color_for_body`): stars white-yellow, planets blue-green
 spectrum, moons gray shades.
 
+**Xentorský čas (space clock).** Top-right of the galaxy map: four teal rune
+digits (Elder Futhark, base-12), one per solar system — each digit is that
+system's orbital phase around the black hole quantized into 12 sectors (zero
+at galactic north, clockwise). Outermost system = leftmost digit; rightmost
+ticks fastest. Pure JS in galaxy.js (initSpaceClock) reading the markers'
+orbit data attributes — no server state, wall-clock-derived like the orbits,
+so it is identical for all visitors. Fewer than 4 systems → "–" digits.
+
 **System lookup:** galaxy map markers navigate with the FILE id (UUID) while
 view links use the DB id — `GalaxyController#find_system_record` accepts both.
 Keep it that way for any new system routes.

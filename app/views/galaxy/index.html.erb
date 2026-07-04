@@ -7,7 +7,18 @@
 
 <%# === Galaxy map hero — the map is the landing page === %>
 <% if @galaxy_svg.present? %>
-  <div class="svg-container fade-in galaxy-hero" role="img" aria-label="Interaktivní mapa galaxie s planetárními soustavami">
+  <div class="svg-container fade-in galaxy-hero" aria-label="Interaktivní mapa galaxie s planetárními soustavami">
+    <%# Xentorský orbitální čas — each rune is the orbital phase of one system
+        (outermost = leftmost digit); digits are filled in by galaxy.js %>
+    <div id="space-clock" class="space-clock"
+         title="Xentorský orbitální čas — každý znak udává polohu jedné soustavy na její orbitě (zleva od nejvzdálenější). Chybějící soustava = chybějící číslice."
+         aria-label="Xentorský orbitální čas">
+      <span class="space-clock-label">Xentorský čas</span>
+      <span class="space-clock-runes">
+        <span class="space-clock-digit" data-slot="0">–</span><span class="space-clock-digit" data-slot="1">–</span><span class="space-clock-colon">:</span><span class="space-clock-digit" data-slot="2">–</span><span class="space-clock-digit" data-slot="3">–</span>
+      </span>
+    </div>
+
     <%= raw @galaxy_svg %>
   </div>
   <p class="galaxy-hero-hint">Klikněte na soustavu pro zobrazení detailů nebo najeďte myší pro rychlý náhled. Soustavy obíhají kolem černé díry v reálném čase.</p>

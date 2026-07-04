@@ -12,6 +12,7 @@
       this.initSystemNavigation();
       this.initSystemTooltips();
       this.initGalaxyOrbits();
+      this.initSpaceClock();
       this.initPositionSelector();
 
       if (window.Logger) window.Logger.log('Galaxy interactions initialized');
@@ -87,6 +88,60 @@
       positionMarkers();
       requestAnimationFrame(tick);
       if (window.Logger) window.Logger.log(`Galaxy orbit animation running for ${orbiting.length} systems`);
+    },
+
+    // Xentorský orbitální čas: each rune digit is one solar system's orbital
+    // phase around the black hole, quantized into 12 sectors (base-12, zero
+    // at galactic north, increasing clockwise). Outermost system = leftmost
+    // digit, so the rightmost digit ticks fastest. It reads as a SPACE
+    // coordinate, but since orbits derive from wall-clock time it doubles
+    // as a synchronized clock. A missing system leaves a "–" digit.
+    initSpaceClock() {
+      const clock = document.getElementById('space-clock');
+      if (!clock) return;
+
+      const RUNES = ['ᚠ', 'ᚢ', 'ᚦ', 'ᚨ', 'ᚱ', 'ᚲ', 'ᚷ', 'ᚹ', 'ᚺ', 'ᚾ', 'ᛁ', 'ᛃ'];
+      const digits = clock.querySelectorAll('.space-clock-digit');
+      const TAU = 2 * Math.PI;
+
+      // Up to 4 systems ordered by orbital radius, outermost first
+      // (ties broken by name for determinism)
+      const systems = Array.from(document.querySelectorAll('#solar-systems .system-marker'))
+        .map(m => ({
+          name: m.getAttribute('data-system-name') || '',
+          orbitRadius: parseFloat(m.getAttribute('data-orbit-radius')) || 0,
+          initialAngle: parseFloat(m.getAttribute('data-initial-angle')) || 0,
+          orbitalPeriod: parseFloat(m.getAttribute('data-orbital-period')) || 0
+        }))
+        .filter(s => s.orbitRadius > 1 && s.orbitalPeriod > 0)
+        .sort((a, b) => (b.orbitRadius - a.orbitRadius) || a.name.localeCompare(b.name))
+        .slice(0, digits.length);
+
+      function update() {
+        const epochSeconds = Date.now() / 1000;
+
+        digits.forEach((el, slot) => {
+          const sys = systems[slot];
+          if (!sys) {
+            el.textContent = '–';
+            el.removeAttribute('data-system');
+            return;
+          }
+
+          // Same wall-clock formula as the orbit animation; +π/2 puts
+          // sector zero at 12 o'clock (SVG y axis points down)
+          const angle = sys.initialAngle + (TAU * epochSeconds) / sys.orbitalPeriod;
+          const phase = (((angle + Math.PI / 2) % TAU) + TAU) % TAU;
+          el.textContent = RUNES[Math.floor(phase / (TAU / 12)) % 12];
+          el.setAttribute('data-system', sys.name);
+        });
+      }
+
+      if (this.spaceClockTimer) clearInterval(this.spaceClockTimer);
+      update();
+      this.spaceClockTimer = setInterval(update, 1000);
+
+      if (window.Logger) window.Logger.log(`Space clock running with ${systems.length}/${digits.length} systems`);
     },
 
     // Initialize tooltips for system markers

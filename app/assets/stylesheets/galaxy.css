@@ -677,3 +677,57 @@ body.galaxy-page .galaxy-hero svg {
   height: 100%;
   display: block;
 }
+
+/* === Xentorský orbitální čas (space clock) ================================
+   Four rune digits, one per solar system: each digit is the system's
+   current orbital phase around the black hole quantized into 12 sectors
+   (base-12, zero at galactic north). Outermost system = leftmost digit,
+   so the rightmost digit ticks fastest. A missing system shows "–". */
+.galaxy-hero {
+  position: relative;
+}
+
+.space-clock {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.75rem;
+  z-index: 5;
+  text-align: center;
+  cursor: help;
+}
+
+.space-clock-label {
+  display: block;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.62rem;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: rgba(45, 212, 191, 0.55);
+  margin-bottom: 0.3rem;
+}
+
+.space-clock-runes {
+  font-size: 2rem;
+  line-height: 1;
+  color: #2dd4bf;
+  text-shadow: 0 0 14px rgba(45, 212, 191, 0.55);
+  letter-spacing: 0.3rem;
+}
+
+.space-clock-digit {
+  display: inline-block;
+  min-width: 1.1em;
+  text-align: center;
+}
+
+.space-clock-colon {
+  color: rgba(45, 212, 191, 0.45);
+  margin: 0 0.1rem;
+}
+
+@media (max-width: 760px) {
+  .space-clock {
+    position: static;
+    margin: 0 auto 0.75rem;
+  }
+}
