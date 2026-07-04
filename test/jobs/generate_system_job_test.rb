@@ -1,13 +1,12 @@
 require "test_helper"
-require_relative '../../lib/visualizer'
 
 class GenerateSystemJobTest < ActiveJob::TestCase
   # Helper method to mock system generation without process execution
   def with_mocked_system_generation(success: true, &block)
     # Mock SystemGenerator to avoid actual file operations
-    mock_generator = mock('SystemGenerator')
-    mock_generator.stubs(:generate).returns(success ? { 'bodies' => [] } : nil)
-    mock_generator.stubs(:errors).returns(success ? [] : ['Generation failed'])
+    mock_generator = mock("SystemGenerator")
+    mock_generator.stubs(:generate).returns(success ? { "bodies" => [] } : nil)
+    mock_generator.stubs(:errors).returns(success ? [] : [ "Generation failed" ])
 
     SystemGenerator.stubs(:new).returns(mock_generator)
 
@@ -23,10 +22,10 @@ class GenerateSystemJobTest < ActiveJob::TestCase
 
     # Mock System.find_by to return a test system
     test_system = System.new(
-      name: 'Test System',
+      name: "Test System",
       x: 300.0,
       y: 300.0,
-      json_file_path: 'data/systems/test.json'
+      json_file_path: "data/systems/test.json"
     )
     test_system.stubs(:save!).returns(true)
     System.stubs(:find_by).returns(test_system)
@@ -46,8 +45,8 @@ class GenerateSystemJobTest < ActiveJob::TestCase
   test "should validate num_planets is an integer" do
     assert_raises(ArgumentError, "Job accepted non-integer num_planets") do
       GenerateSystemJob.perform_now(
-        system_id: 'test',
-        system_name: 'Test',
+        system_id: "test",
+        system_name: "Test",
         system_x: 300,
         system_y: 300,
         num_planets: "invalid",
@@ -59,8 +58,8 @@ class GenerateSystemJobTest < ActiveJob::TestCase
   test "should validate max_moons is an integer" do
     assert_raises(ArgumentError, "Job accepted non-integer max_moons") do
       GenerateSystemJob.perform_now(
-        system_id: 'test',
-        system_name: 'Test',
+        system_id: "test",
+        system_name: "Test",
         system_x: 300,
         system_y: 300,
         num_planets: 5,
@@ -72,8 +71,8 @@ class GenerateSystemJobTest < ActiveJob::TestCase
   test "should raise error for num_planets less than 1" do
     assert_raises(ArgumentError, "Job accepted num_planets < 1") do
       GenerateSystemJob.perform_now(
-        system_id: 'test',
-        system_name: 'Test',
+        system_id: "test",
+        system_name: "Test",
         system_x: 300,
         system_y: 300,
         num_planets: 0,
@@ -85,8 +84,8 @@ class GenerateSystemJobTest < ActiveJob::TestCase
   test "should raise error for num_planets greater than 10" do
     assert_raises(ArgumentError, "Job accepted num_planets > 10") do
       GenerateSystemJob.perform_now(
-        system_id: 'test',
-        system_name: 'Test',
+        system_id: "test",
+        system_name: "Test",
         system_x: 300,
         system_y: 300,
         num_planets: 11,
@@ -98,8 +97,8 @@ class GenerateSystemJobTest < ActiveJob::TestCase
   test "should raise error for max_moons less than 0" do
     assert_raises(ArgumentError, "Job accepted max_moons < 0") do
       GenerateSystemJob.perform_now(
-        system_id: 'test',
-        system_name: 'Test',
+        system_id: "test",
+        system_name: "Test",
         system_x: 300,
         system_y: 300,
         num_planets: 5,
@@ -111,8 +110,8 @@ class GenerateSystemJobTest < ActiveJob::TestCase
   test "should raise error for max_moons greater than 5" do
     assert_raises(ArgumentError, "Job accepted max_moons > 5") do
       GenerateSystemJob.perform_now(
-        system_id: 'test',
-        system_name: 'Test',
+        system_id: "test",
+        system_name: "Test",
         system_x: 300,
         system_y: 300,
         num_planets: 5,
@@ -125,8 +124,8 @@ class GenerateSystemJobTest < ActiveJob::TestCase
     with_mocked_system_generation do
       assert_nothing_raised do
         GenerateSystemJob.perform_now(
-          system_id: 'test',
-          system_name: 'Test',
+          system_id: "test",
+          system_name: "Test",
           system_x: 300,
           system_y: 300,
           num_planets: 1,
@@ -140,8 +139,8 @@ class GenerateSystemJobTest < ActiveJob::TestCase
     with_mocked_system_generation do
       assert_nothing_raised do
         GenerateSystemJob.perform_now(
-          system_id: 'test',
-          system_name: 'Test',
+          system_id: "test",
+          system_name: "Test",
           system_x: 300,
           system_y: 300,
           num_planets: 10,
@@ -155,8 +154,8 @@ class GenerateSystemJobTest < ActiveJob::TestCase
     with_mocked_system_generation do
       assert_nothing_raised do
         GenerateSystemJob.perform_now(
-          system_id: 'test',
-          system_name: 'Test',
+          system_id: "test",
+          system_name: "Test",
           system_x: 300,
           system_y: 300,
           num_planets: 5,
@@ -170,8 +169,8 @@ class GenerateSystemJobTest < ActiveJob::TestCase
     with_mocked_system_generation do
       assert_nothing_raised do
         GenerateSystemJob.perform_now(
-          system_id: 'test',
-          system_name: 'Test',
+          system_id: "test",
+          system_name: "Test",
           system_x: 300,
           system_y: 300,
           num_planets: 5,
@@ -189,19 +188,19 @@ class GenerateSystemJobTest < ActiveJob::TestCase
     SystemGenerator.stubs(:new).with { |**params|
       generator_params = params
       true
-    }.returns(stub(generate: { 'bodies' => [] }, errors: []))
+    }.returns(stub(generate: { "bodies" => [] }, errors: []))
 
     GalaxyService.stubs(:add_system).returns(true)
     FileUtils.stubs(:mkdir_p).returns(true)
     File.stubs(:write).returns(true)
     PlanetarySystem.stubs(:generate).returns(true)
-    test_system = System.new(name: 'Test', x: 300, y: 300, json_file_path: 'data/systems/test.json')
+    test_system = System.new(name: "Test", x: 300, y: 300, json_file_path: "data/systems/test.json")
     test_system.stubs(:save!).returns(true)
     System.stubs(:find_by).returns(test_system)
 
     GenerateSystemJob.perform_now(
-      system_id: 'test123',
-      system_name: 'TestSystem',
+      system_id: "test123",
+      system_name: "TestSystem",
       system_x: 250.5,
       system_y: 350.75,
       num_planets: 5,
@@ -209,8 +208,8 @@ class GenerateSystemJobTest < ActiveJob::TestCase
     )
 
     assert_not_nil generator_params, "SystemGenerator.new was not called"
-    assert_equal 'test123', generator_params[:system_id]
-    assert_equal 'TestSystem', generator_params[:system_name]
+    assert_equal "test123", generator_params[:system_id]
+    assert_equal "TestSystem", generator_params[:system_name]
     assert_equal 250.5, generator_params[:system_x]
     assert_equal 350.75, generator_params[:system_y]
     assert_equal 5, generator_params[:num_planets]
@@ -230,8 +229,8 @@ class GenerateSystemJobTest < ActiveJob::TestCase
     with_mocked_system_generation(success: false) do
       assert_raises(StandardError, "Job did not raise error for failed generator") do
         GenerateSystemJob.perform_now(
-          system_id: 'test',
-          system_name: 'Test',
+          system_id: "test",
+          system_name: "Test",
           system_x: 300,
           system_y: 300,
           num_planets: 5,
@@ -244,13 +243,14 @@ class GenerateSystemJobTest < ActiveJob::TestCase
   # === Cache Invalidation ===
 
   test "should clear system_data cache after completion" do
-    # Set up cache with test data
-    Rails.cache.write('system_data', {"test" => "data"})
+    # Set up cache with test data under the real versioned key
+    cache_key = "system_data_test_#{GalaxyService::CACHE_VERSION}"
+    Rails.cache.write(cache_key, { "test" => "data" })
 
     with_mocked_system_generation do
       GenerateSystemJob.perform_now(
-        system_id: 'test',
-        system_name: 'Test',
+        system_id: "test",
+        system_name: "Test",
         system_x: 300,
         system_y: 300,
         num_planets: 5,
@@ -259,15 +259,15 @@ class GenerateSystemJobTest < ActiveJob::TestCase
     end
 
     # Verify cache was deleted
-    assert_nil Rails.cache.read('system_data'), "Cache was not cleared"
+    assert_nil Rails.cache.read(cache_key), "Cache was not cleared"
   end
 
   # === Job Enqueuing ===
 
   test "should be enqueueable" do
     job_args = {
-      system_id: 'test',
-      system_name: 'Test',
+      system_id: "test",
+      system_name: "Test",
       system_x: 300,
       system_y: 300,
       num_planets: 5,
@@ -280,8 +280,8 @@ class GenerateSystemJobTest < ActiveJob::TestCase
 
   test "should be enqueueable with different parameters" do
     job_args = {
-      system_id: 'test2',
-      system_name: 'Test2',
+      system_id: "test2",
+      system_name: "Test2",
       system_x: 400,
       system_y: 400,
       num_planets: 8,
@@ -299,8 +299,8 @@ class GenerateSystemJobTest < ActiveJob::TestCase
       # Should convert string to integer
       assert_nothing_raised do
         GenerateSystemJob.perform_now(
-          system_id: 'test',
-          system_name: 'Test',
+          system_id: "test",
+          system_name: "Test",
           system_x: 300,
           system_y: 300,
           num_planets: "5",
@@ -313,8 +313,8 @@ class GenerateSystemJobTest < ActiveJob::TestCase
   test "should reject float values" do
     assert_raises(ArgumentError, "Job accepted float num_planets") do
       GenerateSystemJob.perform_now(
-        system_id: 'test',
-        system_name: 'Test',
+        system_id: "test",
+        system_name: "Test",
         system_x: 300,
         system_y: 300,
         num_planets: 5.5,
@@ -326,8 +326,8 @@ class GenerateSystemJobTest < ActiveJob::TestCase
   test "should reject nil values" do
     assert_raises(ArgumentError, "Job accepted nil num_planets") do
       GenerateSystemJob.perform_now(
-        system_id: 'test',
-        system_name: 'Test',
+        system_id: "test",
+        system_name: "Test",
         system_x: 300,
         system_y: 300,
         num_planets: nil,

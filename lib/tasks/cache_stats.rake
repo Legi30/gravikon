@@ -71,7 +71,7 @@ namespace :cache do
     puts "=" * 80
 
     # Ensure cache is primed
-    Rails.cache.fetch('system_data') do
+    Rails.cache.fetch("system_data") do
       JSON.parse(File.read(Rails.root.join("data/system_data.json")))
     rescue Errno::ENOENT, JSON::ParserError
       { "bodies" => [] }
@@ -79,24 +79,24 @@ namespace :cache do
 
     # Warm up
     5.times do
-      Rails.cache.read('system_data')
+      Rails.cache.read("system_data")
     end
 
     # Benchmark cache hits
     hit_times = []
     100.times do
       start = Time.now
-      Rails.cache.read('system_data')
+      Rails.cache.read("system_data")
       hit_times << ((Time.now - start) * 1000)
     end
 
     # Benchmark cache miss (file read + JSON parse)
-    Rails.cache.delete('system_data')
+    Rails.cache.delete("system_data")
     miss_times = []
     10.times do
-      Rails.cache.delete('system_data')
+      Rails.cache.delete("system_data")
       start = Time.now
-      Rails.cache.fetch('system_data') do
+      Rails.cache.fetch("system_data") do
         JSON.parse(File.read(Rails.root.join("data/system_data.json")))
       rescue Errno::ENOENT, JSON::ParserError
         { "bodies" => [] }

@@ -7,10 +7,10 @@ class SecurityValidationsTest < ActiveSupport::TestCase
     Rails.cache.clear
 
     # Create test galaxy data
-    @test_galaxy_file = Rails.root.join('data', 'galaxy_data.json')
+    @test_galaxy_file = Rails.root.join("data", "galaxy_data.json")
     @test_galaxy_data = {
-      'black_hole' => { 'name' => 'Sagittarius Omega', 'mass' => 8.2e36, 'x' => 400, 'y' => 400 },
-      'systems' => []
+      "black_hole" => { "name" => "Sagittarius Omega", "mass" => 8.2e36, "x" => 400, "y" => 400 },
+      "systems" => []
     }
     FileUtils.mkdir_p(File.dirname(@test_galaxy_file))
     File.write(@test_galaxy_file, JSON.pretty_generate(@test_galaxy_data))
@@ -85,12 +85,12 @@ class SecurityValidationsTest < ActiveSupport::TestCase
 
   test "GalaxyService sanitizes system_id to prevent path traversal" do
     # Try to load with path traversal attempt
-    data = GalaxyService.load_system_data('../../../etc/passwd')
+    data = GalaxyService.load_system_data("../../../etc/passwd")
     assert_nil data, "Should reject path traversal and return nil"
   end
 
   test "GalaxyService sanitizes system_id to reject directory separators" do
-    data = GalaxyService.load_system_data('evil/path/system')
+    data = GalaxyService.load_system_data("evil/path/system")
     assert_nil data, "Should reject directory separators"
 
     data = GalaxyService.load_system_data('evil\\path\\system')
@@ -120,12 +120,12 @@ class SecurityValidationsTest < ActiveSupport::TestCase
     # Invalid characters
     system = System.new(name: 'System@#$', x: 300, y: 300)
     assert_not system.valid?
-    assert system.errors[:name].any? { |e| e.include?('alfanumerické') }
+    assert system.errors[:name].any? { |e| e.include?("alfanumerické") }
 
     # Valid characters
-    system = System.new(name: 'Alpha-Beta 123', x: 300, y: 300)
+    system = System.new(name: "Alpha-Beta 123", x: 300, y: 300)
     system.valid?
-    format_errors = system.errors[:name].select { |e| e.include?('alfanumerické') }
+    format_errors = system.errors[:name].select { |e| e.include?("alfanumerické") }
     assert_empty format_errors
   end
 
@@ -163,8 +163,8 @@ class SecurityValidationsTest < ActiveSupport::TestCase
 
   test "Meeting participants JSON validation prevents non-array" do
     meeting = Meeting.new(
-      start_time: '09:00',
-      end_time: '10:00',
+      start_time: "09:00",
+      end_time: "10:00",
       participants: '{"key": "value"}'
     )
 
@@ -174,8 +174,8 @@ class SecurityValidationsTest < ActiveSupport::TestCase
 
   test "Meeting participants JSON validation requires at least 2 participants" do
     meeting = Meeting.new(
-      start_time: '09:00',
-      end_time: '10:00',
+      start_time: "09:00",
+      end_time: "10:00",
       participants: '["Earth"]'
     )
 
@@ -185,8 +185,8 @@ class SecurityValidationsTest < ActiveSupport::TestCase
 
   test "Meeting participant_systems validation prevents nested objects" do
     meeting = Meeting.new(
-      start_time: '09:00',
-      end_time: '10:00',
+      start_time: "09:00",
+      end_time: "10:00",
       participants: '["Earth", "Mars"]',
       is_inter_system: true,
       participant_systems: '{"Earth": {"nested": "object"}, "Mars": 2}'
@@ -204,8 +204,8 @@ class SecurityValidationsTest < ActiveSupport::TestCase
     60.times { |i| large_hash["Body#{i}"] = 1 }
 
     meeting = Meeting.new(
-      start_time: '09:00',
-      end_time: '10:00',
+      start_time: "09:00",
+      end_time: "10:00",
       participants: '["Body0", "Body1"]',
       is_inter_system: true,
       participant_systems: large_hash.to_json
@@ -216,13 +216,14 @@ class SecurityValidationsTest < ActiveSupport::TestCase
   end
 
   test "Meeting participant_systems validation enforces bytesize limit" do
-    # Create large JSON (> 10KB)
+    # Create large JSON (> 10KB) while staying under the 50-entry limit
+    # so the bytesize check is the one that fires
     large_hash = {}
-    500.times { |i| large_hash["VeryLongBodyName#{i}" * 10] = 1 }
+    50.times { |i| large_hash["VeryLongBodyName#{i}" * 20] = 1 }
 
     meeting = Meeting.new(
-      start_time: '09:00',
-      end_time: '10:00',
+      start_time: "09:00",
+      end_time: "10:00",
       participants: '["Body0", "Body1"]',
       is_inter_system: true,
       participant_systems: large_hash.to_json
@@ -262,7 +263,7 @@ class SecurityValidationsTest < ActiveSupport::TestCase
     # Check if Rack::Attack is configured
     if defined?(Rack::Attack)
       # Rack::Attack should be configured in config/initializers/rack_attack.rb
-      assert File.exist?(Rails.root.join('config', 'initializers', 'rack_attack.rb'))
+      assert File.exist?(Rails.root.join("config", "initializers", "rack_attack.rb"))
     else
       skip "Rack::Attack not configured"
     end
@@ -272,7 +273,7 @@ class SecurityValidationsTest < ActiveSupport::TestCase
 
   test "Content Security Policy is configured" do
     # Check if CSP is configured
-    initializer_file = Rails.root.join('config', 'initializers', 'content_security_policy.rb')
+    initializer_file = Rails.root.join("config", "initializers", "content_security_policy.rb")
     if File.exist?(initializer_file)
       content = File.read(initializer_file)
       # Should not be entirely commented out
@@ -316,8 +317,8 @@ class SecurityValidationsTest < ActiveSupport::TestCase
   test "prevents systems from colliding with each other" do
     # This is tested through OrbitValidator
     galaxy_data = {
-      'black_hole' => { 'x' => 400, 'y' => 400 },
-      'systems' => [{ 'id' => 'sys1', 'x' => 300, 'y' => 300 }]
+      "black_hole" => { "x" => 400, "y" => 400 },
+      "systems" => [ { "id" => "sys1", "x" => 300, "y" => 300 } ]
     }
 
     # Try to place system too close to existing one
@@ -328,8 +329,8 @@ class SecurityValidationsTest < ActiveSupport::TestCase
 
   test "prevents systems from being too close to black hole" do
     galaxy_data = {
-      'black_hole' => { 'x' => 400, 'y' => 400 },
-      'systems' => []
+      "black_hole" => { "x" => 400, "y" => 400 },
+      "systems" => []
     }
 
     # Try to place system too close to black hole

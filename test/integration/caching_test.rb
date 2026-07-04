@@ -8,20 +8,20 @@ class CachingTest < ActiveSupport::TestCase
     Rails.cache.clear
 
     # Create test galaxy data
-    @test_galaxy_file = Rails.root.join('data', 'galaxy_data.json')
+    @test_galaxy_file = GalaxyService.galaxy_data_path
     @test_galaxy_data = {
-      'black_hole' => {
-        'name' => 'Sagittarius Omega',
-        'mass' => 8.2e36,
-        'x' => 400,
-        'y' => 400,
-        'schwarzschild_radius' => 0.00365,
-        'dilation' => 0.0,
-        'type' => 'black_hole'
+      "black_hole" => {
+        "name" => "Sagittarius Omega",
+        "mass" => 8.2e36,
+        "x" => 400,
+        "y" => 400,
+        "schwarzschild_radius" => 0.00365,
+        "dilation" => 0.0,
+        "type" => "black_hole"
       },
-      'systems' => [
-        { 'id' => 'test_sys_1', 'x' => 200.0, 'y' => 300.0 },
-        { 'id' => 'test_sys_2', 'x' => 600.0, 'y' => 500.0 }
+      "systems" => [
+        { "id" => "test_sys_1", "x" => 200.0, "y" => 300.0 },
+        { "id" => "test_sys_2", "x" => 600.0, "y" => 500.0 }
       ]
     }
 
@@ -29,21 +29,21 @@ class CachingTest < ActiveSupport::TestCase
     File.write(@test_galaxy_file, JSON.pretty_generate(@test_galaxy_data))
 
     # Create test system files
-    FileUtils.mkdir_p(Rails.root.join('data', 'systems'))
-    @system1_file = Rails.root.join('data', 'systems', 'test_sys_1.json')
-    @system2_file = Rails.root.join('data', 'systems', 'test_sys_2.json')
+    FileUtils.mkdir_p(GalaxyService.systems_data_dir)
+    @system1_file = GalaxyService.systems_data_dir.join("test_sys_1.json")
+    @system2_file = GalaxyService.systems_data_dir.join("test_sys_2.json")
 
     File.write(@system1_file, JSON.pretty_generate({
-      'bodies' => [
-        { 'name' => 'Alpha Star', 'type' => 'star', 'mass' => 1.989e30 },
-        { 'name' => 'Planet A', 'type' => 'planet', 'mass' => 5.97e24 }
+      "bodies" => [
+        { "name" => "Alpha Star", "type" => "star", "mass" => 1.989e30 },
+        { "name" => "Planet A", "type" => "planet", "mass" => 5.97e24 }
       ]
     }))
 
     File.write(@system2_file, JSON.pretty_generate({
-      'bodies' => [
-        { 'name' => 'Beta Star', 'type' => 'star', 'mass' => 2.5e30 },
-        { 'name' => 'Planet B', 'type' => 'planet', 'mass' => 4.5e24 }
+      "bodies" => [
+        { "name" => "Beta Star", "type" => "star", "mass" => 2.5e30 },
+        { "name" => "Planet B", "type" => "planet", "mass" => 4.5e24 }
       ]
     }))
   end
@@ -81,7 +81,7 @@ class CachingTest < ActiveSupport::TestCase
     assert Rails.cache.exist?(cache_key)
 
     # Add system - should invalidate cache
-    GalaxyService.add_system('new_sys', 300.0, 300.0)
+    GalaxyService.add_system("new_sys", 300.0, 300.0)
     assert_not Rails.cache.exist?(cache_key), "Cache should be invalidated after adding system"
 
     # Load again to cache
@@ -89,7 +89,7 @@ class CachingTest < ActiveSupport::TestCase
     assert Rails.cache.exist?(cache_key)
 
     # Remove system - should invalidate cache
-    GalaxyService.remove_system('new_sys')
+    GalaxyService.remove_system("new_sys")
     assert_not Rails.cache.exist?(cache_key), "Cache should be invalidated after removing system"
   end
 
@@ -98,12 +98,12 @@ class CachingTest < ActiveSupport::TestCase
     cache_key = "system_data_test_sys_1_#{GalaxyService::CACHE_VERSION}"
 
     # Load system - should cache
-    system_data = GalaxyService.load_system_data('test_sys_1')
+    system_data = GalaxyService.load_system_data("test_sys_1")
     assert Rails.cache.exist?(cache_key), "System data should be cached"
 
     cached_data = Rails.cache.read(cache_key)
     assert_not_nil cached_data
-    assert_equal 2, cached_data['bodies'].length
+    assert_equal 2, cached_data["bodies"].length
   end
 
   # Test system cache invalidated when specific system is regenerated
@@ -111,11 +111,11 @@ class CachingTest < ActiveSupport::TestCase
     cache_key = "system_data_test_sys_1_#{GalaxyService::CACHE_VERSION}"
 
     # Load and cache
-    GalaxyService.load_system_data('test_sys_1')
+    GalaxyService.load_system_data("test_sys_1")
     assert Rails.cache.exist?(cache_key)
 
     # Clear specific system cache
-    GalaxyService.clear_system_cache('test_sys_1')
+    GalaxyService.clear_system_cache("test_sys_1")
     assert_not Rails.cache.exist?(cache_key), "System cache should be cleared"
   end
 
@@ -123,29 +123,29 @@ class CachingTest < ActiveSupport::TestCase
   test "used_celestial_names cached and reused" do
     # First call - should cache
     names1 = GalaxyService.get_used_celestial_names
-    assert_includes names1, 'Alpha Star'
-    assert_includes names1, 'Beta Star'
+    assert_includes names1, "Alpha Star"
+    assert_includes names1, "Beta Star"
 
     # Verify it's cached
-    cached_names = Rails.cache.read('used_celestial_names')
+    cached_names = Rails.cache.read("used_celestial_names")
     assert_not_nil cached_names
     assert_equal names1, cached_names
 
     # Second call - should use cache (add new system file but it won't be detected)
-    File.write(Rails.root.join('data', 'systems', 'test_sys_3.json'), JSON.pretty_generate({
-      'bodies' => [{ 'name' => 'Gamma Star', 'type' => 'star' }]
+    File.write(GalaxyService.systems_data_dir.join("test_sys_3.json"), JSON.pretty_generate({
+      "bodies" => [ { "name" => "Gamma Star", "type" => "star" } ]
     }))
 
     names2 = GalaxyService.get_used_celestial_names
-    assert_not_includes names2, 'Gamma Star', "Should use cached data, not see new system"
+    assert_not_includes names2, "Gamma Star", "Should use cached data, not see new system"
 
     # After cache invalidation - should see new system
     GalaxyService.invalidate_used_names_cache
     names3 = GalaxyService.get_used_celestial_names
-    assert_includes names3, 'Gamma Star', "Should see new system after cache invalidation"
+    assert_includes names3, "Gamma Star", "Should see new system after cache invalidation"
 
     # Cleanup
-    File.delete(Rails.root.join('data', 'systems', 'test_sys_3.json'))
+    File.delete(GalaxyService.systems_data_dir.join("test_sys_3.json"))
   end
 
   # Test cache warming on application start
@@ -164,20 +164,20 @@ class CachingTest < ActiveSupport::TestCase
   # Test cache:clear_systems rake task clears all system caches
   test "clear_all_system_caches clears all system-related caches" do
     # Cache some systems
-    GalaxyService.load_system_data('test_sys_1')
-    GalaxyService.load_system_data('test_sys_2')
+    GalaxyService.load_system_data("test_sys_1")
+    GalaxyService.load_system_data("test_sys_2")
     GalaxyService.get_used_celestial_names
 
     # Verify caches exist
     assert Rails.cache.exist?("system_data_test_sys_1_#{GalaxyService::CACHE_VERSION}")
     assert Rails.cache.exist?("system_data_test_sys_2_#{GalaxyService::CACHE_VERSION}")
-    assert Rails.cache.exist?('used_celestial_names')
+    assert Rails.cache.exist?("used_celestial_names")
 
     # Clear all system caches
     GalaxyService.clear_all_system_caches
 
     # Verify caches are cleared
-    assert_not Rails.cache.exist?('used_celestial_names'), "Used names cache should be cleared"
+    assert_not Rails.cache.exist?("used_celestial_names"), "Used names cache should be cleared"
     # System caches should also be cleared (using pattern matching)
   end
 
@@ -216,15 +216,15 @@ class CachingTest < ActiveSupport::TestCase
   # Test SVG timestamp caching for cache busting
   test "SVG timestamps are cached for cache busting" do
     # Create test SVG
-    svg_file = Rails.root.join('public', 'galaxy.svg')
+    svg_file = GalaxyService.galaxy_svg_path
     FileUtils.mkdir_p(File.dirname(svg_file))
-    File.write(svg_file, '<svg></svg>')
+    File.write(svg_file, "<svg></svg>")
 
     timestamp1 = GalaxyService.get_svg_timestamp(:galaxy)
     assert_not_nil timestamp1
 
     # Should be cached
-    cache_key = 'galaxy_svg_timestamp'
+    cache_key = "galaxy_svg_timestamp"
     assert Rails.cache.exist?(cache_key)
 
     # Update timestamp
@@ -246,14 +246,14 @@ class CachingTest < ActiveSupport::TestCase
 
     # Used names: 30 minutes
     GalaxyService.get_used_celestial_names
-    assert Rails.cache.exist?('used_celestial_names')
+    assert Rails.cache.exist?("used_celestial_names")
   end
 
   # Test cache version upgrade clears old caches
   test "cache version prevents stale data after schema changes" do
     # Write data with old version manually
     old_key = "galaxy_data_v1"
-    Rails.cache.write(old_key, { 'old' => 'data' })
+    Rails.cache.write(old_key, { "old" => "data" })
 
     # Load with current version
     GalaxyService.load_galaxy_data

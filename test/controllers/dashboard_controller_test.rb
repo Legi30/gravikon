@@ -2,32 +2,28 @@ require "test_helper"
 
 class DashboardControllerTest < ActionDispatch::IntegrationTest
   setup do
-    # Mock system_data.json content
-    @mock_system_data = {
-      "bodies" => [
-        {"name" => "Sol", "type" => "star", "x" => 400, "y" => 400, "radius" => 6.96e8, "mass" => 1.989e30, "dilation" => 1.0},
-        {"name" => "Earth", "type" => "planet", "x" => 500, "y" => 400, "radius" => 6.371e6, "mass" => 5.972e24, "dilation" => 0.9999},
-        {"name" => "Mars", "type" => "planet", "x" => 600, "y" => 400, "radius" => 3.389e6, "mass" => 6.39e23, "dilation" => 0.9998}
-      ]
-    }.to_json
-
-    # Clear cache before each test
+    Meeting.delete_all
+    System.delete_all
     Rails.cache.clear
+
+    # One real system with three bodies in the isolated test data root
+    @system = System.create!(name: "Sol System", x: 200, y: 200, json_file_path: "data/systems/sol_dash.json")
+    write_system_data(@system, [
+      { "name" => "Sol", "type" => "star", "x" => 400, "y" => 400, "radius" => 6.96e8, "mass" => 1.989e30, "dilation" => 1.0 },
+      { "name" => "Earth", "type" => "planet", "x" => 500, "y" => 400, "radius" => 6.371e6, "mass" => 5.972e24, "dilation" => 0.9999 },
+      { "name" => "Mars", "type" => "planet", "x" => 600, "y" => 400, "radius" => 3.389e6, "mass" => 6.39e23, "dilation" => 0.9998 }
+    ])
   end
 
   # === GET index ===
 
   test "should get index" do
-    File.stub :read, @mock_system_data do
-      get dashboard_url
-    end
+    get dashboard_url
     assert_response :success
   end
 
   test "should load dashboard statistics with no meetings" do
-    File.stub :read, @mock_system_data do
-      get dashboard_url
-    end
+    get dashboard_url
 
     assert_response :success
     assert_equal 0, assigns(:total_meetings)
@@ -37,7 +33,6 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should calculate dashboard statistics with meetings" do
-    # Create test meetings
     Meeting.create!(
       start_time: "09:00",
       end_time: "10:00",
@@ -53,9 +48,7 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
       avg_delay: 100
     )
 
-    File.stub :read, @mock_system_data do
-      get dashboard_url
-    end
+    get dashboard_url
 
     assert_response :success
     assert_equal 2, assigns(:total_meetings)
@@ -65,7 +58,6 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should calculate participant frequency" do
-    # Create meetings with different participants
     Meeting.create!(
       start_time: "09:00",
       end_time: "10:00",
@@ -88,9 +80,7 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
       avg_delay: 110
     )
 
-    File.stub :read, @mock_system_data do
-      get dashboard_url
-    end
+    get dashboard_url
 
     assert_response :success
     participant_freq = assigns(:participant_frequency)
@@ -100,7 +90,6 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should calculate duration distribution" do
-    # Create meetings with different durations
     Meeting.create!(
       start_time: "09:00",
       end_time: "10:00",
@@ -123,9 +112,7 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
       avg_delay: 110
     )
 
-    File.stub :read, @mock_system_data do
-      get dashboard_url
-    end
+    get dashboard_url
 
     assert_response :success
     duration_dist = assigns(:duration_distribution)
@@ -137,7 +124,7 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should identify featured meetings" do
-    meeting1 = Meeting.create!(
+    Meeting.create!(
       start_time: "09:00",
       end_time: "10:00",
       participants: '["Earth", "Mars"]',
@@ -159,9 +146,7 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
       avg_delay: 200 # Highest delay
     )
 
-    File.stub :read, @mock_system_data do
-      get dashboard_url
-    end
+    get dashboard_url
 
     assert_response :success
     assert_equal meeting2.id, assigns(:longest_meeting).id
@@ -169,7 +154,6 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should load recent meetings" do
-    # Create meetings with different timestamps
     meeting1 = Meeting.create!(
       start_time: "09:00",
       end_time: "10:00",
@@ -186,9 +170,7 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
       avg_delay: 100
     )
 
-    File.stub :read, @mock_system_data do
-      get dashboard_url
-    end
+    get dashboard_url
 
     assert_response :success
     recent = assigns(:recent_meetings)
@@ -198,22 +180,18 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_equal meeting1.id, recent.last.id
   end
 
-  test "should load system data bodies" do
-    File.stub :read, @mock_system_data do
-      get dashboard_url
-    end
+  test "should count bodies across all systems" do
+    get dashboard_url
 
     assert_response :success
-    assert_not_nil assigns(:system_data)
     assert_equal 3, assigns(:total_bodies)
   end
 
-  test "should handle missing system_data.json gracefully" do
-    File.stub :read, lambda { |*args|
-      raise Errno::ENOENT if args[0].to_s.include?("system_data.json")
-    } do
-      get dashboard_url
-    end
+  test "should handle missing system data file gracefully" do
+    File.delete(@system.data_file_path)
+    GalaxyService.clear_system_cache(@system.system_id)
+
+    get dashboard_url
 
     assert_response :success
     assert_equal 0, assigns(:total_bodies)
@@ -228,17 +206,14 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
       avg_delay: 120
     )
 
-    File.stub :read, @mock_system_data do
-      # First request - should cache
-      get dashboard_url
-      assert_response :success
+    get dashboard_url
+    assert_response :success
 
-      # Verify cache was populated
-      cache_key = "dashboard_stats_v2_#{Meeting.maximum(:updated_at).to_i}"
-      cached_data = Rails.cache.read(cache_key)
-      assert_not_nil cached_data, "Dashboard stats were not cached"
-      assert_equal 1, cached_data[:total_meetings]
-    end
+    # Verify cache was populated
+    cache_key = "dashboard_stats_v2_#{Meeting.maximum(:updated_at).to_i}"
+    cached_data = Rails.cache.read(cache_key)
+    assert_not_nil cached_data, "Dashboard stats were not cached"
+    assert_equal 1, cached_data[:total_meetings]
   end
 
   test "should use cached dashboard statistics on subsequent requests" do
@@ -250,23 +225,19 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
       avg_delay: 120
     )
 
-    File.stub :read, @mock_system_data do
-      # First request - cache miss
-      get dashboard_url
-      assert_response :success
+    # First request - cache miss
+    get dashboard_url
+    assert_response :success
 
-      # Manually verify cache key
-      cache_key = "dashboard_stats_v2_#{Meeting.maximum(:updated_at).to_i}"
-      cached_stats = Rails.cache.read(cache_key)
-      assert_not_nil cached_stats
+    cache_key = "dashboard_stats_v2_#{Meeting.maximum(:updated_at).to_i}"
+    cached_stats = Rails.cache.read(cache_key)
+    assert_not_nil cached_stats
 
-      # Second request - should use cache (won't recalculate stats)
-      # This is tested by ensuring the stats are consistent
-      get dashboard_url
-      assert_response :success
-      assert_equal cached_stats[:total_meetings], assigns(:total_meetings)
-      assert_equal cached_stats[:avg_delay], assigns(:avg_delay)
-    end
+    # Second request - should use cache (won't recalculate stats)
+    get dashboard_url
+    assert_response :success
+    assert_equal cached_stats[:total_meetings], assigns(:total_meetings)
+    assert_equal cached_stats[:avg_delay], assigns(:avg_delay)
   end
 
   test "should not cache featured meetings" do
@@ -278,25 +249,22 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
       avg_delay: 120
     )
 
-    File.stub :read, @mock_system_data do
-      # First request
-      get dashboard_url
-      assert_response :success
-      assert_equal meeting1.id, assigns(:longest_meeting).id
+    get dashboard_url
+    assert_response :success
+    assert_equal meeting1.id, assigns(:longest_meeting).id
 
-      # Create a new longer meeting
-      meeting2 = Meeting.create!(
-        start_time: "14:00",
-        end_time: "15:00",
-        participants: '["Earth", "Sol"]',
-        local_avg_duration: 120,
-        avg_delay: 100
-      )
+    # Create a new longer meeting
+    meeting2 = Meeting.create!(
+      start_time: "14:00",
+      end_time: "15:00",
+      participants: '["Earth", "Sol"]',
+      local_avg_duration: 120,
+      avg_delay: 100
+    )
 
-      # Second request - should show NEW longest meeting (not cached)
-      get dashboard_url
-      assert_response :success
-      assert_equal meeting2.id, assigns(:longest_meeting).id
-    end
+    # Second request - should show NEW longest meeting (not cached)
+    get dashboard_url
+    assert_response :success
+    assert_equal meeting2.id, assigns(:longest_meeting).id
   end
 end

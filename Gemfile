@@ -17,7 +17,7 @@ gem "jbuilder"
 # Rack middleware for blocking & throttling abusive requests [https://github.com/rack/rack-attack]
 # Note: Only needed in production, not test environment (see config/initializers/rack_attack.rb:165)
 # TEMPORARILY COMMENTED OUT - Re-enable after running 'bundle install'
-gem "rack-attack", groups: [:development, :production]
+gem "rack-attack", groups: [ :development, :production ]
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem "tzinfo-data", platforms: %i[ windows jruby ]

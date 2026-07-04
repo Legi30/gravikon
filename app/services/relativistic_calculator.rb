@@ -27,7 +27,7 @@ class RelativisticCalculator
   # @param galaxy_data [Hash] Optional galaxy configuration (loads from file if not provided)
   def initialize(galaxy_data: nil)
     @galaxy_data = galaxy_data || load_galaxy_data
-    @black_hole = @galaxy_data&.dig('black_hole') || default_black_hole
+    @black_hole = @galaxy_data&.dig("black_hole") || default_black_hole
   end
 
   # Calculate total time dilation for a body in a system
@@ -41,7 +41,7 @@ class RelativisticCalculator
     return 1.0 if body.nil? || system_id.nil?
 
     # Local stellar time dilation from body data
-    local_dilation = body['dilation'] || body[:dilation] || 1.0
+    local_dilation = body["dilation"] || body[:dilation] || 1.0
 
     # Black hole time dilation based on system's position in galaxy
     system = find_system(system_id)
@@ -91,10 +91,10 @@ class RelativisticCalculator
     # If same system, use local coordinates directly
     if system_id_1 == system_id_2
       return euclidean_distance(
-        body1['x'] || body1[:x] || 0,
-        body1['y'] || body1[:y] || 0,
-        body2['x'] || body2[:x] || 0,
-        body2['y'] || body2[:y] || 0
+        body1["x"] || body1[:x] || 0,
+        body1["y"] || body1[:y] || 0,
+        body2["x"] || body2[:x] || 0,
+        body2["y"] || body2[:y] || 0
       )
     end
 
@@ -106,10 +106,10 @@ class RelativisticCalculator
 
     return 0.0 unless system_1 && system_2
 
-    body1_galaxy_x = system_1.x + ((body1['x'] || body1[:x] || SYSTEM_LOCAL_CENTER) - SYSTEM_LOCAL_CENTER)
-    body1_galaxy_y = system_1.y + ((body1['y'] || body1[:y] || SYSTEM_LOCAL_CENTER) - SYSTEM_LOCAL_CENTER)
-    body2_galaxy_x = system_2.x + ((body2['x'] || body2[:x] || SYSTEM_LOCAL_CENTER) - SYSTEM_LOCAL_CENTER)
-    body2_galaxy_y = system_2.y + ((body2['y'] || body2[:y] || SYSTEM_LOCAL_CENTER) - SYSTEM_LOCAL_CENTER)
+    body1_galaxy_x = system_1.x + ((body1["x"] || body1[:x] || SYSTEM_LOCAL_CENTER) - SYSTEM_LOCAL_CENTER)
+    body1_galaxy_y = system_1.y + ((body1["y"] || body1[:y] || SYSTEM_LOCAL_CENTER) - SYSTEM_LOCAL_CENTER)
+    body2_galaxy_x = system_2.x + ((body2["x"] || body2[:x] || SYSTEM_LOCAL_CENTER) - SYSTEM_LOCAL_CENTER)
+    body2_galaxy_y = system_2.y + ((body2["y"] || body2[:y] || SYSTEM_LOCAL_CENTER) - SYSTEM_LOCAL_CENTER)
 
     # Calculate distance in galaxy coordinates
     euclidean_distance(body1_galaxy_x, body1_galaxy_y, body2_galaxy_x, body2_galaxy_y)
@@ -153,8 +153,8 @@ class RelativisticCalculator
     distances = []
 
     participants_with_systems.each do |participant|
-      body = participant[:body] || participant['body']
-      system_id = participant[:system_id] || participant['system_id']
+      body = participant[:body] || participant["body"]
+      system_id = participant[:system_id] || participant["system_id"]
 
       next if body.nil? || system_id.nil?
 
@@ -163,10 +163,10 @@ class RelativisticCalculator
 
     # Calculate pairwise distances for all participants
     participants_with_systems.combination(2).each do |p1, p2|
-      body1 = p1[:body] || p1['body']
-      system_id_1 = p1[:system_id] || p1['system_id']
-      body2 = p2[:body] || p2['body']
-      system_id_2 = p2[:system_id] || p2['system_id']
+      body1 = p1[:body] || p1["body"]
+      system_id_1 = p1[:system_id] || p1["system_id"]
+      body2 = p2[:body] || p2["body"]
+      system_id_2 = p2[:system_id] || p2["system_id"]
 
       next if body1.nil? || system_id_1.nil? || body2.nil? || system_id_2.nil?
 
@@ -177,9 +177,9 @@ class RelativisticCalculator
 
     avg_delay = if distances.any?
                   distances.map { |d| calculate_signal_delay(d) }.sum / distances.size.to_f
-                else
+    else
                   0.0
-                end
+    end
 
     {
       avg_duration: (base_duration * avg_dilation).round(2),
@@ -216,9 +216,9 @@ class RelativisticCalculator
   def calculate_black_hole_dilation(system_x, system_y)
     return 1.0 unless @black_hole
 
-    bh_x = @black_hole['x'] || GALAXY_CENTER_X
-    bh_y = @black_hole['y'] || GALAXY_CENTER_Y
-    bh_mass = @black_hole['mass'] || PhysicsConstants::BLACK_HOLE_MASS
+    bh_x = @black_hole["x"] || GALAXY_CENTER_X
+    bh_y = @black_hole["y"] || GALAXY_CENTER_Y
+    bh_mass = @black_hole["mass"] || PhysicsConstants::BLACK_HOLE_MASS
 
     distance = euclidean_distance(system_x, system_y, bh_x, bh_y)
 
@@ -249,11 +249,11 @@ class RelativisticCalculator
   # @return [Hash] Default black hole properties
   def default_black_hole
     {
-      'name' => 'Sagittarius Omega',
-      'mass' => PhysicsConstants::BLACK_HOLE_MASS,
-      'x' => GALAXY_CENTER_X,
-      'y' => GALAXY_CENTER_Y,
-      'type' => 'black_hole'
+      "name" => "Sagittarius Omega",
+      "mass" => PhysicsConstants::BLACK_HOLE_MASS,
+      "x" => GALAXY_CENTER_X,
+      "y" => GALAXY_CENTER_Y,
+      "type" => "black_hole"
     }
   end
 

@@ -20,17 +20,17 @@ Rails.application.config.after_initialize do
 
       # Warm galaxy data cache
       galaxy_data = GalaxyService.load_galaxy_data
-      systems_count = galaxy_data['systems']&.count || 0
+      systems_count = galaxy_data["systems"]&.count || 0
       Rails.logger.info("Cache warming: Galaxy data loaded (#{systems_count} systems)")
 
       # Warm individual system caches
       # Only load first 10 systems to avoid excessive startup time
       System.order(:id).limit(10).each do |system|
-        system_file_id = File.basename(system.json_file_path, '.json')
+        system_file_id = File.basename(system.json_file_path, ".json")
         system_data = GalaxyService.load_system_data(system_file_id)
 
         if system_data
-          body_count = system_data['bodies']&.count || 0
+          body_count = system_data["bodies"]&.count || 0
           Rails.logger.info("Cache warming: System '#{system.name}' loaded (#{body_count} bodies)")
         else
           Rails.logger.warn("Cache warming: System '#{system.name}' has no data file")

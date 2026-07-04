@@ -69,7 +69,7 @@ class DashboardController < ApplicationController
 
   def job_performance
     # Get job performance history from cache
-    @job_history = Rails.cache.fetch('job_performance_history') { [] }
+    @job_history = Rails.cache.fetch("job_performance_history") { [] }
 
     if @job_history.any?
       # Calculate statistics

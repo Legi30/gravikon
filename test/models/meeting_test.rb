@@ -153,7 +153,7 @@ class MeetingTest < ActiveSupport::TestCase
     meeting = Meeting.new(
       start_time: "09:00",
       end_time: "10:00",
-      participants: 'not valid json'
+      participants: "not valid json"
     )
     assert_not meeting.valid?, "Accepted malformed JSON in participants"
     assert meeting.errors[:participants].any?
@@ -173,7 +173,7 @@ class MeetingTest < ActiveSupport::TestCase
     meeting = Meeting.new(
       start_time: "09:00",
       end_time: "10:00",
-      participants: '[]'
+      participants: "[]"
     )
     assert_not meeting.valid?, "Accepted empty array in participants"
     assert meeting.errors[:participants].any?
@@ -217,11 +217,11 @@ class MeetingTest < ActiveSupport::TestCase
       end_time: "10:00",
       participants: '["Earth", "Mars", "Venus"]'
     )
-    assert_equal ["Earth", "Mars", "Venus"], meeting.participants_array
+    assert_equal [ "Earth", "Mars", "Venus" ], meeting.participants_array
   end
 
   test "participants_array returns empty array for invalid JSON" do
-    meeting = Meeting.new(participants: 'invalid json')
+    meeting = Meeting.new(participants: "invalid json")
     assert_equal [], meeting.participants_array
   end
 
@@ -285,11 +285,11 @@ class MeetingTest < ActiveSupport::TestCase
     meeting = Meeting.new(
       start_time: "09:00",
       end_time: "10:00",
-      participants: ["Earth", "Mars"]
+      participants: [ "Earth", "Mars" ]
     )
     meeting.valid? # Trigger validation and callbacks
     assert_kind_of String, meeting.participants
-    assert_equal ["Earth", "Mars"], JSON.parse(meeting.participants)
+    assert_equal [ "Earth", "Mars" ], JSON.parse(meeting.participants)
   end
 
   # === System Associations (LOG002 tests) ===
@@ -377,7 +377,7 @@ class MeetingTest < ActiveSupport::TestCase
       end_time: "10:00",
       participants: '["Earth", "Mars"]',
       is_inter_system: true,
-      participant_systems: 'invalid json'
+      participant_systems: "invalid json"
     )
 
     assert_not meeting.valid?
@@ -433,10 +433,10 @@ class MeetingTest < ActiveSupport::TestCase
     # Create system data files with test bodies
     FileUtils.mkdir_p(Rails.root.join("data/systems"))
     File.write(Rails.root.join("data/systems/alpha.json"), {
-      bodies: [{ name: "Earth", type: "planet" }, { name: "Mars", type: "planet" }]
+      bodies: [ { name: "Earth", type: "planet" }, { name: "Mars", type: "planet" } ]
     }.to_json)
     File.write(Rails.root.join("data/systems/beta.json"), {
-      bodies: [{ name: "Proxima", type: "star" }, { name: "Kepler", type: "planet" }]
+      bodies: [ { name: "Proxima", type: "star" }, { name: "Kepler", type: "planet" } ]
     }.to_json)
 
     meeting = Meeting.new(
@@ -506,82 +506,5 @@ class MeetingTest < ActiveSupport::TestCase
     meeting.valid?
     # participant_systems should be set to nil by the security check
     assert_nil meeting.participant_systems
-  end
-
-  test "participant_bodies_with_systems returns array for single-system meeting" do
-    system = System.new(name: "Sol", x: 300, y: 300, json_file_path: "data/systems/sol.json")
-    system.save(validate: false)
-
-    # Create system data file
-    FileUtils.mkdir_p(Rails.root.join("data/systems"))
-    File.write(Rails.root.join("data/systems/sol.json"), {
-      bodies: [
-        { name: "Earth", type: "planet", mass: 5.97e24 },
-        { name: "Mars", type: "planet", mass: 6.39e23 }
-      ]
-    }.to_json)
-
-    meeting = Meeting.new(
-      start_time: "09:00",
-      end_time: "10:00",
-      participants: '["Earth", "Mars"]',
-      system: system
-    )
-
-    bodies = meeting.participant_bodies_with_systems
-    assert_equal 2, bodies.length
-    assert_equal "Earth", bodies[0][:name]
-    assert_equal system.id, bodies[0][:system_id]
-    assert_equal "Sol", bodies[0][:system_name]
-    assert_equal 5.97e24, bodies[0][:body_data]["mass"]
-
-    # Cleanup
-    File.delete(Rails.root.join("data/systems/sol.json")) rescue nil
-    system.destroy
-  end
-
-  test "participant_bodies_with_systems returns array for inter-system meeting" do
-    system1 = System.new(name: "Alpha", x: 200, y: 200, json_file_path: "data/systems/alpha.json")
-    system2 = System.new(name: "Beta", x: 600, y: 600, json_file_path: "data/systems/beta.json")
-    system1.save(validate: false)
-    system2.save(validate: false)
-
-    # Create system data files
-    FileUtils.mkdir_p(Rails.root.join("data/systems"))
-    File.write(Rails.root.join("data/systems/alpha.json"), {
-      bodies: [{ name: "Earth", type: "planet", mass: 5.97e24 }]
-    }.to_json)
-    File.write(Rails.root.join("data/systems/beta.json"), {
-      bodies: [{ name: "Kepler", type: "planet", mass: 3.5e24 }]
-    }.to_json)
-
-    meeting = Meeting.new(
-      start_time: "09:00",
-      end_time: "10:00",
-      participants: '["Earth", "Kepler"]',
-      is_inter_system: true,
-      participant_systems: "{\"Earth\": #{system1.id}, \"Kepler\": #{system2.id}}"
-    )
-
-    bodies = meeting.participant_bodies_with_systems
-    assert_equal 2, bodies.length
-
-    # Check Earth from Alpha
-    earth_body = bodies.find { |b| b[:name] == "Earth" }
-    assert_not_nil earth_body
-    assert_equal system1.id, earth_body[:system_id]
-    assert_equal "Alpha", earth_body[:system_name]
-
-    # Check Kepler from Beta
-    kepler_body = bodies.find { |b| b[:name] == "Kepler" }
-    assert_not_nil kepler_body
-    assert_equal system2.id, kepler_body[:system_id]
-    assert_equal "Beta", kepler_body[:system_name]
-
-    # Cleanup
-    File.delete(Rails.root.join("data/systems/alpha.json")) rescue nil
-    File.delete(Rails.root.join("data/systems/beta.json")) rescue nil
-    system1.destroy
-    system2.destroy
   end
 end

@@ -5,21 +5,21 @@ require "test_helper"
 class GalaxyControllerTest < ActionDispatch::IntegrationTest
   setup do
     # Create test galaxy data
-    @test_galaxy_file = Rails.root.join('data', 'galaxy_data.json')
-    @backup_file = Rails.root.join('data', 'galaxy_data.json.backup')
+    @test_galaxy_file = GalaxyService.galaxy_data_path
+    @backup_file = Rails.root.join("tmp", "galaxy_data.json.backup")
 
     if File.exist?(@test_galaxy_file)
       FileUtils.cp(@test_galaxy_file, @backup_file)
     end
 
     @test_galaxy_data = {
-      'black_hole' => {
-        'name' => 'Sagittarius Omega',
-        'mass' => 8.2e36,
-        'x' => 400,
-        'y' => 400
+      "black_hole" => {
+        "name" => "Sagittarius Omega",
+        "mass" => 8.2e36,
+        "x" => 400,
+        "y" => 400
       },
-      'systems' => []
+      "systems" => []
     }
 
     FileUtils.mkdir_p(File.dirname(@test_galaxy_file))
@@ -42,7 +42,7 @@ class GalaxyControllerTest < ActionDispatch::IntegrationTest
   test "GET index displays galaxy map" do
     get galaxy_index_path
     assert_response :success
-    assert_select 'h1', /Galaxy|Galaxie/i
+    assert_select "h1", /Galaxy|Galaxie/i
   end
 
   # Test GET show_system displays specific system
@@ -52,22 +52,22 @@ class GalaxyControllerTest < ActionDispatch::IntegrationTest
     system.save(validate: false)
 
     # Create system data file
-    FileUtils.mkdir_p(Rails.root.join("data/systems"))
-    File.write(Rails.root.join("data/systems/test.json"), {
-      bodies: [{ name: "Star", type: "star" }]
+    FileUtils.mkdir_p(GalaxyService.systems_data_dir)
+    File.write(GalaxyService.system_data_path("test"), {
+      bodies: [ { name: "Star", type: "star" } ]
     }.to_json)
 
     get galaxy_system_path(system)
     assert_response :success
 
     # Cleanup
-    File.delete(Rails.root.join("data/systems/test.json")) rescue nil
+    File.delete(GalaxyService.system_data_path("test")) rescue nil
     system.destroy
   end
 
   # Test POST create_system with valid params creates System record
   test "POST create_system with valid params creates System record" do
-    assert_difference('System.count', 1) do
+    assert_difference("System.count", 1) do
       post galaxy_systems_path, params: {
         system: {
           name: "New System",
@@ -91,7 +91,7 @@ class GalaxyControllerTest < ActionDispatch::IntegrationTest
 
     # Update galaxy data to include this system
     galaxy_data = JSON.parse(File.read(@test_galaxy_file))
-    galaxy_data['systems'] << { 'id' => 'existing', 'x' => 300, 'y' => 300 }
+    galaxy_data["systems"] << { "id" => "existing", "x" => 300, "y" => 300 }
     File.write(@test_galaxy_file, JSON.pretty_generate(galaxy_data))
 
     # Try to create system too close to existing
@@ -132,17 +132,17 @@ class GalaxyControllerTest < ActionDispatch::IntegrationTest
     system.save(validate: false)
 
     # Create associated files
-    FileUtils.mkdir_p(Rails.root.join("data/systems"))
-    File.write(Rails.root.join("data/systems/delete_test.json"), "{}")
+    FileUtils.mkdir_p(GalaxyService.systems_data_dir)
+    File.write(GalaxyService.system_data_path("delete_test"), "{}")
 
-    assert_difference('System.count', -1) do
+    assert_difference("System.count", -1) do
       delete galaxy_system_path(system)
     end
 
     assert_redirected_to galaxy_index_path
 
     # Files should be cleaned up
-    assert_not File.exist?(Rails.root.join("data/systems/delete_test.json"))
+    assert_not File.exist?(GalaxyService.system_data_path("delete_test"))
   end
 
   # Test strong parameters whitelist only safe attributes

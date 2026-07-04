@@ -3,7 +3,7 @@
 # Controller for galaxy view and system management
 # Handles CRUD operations for solar systems and displays galaxy map
 class GalaxyController < ApplicationController
-  before_action :set_system, only: [:show_system, :edit_system, :update_system, :destroy_system]
+  before_action :set_system, only: [ :show_system, :edit_system, :update_system, :destroy_system ]
 
   # GET /galaxy
   # Display galaxy map with all systems
@@ -48,7 +48,7 @@ class GalaxyController < ApplicationController
     # Load all meetings for filtering in view
     @meetings = Meeting.all
 
-    @bodies = @system_data['bodies'] || []
+    @bodies = @system_data["bodies"] || []
 
     respond_to do |format|
       format.html
@@ -298,7 +298,7 @@ class GalaxyController < ApplicationController
   def system_params
     permitted = params.require(:system).permit(
       :name, :x, :y, :num_planets, :max_moons_per_planet,
-      custom_bodies: [:type, :name, :x, :y, :radius, :density, :mass]
+      custom_bodies: [ :type, :name, :x, :y, :radius, :density, :mass ]
     )
 
     # Security: Validate custom_bodies if present
@@ -320,7 +320,7 @@ class GalaxyController < ApplicationController
     permitted = params.permit(
       :num_planets,
       :max_moons_per_planet,
-      custom_bodies: [:type, :name, :x, :y, :radius, :density, :mass]
+      custom_bodies: [ :type, :name, :x, :y, :radius, :density, :mass ]
     )
 
     # Security: Validate custom_bodies if present
@@ -340,7 +340,7 @@ class GalaxyController < ApplicationController
     GalaxyService.load_galaxy_data
   rescue => e
     Rails.logger.error("Failed to load galaxy data: #{e.message}")
-    { 'black_hole' => {}, 'systems' => [] }
+    { "black_hole" => {}, "systems" => [] }
   end
 
   # Set up everything the new-system form needs (also used when re-rendering
@@ -482,14 +482,14 @@ class GalaxyController < ApplicationController
       body_hash = body.is_a?(ActionController::Parameters) ? body.to_h : body
 
       # Validate type
-      unless %w[star planet moon].include?(body_hash['type'].to_s)
+      unless %w[star planet moon].include?(body_hash["type"].to_s)
         Rails.logger.warn("Security: Invalid body type: #{body_hash['type']}")
         return { valid: false, error: "Invalid type for body #{index + 1}" }
       end
 
       # Validate numeric parameters with realistic ranges
-      if body_hash['mass'].present?
-        mass = body_hash['mass'].to_f
+      if body_hash["mass"].present?
+        mass = body_hash["mass"].to_f
         # Security: Reject NaN, Infinity, negative, or out-of-range values
         # Mass: 1e20 to 1e40 kg (moon to large star)
         unless mass.finite? && mass.positive? && mass.between?(1e20, 1e40)
@@ -498,8 +498,8 @@ class GalaxyController < ApplicationController
         end
       end
 
-      if body_hash['radius'].present?
-        radius = body_hash['radius'].to_f
+      if body_hash["radius"].present?
+        radius = body_hash["radius"].to_f
         # Security: Reject NaN, Infinity, negative, or out-of-range values
         # Radius: 100km to 1,000,000km
         unless radius.finite? && radius.positive? && radius.between?(100_000, 1_000_000_000)
@@ -508,8 +508,8 @@ class GalaxyController < ApplicationController
         end
       end
 
-      if body_hash['density'].present?
-        density = body_hash['density'].to_f
+      if body_hash["density"].present?
+        density = body_hash["density"].to_f
         # Security: Reject NaN, Infinity, negative, or out-of-range values
         # Density: 500 to 20,000 kg/m³ (gas to metal)
         unless density.finite? && density.positive? && density.between?(500, 20_000)
@@ -519,8 +519,8 @@ class GalaxyController < ApplicationController
       end
 
       # Validate coordinates (0-800 range)
-      if body_hash['x'].present?
-        x = body_hash['x'].to_f
+      if body_hash["x"].present?
+        x = body_hash["x"].to_f
         # Security: Reject NaN, Infinity, negative, or out-of-range values
         unless x.finite? && x >= 0 && x.between?(0, 800)
           Rails.logger.warn("Security: Invalid x coordinate: #{x}")
@@ -528,8 +528,8 @@ class GalaxyController < ApplicationController
         end
       end
 
-      if body_hash['y'].present?
-        y = body_hash['y'].to_f
+      if body_hash["y"].present?
+        y = body_hash["y"].to_f
         # Security: Reject NaN, Infinity, negative, or out-of-range values
         unless y.finite? && y >= 0 && y.between?(0, 800)
           Rails.logger.warn("Security: Invalid y coordinate: #{y}")

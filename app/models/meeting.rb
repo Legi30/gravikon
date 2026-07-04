@@ -202,7 +202,7 @@ class Meeting < ApplicationRecord
     end
 
     # Get all body names in the system
-    system_body_names = system_data['bodies']&.map { |b| b['name'] } || []
+    system_body_names = system_data["bodies"]&.map { |b| b["name"] } || []
 
     # Check each participant is in the system
     participants_array.each do |participant|
@@ -284,7 +284,7 @@ class Meeting < ApplicationRecord
         # Validate participant exists in their assigned system
         system_data = participant_system.load_system_data
         if system_data
-          system_body_names = system_data['bodies']&.map { |b| b['name'] } || []
+          system_body_names = system_data["bodies"]&.map { |b| b["name"] } || []
           unless system_body_names.include?(participant)
             errors.add(:participant_systems, "účastník '#{participant}' není v přiřazeném systému #{participant_system.name}")
           end

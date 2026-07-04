@@ -1,0 +1,52 @@
+{
+  "ignored_warnings": [
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "9c8a055a2f89c240765f9cb8c884e00177a6703696b3f8c01920fc264e28bd50",
+      "check_name": "FileAccess",
+      "message": "Model attribute used in file name",
+      "file": "app/controllers/galaxy_controller.rb",
+      "line": 46,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "File.read(GalaxyService.system_svg_path(System.find_by(:id => params[:id]).system_id))",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "GalaxyController",
+        "method": "show_system"
+      },
+      "user_input": "System.find_by(:id => params[:id]).system_id",
+      "confidence": "Weak",
+      "cwe_id": [
+        22
+      ],
+      "note": "Safe: system id flows through GalaxyService.sanitize_system_id (UUID/slug whitelist, path traversal rejected) before any file access."
+    },
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "d31467a4a6d03bc14338aef13bd5834d188d5226260e4ba2f2751afa7e607c36",
+      "check_name": "FileAccess",
+      "message": "Model attribute used in file name",
+      "file": "app/jobs/regenerate_system_job.rb",
+      "line": 47,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "FileUtils.mkdir_p(File.dirname(GalaxyService.system_data_path(System.find(system_id).system_id)))",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "RegenerateSystemJob",
+        "method": "perform"
+      },
+      "user_input": "System.find(system_id).system_id",
+      "confidence": "Weak",
+      "cwe_id": [
+        22
+      ],
+      "note": "Safe: system id flows through GalaxyService.sanitize_system_id (UUID/slug whitelist, path traversal rejected) before any file access."
+    }
+  ],
+  "updated": "2026-07-04",
+  "brakeman_version": "7.1.0"
+}

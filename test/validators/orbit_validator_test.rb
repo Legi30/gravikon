@@ -5,10 +5,10 @@ require "test_helper"
 class OrbitValidatorTest < ActiveSupport::TestCase
   setup do
     @galaxy_data = {
-      'black_hole' => { 'x' => 400, 'y' => 400 },
-      'systems' => [
-        { 'id' => 'system1', 'x' => 300, 'y' => 300 },
-        { 'id' => 'system2', 'x' => 500, 'y' => 500 }
+      "black_hole" => { "x" => 400, "y" => 400 },
+      "systems" => [
+        { "id" => "system1", "x" => 300, "y" => 300 },
+        { "id" => "system2", "x" => 500, "y" => 500 }
       ]
     }
   end
@@ -54,7 +54,7 @@ class OrbitValidatorTest < ActiveSupport::TestCase
     assert_not result[:valid]
 
     # But should succeed when excluding system1
-    result = OrbitValidator.validate_system_orbit(300, 300, @galaxy_data, exclude_system_id: 'system1')
+    result = OrbitValidator.validate_system_orbit(300, 300, @galaxy_data, exclude_system_id: "system1")
     assert result[:valid], "Should be valid when excluding self: #{result[:errors]}"
   end
 
@@ -80,7 +80,7 @@ class OrbitValidatorTest < ActiveSupport::TestCase
     assert_not_empty result[:errors]
 
     # Check that error messages are in Czech (contain Czech characters or known Czech words)
-    czech_indicators = ['musí', 'je', 'systém', 'černé díry', 'blízko', 'kolize']
+    czech_indicators = [ "musí", "je", "systém", "černé díry", "blízko", "kolize" ]
     has_czech = result[:errors].any? { |error|
       czech_indicators.any? { |indicator| error.include?(indicator) }
     }
@@ -119,8 +119,8 @@ class OrbitValidatorTest < ActiveSupport::TestCase
   # Test handles edge case with empty systems array
   test "validate_system_orbit handles empty systems array" do
     empty_galaxy = {
-      'black_hole' => { 'x' => 400, 'y' => 400 },
-      'systems' => []
+      "black_hole" => { "x" => 400, "y" => 400 },
+      "systems" => []
     }
 
     result = OrbitValidator.validate_system_orbit(200, 200, empty_galaxy)

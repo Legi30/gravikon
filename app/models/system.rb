@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../validators/orbit_validator'
+require_relative "../validators/orbit_validator"
 
 class System < ApplicationRecord
   # Callbacks
@@ -86,7 +86,7 @@ class System < ApplicationRecord
 
   # Get slug-friendly version of name for use in file paths
   def slug
-    name.downcase.gsub(/[^a-z0-9]+/, '_').gsub(/^_|_$/, '')
+    name.downcase.gsub(/[^a-z0-9]+/, "_").gsub(/^_|_$/, "")
   end
 
   # Get safe system_id from json_file_path with validation
@@ -96,16 +96,16 @@ class System < ApplicationRecord
     return nil if json_file_path.blank?
 
     # Extract filename from path
-    filename = File.basename(json_file_path, '.json')
+    filename = File.basename(json_file_path, ".json")
 
     # Validate format (same as in validate_safe_file_path)
     if filename.match?(/\A[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\z/i)
-      return filename.downcase
+      filename.downcase
     elsif filename.match?(/\A[a-z0-9_]+\z/i)
-      return filename.downcase
+      filename.downcase
     else
       Rails.logger.error("Security: Invalid system_id format extracted from #{json_file_path}")
-      return nil
+      nil
     end
   end
 
@@ -115,7 +115,7 @@ class System < ApplicationRecord
   # Security: Prevent issues with leading/trailing spaces and multiple consecutive spaces
   def normalize_name
     return if name.blank?
-    self.name = name.strip.squeeze(' ')
+    self.name = name.strip.squeeze(" ")
   end
 
   # Set default JSON file path based on system name
@@ -160,8 +160,8 @@ class System < ApplicationRecord
     Rails.logger.warn("Failed to load galaxy data for validation: #{e.message}")
     # Return default structure on error
     {
-      'black_hole' => { 'x' => 400, 'y' => 400 },
-      'systems' => []
+      "black_hole" => { "x" => 400, "y" => 400 },
+      "systems" => []
     }
   end
 
@@ -171,34 +171,34 @@ class System < ApplicationRecord
     return if json_file_path.blank?
 
     # Reject paths containing '..' (path traversal)
-    if json_file_path.include?('..')
+    if json_file_path.include?("..")
       errors.add(:json_file_path, "obsahuje nepovolené znaky (..)")
       Rails.logger.warn("Security: Path traversal attempt detected in json_file_path: #{json_file_path}")
       return
     end
 
     # Reject absolute paths
-    if json_file_path.start_with?('/')
+    if json_file_path.start_with?("/")
       errors.add(:json_file_path, "nesmí být absolutní cesta")
       Rails.logger.warn("Security: Absolute path detected in json_file_path: #{json_file_path}")
       return
     end
 
     # Ensure path starts with data/systems/
-    unless json_file_path.start_with?('data/systems/')
+    unless json_file_path.start_with?("data/systems/")
       errors.add(:json_file_path, "musí začínat 'data/systems/'")
       Rails.logger.warn("Security: Invalid path prefix in json_file_path: #{json_file_path}")
       return
     end
 
     # Ensure path ends with .json
-    unless json_file_path.end_with?('.json')
+    unless json_file_path.end_with?(".json")
       errors.add(:json_file_path, "musí končit '.json'")
       return
     end
 
     # Extract filename and validate format (UUID or slug)
-    filename = File.basename(json_file_path, '.json')
+    filename = File.basename(json_file_path, ".json")
     # UUID format: 8-4-4-4-12 hex digits
     # Slug format: alphanumeric and underscores only
     unless filename.match?(/\A[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\z/i) ||
@@ -261,7 +261,7 @@ class System < ApplicationRecord
   def clear_system_cache
     return unless json_file_path.present?
 
-    system_id = File.basename(json_file_path, '.json')
+    system_id = File.basename(json_file_path, ".json")
 
     # Clear only this system's cache (not all systems)
     GalaxyService.clear_system_cache(system_id)

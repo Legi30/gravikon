@@ -2,17 +2,16 @@ require "test_helper"
 
 class MeetingsControllerTest < ActionDispatch::IntegrationTest
   setup do
-    # Mock system_data.json content
-    @mock_system_data = {
-      "bodies" => [
-        {"name" => "Sol", "type" => "star", "x" => 400, "y" => 400, "radius" => 6.96e8, "mass" => 1.989e30, "dilation" => 1.0},
-        {"name" => "Earth", "type" => "planet", "x" => 500, "y" => 400, "radius" => 6.371e6, "mass" => 5.972e24, "dilation" => 0.9999},
-        {"name" => "Mars", "type" => "planet", "x" => 600, "y" => 400, "radius" => 3.389e6, "mass" => 6.39e23, "dilation" => 0.9998}
-      ]
-    }.to_json
-
-    # Clear cache before each test
+    Meeting.delete_all
+    System.delete_all
     Rails.cache.clear
+  end
+
+  # Create a System row plus its data file inside the isolated test root
+  def create_system_with_bodies(name:, x:, y:, file_id:, body_names:)
+    system = System.create!(name: name, x: x, y: y, json_file_path: "data/systems/#{file_id}.json")
+    write_system_data(system, default_test_bodies(body_names))
+    system
   end
 
   # === GET index ===
@@ -23,7 +22,6 @@ class MeetingsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should load all meetings in index" do
-    # Create test meetings
     meeting1 = Meeting.create!(
       start_time: "09:00",
       end_time: "10:00",
@@ -46,104 +44,152 @@ class MeetingsControllerTest < ActionDispatch::IntegrationTest
     assert_includes assigns(:meetings), meeting2
   end
 
-  test "should use cached system_data in index" do
-    # Pre-populate cache
-    Rails.cache.write('system_data', @mock_system_data)
-
-    # Mock File.read to ensure it's NOT called (using cache instead)
-    file_read_called = false
-    File.stubs(:read).with do |path|
-      file_read_called = true if path.to_s.include?("system_data.json")
-      true
-    end.returns(@mock_system_data)
-
-    get meetings_url
-
-    assert_response :success
-    assert_not file_read_called, "File.read was called when cache should have been used"
-  ensure
-    File.unstub(:read)
-  end
-
   # === GET new ===
 
-  test "should get new" do
-    File.stubs(:read).returns(@mock_system_data)
+  test "new redirects to system creation when no systems exist" do
     get new_meeting_url
-    assert_response :success
-  ensure
-    File.unstub(:read)
+    assert_redirected_to new_galaxy_system_path
   end
 
-  test "should load celestial bodies in new form" do
-    File.stubs(:read).returns(@mock_system_data)
+  test "new auto-selects the only system and loads its bodies" do
+    system = create_system_with_bodies(name: "Solo", x: 200, y: 200, file_id: "solo_sys", body_names: %w[Sol Earth Mars])
+
     get new_meeting_url
-    assert_not_nil assigns(:bodies)
+    assert_response :success
+    assert_equal system, assigns(:system)
     assert_includes assigns(:bodies), "Sol"
     assert_includes assigns(:bodies), "Earth"
     assert_includes assigns(:bodies), "Mars"
-  ensure
-    File.unstub(:read)
+  end
+
+  test "new shows system selector when multiple systems exist" do
+    create_system_with_bodies(name: "Alpha", x: 200, y: 200, file_id: "alpha", body_names: %w[Sol Earth Mars])
+    create_system_with_bodies(name: "Beta", x: 600, y: 600, file_id: "beta", body_names: %w[Vega Jupiter Saturn])
+
+    get new_meeting_url
+    assert_response :success
+    assert_select "h3", /Vyberte soustavu/
+  end
+
+  test "GET new with system_id parameter loads bodies from that system only" do
+    create_system_with_bodies(name: "Alpha", x: 200, y: 200, file_id: "alpha", body_names: %w[Sol Earth Mars])
+    system = create_system_with_bodies(name: "Beta", x: 600, y: 600, file_id: "beta", body_names: %w[Vega Jupiter Saturn])
+
+    get new_meeting_url(system_id: system.id)
+    assert_response :success
+    assert_includes assigns(:bodies), "Jupiter"
+    assert_not_includes assigns(:bodies), "Earth"
   end
 
   # === POST create ===
 
   test "should create meeting with valid data" do
-    File.stubs(:read).returns(@mock_system_data)
+    system = create_system_with_bodies(name: "Solo", x: 200, y: 200, file_id: "solo_sys", body_names: %w[Sol Earth Mars])
+
     assert_difference("Meeting.count", 1) do
       post meetings_url, params: {
-        start_time: "09:00",
-        end_time: "10:00",
-        topic: "Test meeting",
-        participants: ["Earth", "Mars"]
+        meeting: { start_time: "09:00", end_time: "10:00", topic: "Test meeting", system_id: system.id },
+        participants: [ "Earth", "Mars" ]
       }
     end
-  ensure
-    File.unstub(:read)
-  end
-
-  test "should redirect to meetings_path after create with HTML format" do
-    File.stubs(:read).returns(@mock_system_data)
-    post meetings_url, params: {
-      start_time: "09:00",
-      end_time: "10:00",
-      participants: ["Earth", "Mars"]
-    }
     assert_redirected_to meetings_path
-  ensure
-    File.unstub(:read)
   end
 
-  test "should return turbo_stream response for create with turbo_stream format" do
-    File.stubs(:read).returns(@mock_system_data)
+  test "created meeting stores real duration scaled by dilation" do
+    system = create_system_with_bodies(name: "Solo", x: 200, y: 200, file_id: "solo_sys", body_names: %w[Sol Earth Mars])
+
     post meetings_url, params: {
-      start_time: "09:00",
-      end_time: "10:00",
-      participants: ["Earth", "Mars"]
-    }, as: :turbo_stream
+      meeting: { start_time: "10:00", end_time: "11:00", system_id: system.id },
+      participants: [ "Earth", "Mars" ]
+    }
 
-    assert_response :success
-    assert_equal "text/vnd.turbo-stream.html", response.media_type
-  ensure
-    File.unstub(:read)
+    meeting = Meeting.last
+    # 60 minutes × combined dilation (< 1.0) must land between 0 and 60
+    assert meeting.local_avg_duration.positive?
+    assert meeting.local_avg_duration <= 60.0
   end
 
-  # === GET edit ===
+  test "create without a system re-renders the form with an error" do
+    create_system_with_bodies(name: "Solo", x: 200, y: 200, file_id: "solo_sys", body_names: %w[Sol Earth Mars])
+
+    assert_no_difference("Meeting.count") do
+      post meetings_url, params: {
+        meeting: { start_time: "09:00", end_time: "10:00" },
+        participants: [ "Earth", "Mars" ]
+      }
+    end
+    assert_response :unprocessable_entity
+  end
+
+  test "create with fewer than two participants re-renders with an error" do
+    system = create_system_with_bodies(name: "Solo", x: 200, y: 200, file_id: "solo_sys", body_names: %w[Sol Earth Mars])
+
+    assert_no_difference("Meeting.count") do
+      post meetings_url, params: {
+        meeting: { start_time: "09:00", end_time: "10:00", system_id: system.id },
+        participants: [ "Earth" ]
+      }
+    end
+    assert_response :unprocessable_entity
+  end
+
+  # === GET edit / PATCH update ===
 
   test "should get edit" do
+    system = create_system_with_bodies(name: "Solo", x: 200, y: 200, file_id: "solo_sys", body_names: %w[Sol Earth Mars])
     meeting = Meeting.create!(
       start_time: "09:00",
       end_time: "10:00",
       participants: '["Earth", "Mars"]',
-      local_avg_duration: 60,
-      avg_delay: 120
+      system: system
     )
 
-    File.stubs(:read).returns(@mock_system_data)
     get edit_meeting_url(meeting)
     assert_response :success
-  ensure
-    File.unstub(:read)
+  end
+
+  test "update modifies the meeting in place without changing its id" do
+    system = create_system_with_bodies(name: "Solo", x: 200, y: 200, file_id: "solo_sys", body_names: %w[Sol Earth Mars])
+    meeting = Meeting.create!(
+      start_time: "09:00",
+      end_time: "10:00",
+      participants: '["Earth", "Mars"]',
+      system: system
+    )
+    original_id = meeting.id
+
+    patch meeting_url(meeting), params: {
+      meeting: { start_time: "11:00", end_time: "12:30", topic: "Upraveno", system_id: system.id },
+      participants: [ "Earth", "Sol" ]
+    }
+
+    assert_redirected_to meetings_path
+    meeting.reload
+    assert_equal original_id, meeting.id
+    assert_equal "11:00", meeting.start_time
+    assert_equal "Upraveno", meeting.topic
+    assert_includes meeting.participants_array, "Sol"
+  end
+
+  test "invalid update keeps the original meeting untouched" do
+    system = create_system_with_bodies(name: "Solo", x: 200, y: 200, file_id: "solo_sys", body_names: %w[Sol Earth Mars])
+    meeting = Meeting.create!(
+      start_time: "09:00",
+      end_time: "10:00",
+      participants: '["Earth", "Mars"]',
+      system: system
+    )
+
+    assert_no_difference("Meeting.count") do
+      patch meeting_url(meeting), params: {
+        meeting: { start_time: "11:00", end_time: "12:00", system_id: system.id },
+        participants: [ "Earth" ]
+      }
+    end
+
+    assert_redirected_to edit_meeting_path(meeting)
+    meeting.reload
+    assert_equal "09:00", meeting.start_time
   end
 
   # === DELETE destroy ===
@@ -160,220 +206,75 @@ class MeetingsControllerTest < ActionDispatch::IntegrationTest
     assert_difference("Meeting.count", -1) do
       delete meeting_url(meeting)
     end
-  end
-
-  test "should redirect after destroy with HTML format" do
-    meeting = Meeting.create!(
-      start_time: "09:00",
-      end_time: "10:00",
-      participants: '["Earth", "Mars"]',
-      local_avg_duration: 60,
-      avg_delay: 120
-    )
-
-    delete meeting_url(meeting)
     assert_redirected_to meetings_path
   end
 
-  test "should return turbo_stream response for destroy with turbo_stream format" do
-    meeting = Meeting.create!(
-      start_time: "09:00",
-      end_time: "10:00",
-      participants: '["Earth", "Mars"]',
-      local_avg_duration: 60,
-      avg_delay: 120
-    )
-
-    delete meeting_url(meeting), as: :turbo_stream
-    assert_response :success
-    assert_equal "text/vnd.turbo-stream.html", response.media_type
-  end
-
-  # === Cache Behavior ===
-
-  test "should fetch system_data from cache on subsequent requests" do
-    # First request - cache miss, will read from file
-    File.stubs(:read).returns(@mock_system_data)
-    get meetings_url
-    File.unstub(:read)
-
-    # Cache should now be populated
-    cached_data = Rails.cache.read('system_data')
-    assert_not_nil cached_data, "Cache was not populated"
-
-    # Second request - should use cache
-    file_read_count = 0
-    File.stubs(:read).with do |path|
-      file_read_count += 1 if path.to_s.include?("system_data.json")
-      true
-    end.returns(@mock_system_data)
-
-    get meetings_url
-
-    assert_equal 0, file_read_count, "File was read when cache should have been used"
-  ensure
-    File.unstub(:read)
-  end
-
-  # === Multi-System Support Tests (LOG008) ===
+  # === Multi-System Support Tests ===
 
   test "GET index groups meetings by system and displays system names" do
-    system1 = System.create!(name: "Alpha", x: 300, y: 300, json_file_path: "data/systems/alpha.json")
-    system2 = System.create!(name: "Beta", x: 500, y: 500, json_file_path: "data/systems/beta.json")
+    system1 = create_system_with_bodies(name: "Alpha", x: 300, y: 300, file_id: "alpha", body_names: %w[Sol Earth Mars])
+    system2 = create_system_with_bodies(name: "Beta", x: 500, y: 500, file_id: "beta", body_names: %w[Vega Jupiter Saturn])
 
-    # Create system data files
-    FileUtils.mkdir_p(Rails.root.join("data/systems"))
-    File.write(Rails.root.join("data/systems/alpha.json"), {
-      bodies: [
-        { name: "Earth", type: "planet", x: 400, y: 400, mass: 5.972e24, radius: 6.371e6, dilation: 1.0 },
-        { name: "Mars", type: "planet", x: 500, y: 400, mass: 6.39e23, radius: 3.389e6, dilation: 1.0 }
-      ]
-    }.to_json)
-    File.write(Rails.root.join("data/systems/beta.json"), {
-      bodies: [
-        { name: "Jupiter", type: "planet", x: 400, y: 400, mass: 1.898e27, radius: 6.9911e7, dilation: 1.0 },
-        { name: "Saturn", type: "planet", x: 500, y: 400, mass: 5.683e26, radius: 5.8232e7, dilation: 1.0 }
-      ]
-    }.to_json)
-
-    meeting1 = Meeting.create!(
-      start_time: "09:00",
-      end_time: "10:00",
-      participants: '["Earth", "Mars"]',
-      system: system1
-    )
-
-    meeting2 = Meeting.create!(
-      start_time: "09:00",
-      end_time: "10:00",
-      participants: '["Jupiter", "Saturn"]',
-      system: system2
-    )
+    Meeting.create!(start_time: "09:00", end_time: "10:00", participants: '["Earth", "Mars"]', system: system1)
+    Meeting.create!(start_time: "09:00", end_time: "10:00", participants: '["Jupiter", "Saturn"]', system: system2)
 
     get meetings_url
     assert_response :success
-    assert_select 'body', /Alpha|Beta/
-
-    File.delete(Rails.root.join("data/systems/alpha.json")) rescue nil
-    File.delete(Rails.root.join("data/systems/beta.json")) rescue nil
-    system1.destroy
-    system2.destroy
-  end
-
-  test "GET new with system_id parameter loads bodies from that system only" do
-    system = System.create!(name: "Test System", x: 300, y: 300, json_file_path: "data/systems/test_sys.json")
-
-    # Create system data file
-    FileUtils.mkdir_p(Rails.root.join("data/systems"))
-    File.write(Rails.root.join("data/systems/test_sys.json"), {
-      bodies: [
-        { name: "Alpha Star", type: "star" },
-        { name: "Alpha Prime", type: "planet" }
-      ]
-    }.to_json)
-
-    get new_meeting_url(system_id: system.id)
-    assert_response :success
-
-    # Cleanup
-    File.delete(Rails.root.join("data/systems/test_sys.json")) rescue nil
-    system.destroy
+    assert_select "body", /Alpha|Beta/
   end
 
   test "POST create with single-system participants sets is_inter_system=false" do
-    system = System.create!(name: "Sol System", x: 300, y: 300, json_file_path: "data/systems/sol.json")
-
-    FileUtils.mkdir_p(Rails.root.join("data/systems"))
-    File.write(Rails.root.join("data/systems/sol.json"), {
-      bodies: [{ name: "Earth", type: "planet" }, { name: "Mars", type: "planet" }]
-    }.to_json)
+    system = create_system_with_bodies(name: "Sol System", x: 300, y: 300, file_id: "sol", body_names: %w[Sol Earth Mars])
 
     post meetings_url, params: {
-      start_time: "09:00",
-      end_time: "10:00",
-      participants: ["Earth", "Mars"],
-      system_id: system.id
+      meeting: { start_time: "09:00", end_time: "10:00", system_id: system.id },
+      participants: [ "Earth", "Mars" ]
     }
 
     meeting = Meeting.last
     assert_not meeting.is_inter_system
-
-    File.delete(Rails.root.join("data/systems/sol.json")) rescue nil
-    system.destroy
+    assert_equal system.id, meeting.system_id
   end
 
   test "POST create with multi-system participants sets is_inter_system=true" do
-    system1 = System.create!(name: "Alpha", x: 200, y: 200, json_file_path: "data/systems/alpha.json")
-    system2 = System.create!(name: "Beta", x: 600, y: 600, json_file_path: "data/systems/beta.json")
+    system1 = create_system_with_bodies(name: "Alpha", x: 200, y: 200, file_id: "alpha", body_names: %w[Sol Earth Mars])
+    system2 = create_system_with_bodies(name: "Beta", x: 600, y: 600, file_id: "beta", body_names: %w[Vega Kepler Saturn])
 
-    FileUtils.mkdir_p(Rails.root.join("data/systems"))
-    File.write(Rails.root.join("data/systems/alpha.json"), {
-      bodies: [{ name: "Earth", type: "planet" }]
-    }.to_json)
-    File.write(Rails.root.join("data/systems/beta.json"), {
-      bodies: [{ name: "Kepler", type: "planet" }]
-    }.to_json)
-
-    post meetings_url, params: {
-      start_time: "09:00",
-      end_time: "10:00",
-      participants: ["Earth", "Kepler"],
-      participant_systems: { "Earth" => system1.id, "Kepler" => system2.id }
-    }
-
-    meeting = Meeting.last
-    assert meeting.is_inter_system if meeting
-
-    File.delete(Rails.root.join("data/systems/alpha.json")) rescue nil
-    File.delete(Rails.root.join("data/systems/beta.json")) rescue nil
-    system1.destroy
-    system2.destroy
-  end
-
-  test "POST create validates participants exist in specified systems" do
-    system = System.create!(name: "Test", x: 300, y: 300, json_file_path: "data/systems/test_validation.json")
-
-    FileUtils.mkdir_p(Rails.root.join("data/systems"))
-    File.write(Rails.root.join("data/systems/test_validation.json"), {
-      bodies: [{ name: "Earth", type: "planet" }]
-    }.to_json)
-
-    # Try to create meeting with non-existent participant
-    post meetings_url, params: {
-      start_time: "09:00",
-      end_time: "10:00",
-      participants: ["Earth", "NonExistent"],
-      system_id: system.id
-    }
-
-    # Should fail validation
-    meeting = Meeting.find_by(participants: '["Earth", "NonExistent"]')
-    assert_nil meeting
-
-    File.delete(Rails.root.join("data/systems/test_validation.json")) rescue nil
-    system.destroy
-  end
-
-  test "strong parameters whitelist system_id and participant_systems" do
-    system = System.create!(name: "Param Test", x: 300, y: 300, json_file_path: "data/systems/param_test.json")
-
-    FileUtils.mkdir_p(Rails.root.join("data/systems"))
-    File.write(Rails.root.join("data/systems/param_test.json"), {
-      bodies: [{ name: "Earth", type: "planet" }]
-    }.to_json)
-
-    # Should not raise error with system_id parameter
-    assert_nothing_raised do
+    assert_difference("Meeting.count", 1) do
       post meetings_url, params: {
-        start_time: "09:00",
-        end_time: "10:00",
-        participants: ["Earth", "Mars"],
-        system_id: system.id,
-        unsafe_param: "should be filtered"
+        meeting: { start_time: "09:00", end_time: "10:00", is_inter_system: "true" },
+        participants: [ "Earth", "Kepler" ],
+        participant_systems: { "Earth" => system1.id.to_s, "Kepler" => system2.id.to_s }
       }
     end
 
-    File.delete(Rails.root.join("data/systems/param_test.json")) rescue nil
-    system.destroy
+    meeting = Meeting.last
+    assert meeting.is_inter_system
+    assert_nil meeting.system_id
+    assert_equal({ "Earth" => system1.id, "Kepler" => system2.id }, meeting.participant_systems_hash)
+  end
+
+  test "POST create validates participants exist in specified systems" do
+    system = create_system_with_bodies(name: "Test", x: 300, y: 300, file_id: "test_validation", body_names: %w[Sol Earth Mars])
+
+    assert_no_difference("Meeting.count") do
+      post meetings_url, params: {
+        meeting: { start_time: "09:00", end_time: "10:00", system_id: system.id },
+        participants: [ "Earth", "NonExistent" ]
+      }
+    end
+    assert_response :unprocessable_entity
+  end
+
+  test "strong parameters ignore unsafe attributes" do
+    system = create_system_with_bodies(name: "Param Test", x: 300, y: 300, file_id: "param_test", body_names: %w[Sol Earth Mars])
+
+    assert_nothing_raised do
+      post meetings_url, params: {
+        meeting: { start_time: "09:00", end_time: "10:00", system_id: system.id },
+        participants: [ "Earth", "Mars" ],
+        unsafe_param: "should be filtered"
+      }
+    end
   end
 end

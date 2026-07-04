@@ -8,14 +8,14 @@ class MeetingFilteringTest < ApplicationSystemTestCase
     @system2 = System.create!(name: "Beta", x: 600, y: 600, json_file_path: "data/systems/beta.json")
 
     # Create system data files
-    FileUtils.mkdir_p(Rails.root.join("data/systems"))
-    File.write(Rails.root.join("data/systems/alpha.json"), {
+    FileUtils.mkdir_p(GalaxyService.systems_data_dir)
+    File.write(GalaxyService.system_data_path("alpha"), {
       bodies: [
         { name: "Earth", type: "planet", x: 400, y: 400, mass: 5.972e24, radius: 6.371e6, dilation: 1.0 },
         { name: "Mars", type: "planet", x: 500, y: 400, mass: 6.39e23, radius: 3.389e6, dilation: 1.0 }
       ]
     }.to_json)
-    File.write(Rails.root.join("data/systems/beta.json"), {
+    File.write(GalaxyService.system_data_path("beta"), {
       bodies: [
         { name: "Jupiter", type: "planet", x: 400, y: 400, mass: 1.898e27, radius: 6.9911e7, dilation: 1.0 },
         { name: "Saturn", type: "planet", x: 500, y: 400, mass: 5.683e26, radius: 5.8232e7, dilation: 1.0 }
@@ -39,8 +39,8 @@ class MeetingFilteringTest < ApplicationSystemTestCase
 
   teardown do
     # Clean up data files
-    File.delete(Rails.root.join("data/systems/alpha.json")) rescue nil
-    File.delete(Rails.root.join("data/systems/beta.json")) rescue nil
+    File.delete(GalaxyService.system_data_path("alpha")) rescue nil
+    File.delete(GalaxyService.system_data_path("beta")) rescue nil
 
     @system1.destroy if @system1 && !@system1.destroyed?
     @system2.destroy if @system2 && !@system2.destroyed?
@@ -65,7 +65,7 @@ class MeetingFilteringTest < ApplicationSystemTestCase
     end
 
     # Should filter meetings
-    assert_selector 'body'
+    assert_selector "body"
   end
 
   # Test system column is displayed
@@ -82,7 +82,7 @@ class MeetingFilteringTest < ApplicationSystemTestCase
     visit meetings_path
 
     # Click on first meeting
-    first('tr, .meeting-item, .meeting-card', wait: 5).click rescue nil
+    first("tr, .meeting-item, .meeting-card", wait: 5).click rescue nil
 
     # Should show system info
     assert_text(/Alpha|Beta|System|Systém/i, wait: 5)

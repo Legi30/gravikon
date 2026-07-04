@@ -6,14 +6,14 @@ class RelativisticCalculatorTest < ActiveSupport::TestCase
   def setup
     # Create test galaxy data with black hole
     @test_galaxy_data = {
-      'black_hole' => {
-        'name' => 'Sagittarius Omega',
-        'mass' => 8.2e36,
-        'x' => 400,
-        'y' => 400,
-        'type' => 'black_hole'
+      "black_hole" => {
+        "name" => "Sagittarius Omega",
+        "mass" => 8.2e36,
+        "x" => 400,
+        "y" => 400,
+        "type" => "black_hole"
       },
-      'systems' => []
+      "systems" => []
     }
 
     # Create test systems in database
@@ -45,10 +45,10 @@ class RelativisticCalculatorTest < ActiveSupport::TestCase
 
   test "calculate_time_dilation includes local stellar gravitational effects" do
     body = {
-      'name' => 'Earth',
-      'type' => 'planet',
-      'mass' => 5.97e24,
-      'dilation' => 0.999  # Local stellar dilation
+      "name" => "Earth",
+      "type" => "planet",
+      "mass" => 5.97e24,
+      "dilation" => 0.999  # Local stellar dilation
     }
 
     dilation = @calculator.calculate_time_dilation(body, @system1.id)
@@ -61,9 +61,9 @@ class RelativisticCalculatorTest < ActiveSupport::TestCase
   test "calculate_time_dilation includes black hole gravitational effects based on system position" do
     # System closer to black hole should have stronger dilation
     body = {
-      'name' => 'Test Planet',
-      'type' => 'planet',
-      'dilation' => 0.999
+      "name" => "Test Planet",
+      "type" => "planet",
+      "dilation" => 0.999
     }
 
     # System1 is at (200, 300), closer to black hole at (400, 400)
@@ -80,7 +80,7 @@ class RelativisticCalculatorTest < ActiveSupport::TestCase
   end
 
   test "calculate_time_dilation uses local dilation when provided" do
-    body_with_dilation = { 'dilation' => 0.95 }
+    body_with_dilation = { "dilation" => 0.95 }
     result = @calculator.calculate_time_dilation(body_with_dilation, @system1.id)
 
     # Result should factor in the local dilation of 0.95
@@ -104,8 +104,8 @@ class RelativisticCalculatorTest < ActiveSupport::TestCase
   end
 
   test "calculate_body_to_body_distance combines inter-system and intra-system components" do
-    body1 = { 'x' => 50, 'y' => 30, 'name' => 'Earth' }
-    body2 = { 'x' => 20, 'y' => 10, 'name' => 'Mars' }
+    body1 = { "x" => 50, "y" => 30, "name" => "Earth" }
+    body2 = { "x" => 20, "y" => 10, "name" => "Mars" }
 
     # System1 at (200, 300), System2 at (600, 500)
     # body1 in galaxy: (200+50, 300+30) = (250, 330)
@@ -122,8 +122,8 @@ class RelativisticCalculatorTest < ActiveSupport::TestCase
   end
 
   test "calculate_body_to_body_distance uses local coordinates for same system" do
-    body1 = { 'x' => 100, 'y' => 50 }
-    body2 = { 'x' => 130, 'y' => 90 }
+    body1 = { "x" => 100, "y" => 50 }
+    body2 = { "x" => 130, "y" => 90 }
 
     # Both in same system - should use local coordinates
     # Distance = sqrt((130-100)^2 + (90-50)^2) = sqrt(900 + 1600) = 50
@@ -137,12 +137,12 @@ class RelativisticCalculatorTest < ActiveSupport::TestCase
   end
 
   test "calculate_signal_delay uses speed of light constant correctly" do
-    distance = 1000.0 # Arbitrary distance
+    distance = 1000.0 # Canvas units
 
     delay = @calculator.calculate_signal_delay(distance)
 
-    # delay = distance / C
-    expected_delay = distance / RelativisticCalculator::C.to_f
+    # delay = (distance in meters) / C
+    expected_delay = (distance * PhysicsConstants::UNIT_METERS) / PhysicsConstants::C
     assert_in_delta expected_delay, delay, 0.000001
   end
 
@@ -158,21 +158,23 @@ class RelativisticCalculatorTest < ActiveSupport::TestCase
 
   test "calculate_meeting_statistics returns avg_duration accounting for time dilation" do
     participants = [
-      { body: { 'dilation' => 0.99, 'x' => 50, 'y' => 50 }, system_id: @system1.id },
-      { body: { 'dilation' => 0.98, 'x' => 30, 'y' => 30 }, system_id: @system1.id }
+      { body: { "dilation" => 0.99, "x" => 50, "y" => 50 }, system_id: @system1.id },
+      { body: { "dilation" => 0.98, "x" => 30, "y" => 30 }, system_id: @system1.id }
     ]
 
-    stats = @calculator.calculate_meeting_statistics(participants)
+    stats = @calculator.calculate_meeting_statistics(participants, start_time: "10:00", end_time: "11:00")
 
     assert_not_nil stats
     assert stats.key?(:avg_duration)
     assert stats[:avg_duration] > 0
+    # Dilation < 1.0 means less proper time elapses than the scheduled 60 min
+    assert stats[:avg_duration] <= 60.0
   end
 
   test "calculate_meeting_statistics returns avg_delay for signal propagation" do
     participants = [
-      { body: { 'x' => 100, 'y' => 100 }, system_id: @system1.id },
-      { body: { 'x' => 50, 'y' => 50 }, system_id: @system2.id }
+      { body: { "x" => 100, "y" => 100 }, system_id: @system1.id },
+      { body: { "x" => 50, "y" => 50 }, system_id: @system2.id }
     ]
 
     stats = @calculator.calculate_meeting_statistics(participants)
@@ -191,7 +193,7 @@ class RelativisticCalculatorTest < ActiveSupport::TestCase
 
   test "calculate_meeting_statistics handles single participant" do
     participants = [
-      { body: { 'dilation' => 0.99 }, system_id: @system1.id }
+      { body: { "dilation" => 0.99 }, system_id: @system1.id }
     ]
 
     stats = @calculator.calculate_meeting_statistics(participants)
@@ -202,8 +204,8 @@ class RelativisticCalculatorTest < ActiveSupport::TestCase
   end
 
   test "handles edge cases like bodies at extreme distances" do
-    body1 = { 'x' => 0, 'y' => 0 }
-    body2 = { 'x' => 999999, 'y' => 999999 }
+    body1 = { "x" => 0, "y" => 0 }
+    body2 = { "x" => 999999, "y" => 999999 }
 
     # Should not crash with extreme coordinates
     assert_nothing_raised do
@@ -215,9 +217,13 @@ class RelativisticCalculatorTest < ActiveSupport::TestCase
     end
   end
 
-  test "uses consistent GRAVITATIONAL_CONSTANT and C values" do
-    assert_equal 0.0001, RelativisticCalculator::GRAVITATIONAL_CONSTANT
-    assert_equal 10_000_000, RelativisticCalculator::C
+  test "uses consistent physics constants from PhysicsConstants" do
+    assert_equal 0.0001, PhysicsConstants::GRAVITATIONAL_CONSTANT
+    assert_equal 10_000_000, PhysicsConstants::C
+    # Black hole dilation must be a real value in (0, 1), not a rescued 1.0
+    dilation = PhysicsConstants.gravitational_dilation(PhysicsConstants::BLACK_HOLE_MASS, 100)
+    assert dilation > 0.0
+    assert dilation < 1.0
   end
 
   test "calculate_time_dilation handles nil body gracefully" do
@@ -226,13 +232,13 @@ class RelativisticCalculatorTest < ActiveSupport::TestCase
   end
 
   test "calculate_time_dilation handles nil system_id gracefully" do
-    body = { 'dilation' => 0.99 }
+    body = { "dilation" => 0.99 }
     dilation = @calculator.calculate_time_dilation(body, nil)
     assert_equal 1.0, dilation # Fallback to no dilation
   end
 
   test "calculate_time_dilation handles non-existent system gracefully" do
-    body = { 'dilation' => 0.99 }
+    body = { "dilation" => 0.99 }
     dilation = @calculator.calculate_time_dilation(body, 99999)
     # Should return local dilation since system not found
     assert_equal 0.99, dilation
@@ -244,10 +250,10 @@ class RelativisticCalculatorTest < ActiveSupport::TestCase
   end
 
   test "calculate_body_to_body_distance handles nil bodies gracefully" do
-    distance = @calculator.calculate_body_to_body_distance(nil, @system1.id, { 'x' => 0, 'y' => 0 }, @system2.id)
+    distance = @calculator.calculate_body_to_body_distance(nil, @system1.id, { "x" => 0, "y" => 0 }, @system2.id)
     assert_equal 0.0, distance
 
-    distance = @calculator.calculate_body_to_body_distance({ 'x' => 0, 'y' => 0 }, @system1.id, nil, @system2.id)
+    distance = @calculator.calculate_body_to_body_distance({ "x" => 0, "y" => 0 }, @system1.id, nil, @system2.id)
     assert_equal 0.0, distance
   end
 
@@ -261,7 +267,7 @@ class RelativisticCalculatorTest < ActiveSupport::TestCase
     )
     close_system.save(validate: false)
 
-    body = { 'dilation' => 0.99 }
+    body = { "dilation" => 0.99 }
     dilation = @calculator.calculate_time_dilation(body, close_system.id)
 
     # Dilation should be affected by proximity to black hole
@@ -278,7 +284,7 @@ class RelativisticCalculatorTest < ActiveSupport::TestCase
     assert_not_nil calc
 
     # Should be able to perform calculations (though systems may not exist)
-    body = { 'dilation' => 0.99 }
+    body = { "dilation" => 0.99 }
     dilation = calc.calculate_time_dilation(body, 999)
     assert_not_nil dilation
   end

@@ -18,7 +18,7 @@ class GenerateGalaxyVisualizationJob < ApplicationJob
     end
 
     galaxy_data = GalaxyService.load_galaxy_data
-    systems_count = galaxy_data['systems']&.count || 0
+    systems_count = galaxy_data["systems"]&.count || 0
 
     output_path = GalaxyService.galaxy_svg_path
     FileUtils.mkdir_p(File.dirname(output_path))
@@ -46,13 +46,13 @@ class GenerateGalaxyVisualizationJob < ApplicationJob
       systems_count: systems_count,
       total_duration: total_duration.round(3),
       within_target: total_duration <= 10,
-      job_type: 'galaxy_visualization'
+      job_type: "galaxy_visualization"
     }
 
-    history = Rails.cache.fetch('job_performance_history') { [] }
+    history = Rails.cache.fetch("job_performance_history") { [] }
     history << metrics
     history = history.last(20)
-    Rails.cache.write('job_performance_history', history)
+    Rails.cache.write("job_performance_history", history)
   rescue => e
     Rails.logger.error("GenerateGalaxyVisualizationJob: Failed to store metrics - #{e.message}")
   end

@@ -82,12 +82,19 @@ class RegenerateSystemJob < ApplicationJob
 
   # Validate input parameters
   def validate_parameters!(num_planets, max_moons)
+    # Integer() truncates floats, so reject those explicitly
     num_planets_int = Integer(num_planets)
+    if num_planets.is_a?(Numeric) && num_planets != num_planets_int
+      raise ArgumentError, "num_planets must be an integer, got #{num_planets}"
+    end
     unless num_planets_int.between?(1, 10)
       raise ArgumentError, "num_planets must be between 1 and 10, got #{num_planets_int}"
     end
 
     max_moons_int = Integer(max_moons)
+    if max_moons.is_a?(Numeric) && max_moons != max_moons_int
+      raise ArgumentError, "max_moons must be an integer, got #{max_moons}"
+    end
     unless max_moons_int.between?(0, 5)
       raise ArgumentError, "max_moons must be between 0 and 5, got #{max_moons_int}"
     end
@@ -122,13 +129,13 @@ class RegenerateSystemJob < ApplicationJob
       visualizer_duration: durations[:visualizer].round(3),
       total_duration: durations[:total].round(3),
       within_target: durations[:total] <= 30,
-      job_type: 'regenerate'
+      job_type: "regenerate"
     }
 
-    history = Rails.cache.fetch('job_performance_history') { [] }
+    history = Rails.cache.fetch("job_performance_history") { [] }
     history << metrics
     history = history.last(20)
-    Rails.cache.write('job_performance_history', history)
+    Rails.cache.write("job_performance_history", history)
   rescue => e
     Rails.logger.error("RegenerateSystemJob: Failed to store metrics - #{e.message}")
   end

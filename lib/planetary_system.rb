@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require 'json'
-require 'nokogiri'
-require 'fileutils'
+require "json"
+require "nokogiri"
+require "fileutils"
 
 # === Planetární systém ===
 # Renders a single solar system's SVG visualization from its JSON data file.
@@ -48,7 +48,7 @@ class PlanetarySystem
     @raw_bodies = data["bodies"]
 
     # Extract system metadata if available
-    @system_id = system_id || data["system_id"] || File.basename(json_path.to_s, '.json')
+    @system_id = system_id || data["system_id"] || File.basename(json_path.to_s, ".json")
     @system_name = data["system_name"] || "System #{@system_id}"
     @system_x = data["system_x"]
     @system_y = data["system_y"]
@@ -95,11 +95,10 @@ class PlanetarySystem
     FileUtils.mkdir_p(File.dirname(output))
 
     scale_factor = 180.0 / bodies.map(&:radius).max
-    builder = Nokogiri::XML::Builder.new(encoding: 'UTF-8') do |svg|
+    builder = Nokogiri::XML::Builder.new(encoding: "UTF-8") do |svg|
       svg.svg(xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 800 800", width: "800", height: "800",
               "data-system-id": system_id,
               "data-system-name": system_name) do
-
         # Add system metadata as hidden metadata element
         svg.metadata do
           svg.system do
@@ -182,7 +181,6 @@ class PlanetarySystem
           )
           svg.text_("#{body.name}", x: body.x + scaled_radius + 5, y: body.y - scaled_radius - 5,
                      "font-size": "10", fill: "white")
-
         end
       end
     end

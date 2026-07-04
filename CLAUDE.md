@@ -4,369 +4,158 @@
 
 Gravikon is an interactive web application for planning meetings between celestial bodies in planetary systems, accounting for relativistic effects such as time dilation and signal delay due to the finite speed of light. Built as an educational tool for general relativity and astrophysics.
 
-**Current State:** Multi-system galaxy support with interactive visualization. Multiple solar systems orbit a central supermassive black hole, enabling both intra-system and inter-system meetings with enhanced relativistic calculations.
+**Current State:** Multi-system galaxy. Multiple solar systems orbit a central supermassive black hole; meetings can be intra-system or inter-system. The legacy single-system feature (`/systems`, `SystemsController`, `data/system_data.json`, `lib/generator.rb`) was removed in July 2026 — the galaxy views are the only UI.
+
+Council stage: legacy
 
 ## Tech Stack
 
-**Backend:**
-- Ruby 3.4.5
-- Rails 8.0.2
-- SQLite3 (development/test), multi-database production setup
-- Puma web server
-- Solid Cache, Solid Queue, Solid Cable (Rails 8 defaults)
-
-**Frontend:**
-- Server-rendered ERB templates
-- Vanilla JavaScript (no framework)
-- SVG-based interactive visualizations
-- Propshaft asset pipeline
-
-**Asset Processing:**
-- Terser (JS minification)
-- CSSO (CSS minification)
-
-**Deployment:**
-- Docker & Kamal support
-- Thruster for production serving
-
-**Development Tools:**
-- Rubocop (Rails Omakase style)
-- Brakeman (security scanner)
-- Debug gem
+**Backend:** Ruby 3.3 (rvm), Rails 8.0.2, SQLite3, Puma, Solid Cache/Queue/Cable defaults
+**Frontend:** Server-rendered ERB, vanilla JavaScript (NO Turbo/Stimulus — deliberately), SVG visualizations, Propshaft
+**Deployment:** Docker & Kamal, Thruster
+**Dev tools:** Rubocop (Rails Omakase, kept at 0 offenses), Brakeman (0 warnings; 2 reviewed ignores in config/brakeman.ignore), mocha for tests
 
 ## Build & Run
 
-**Initial Setup:**
 ```bash
-# Install dependencies
-gem install bundler
 bundle install
-
-# Setup database
 rails db:create db:migrate
-
-# Run data migration (if upgrading from single-system)
-rake data:migrate_to_multi_system
-
-# Generate galaxy visualization
-rails runner "GalaxyVisualizer.generate"
-```
-
-**Development:**
-```bash
-rails server
-# Visit http://localhost:3000
-```
-
-**Production (Docker):**
-```bash
-docker build -t gravikon .
-docker run -d -p 80:80 -e RAILS_MASTER_KEY=<key> --name gravikon gravikon
-```
-
-**Kamal Deployment:**
-```bash
-kamal setup
-kamal deploy
+rails galaxy:rebuild        # regenerate any missing galaxy/system data files from the DB
+rails server                # http://localhost:3000
 ```
 
 ## Commands
 
 ```yaml
-test_cmd: rails test
+test_cmd: rails test              # 281 runs, 0 failures — safe: tests write only to tmp/test_gravikon/
 lint_cmd: rubocop
-security_scan_cmd: brakeman -q
-db_setup_cmd: rails db:create db:migrate
+security_scan_cmd: brakeman -q -i config/brakeman.ignore
 server_cmd: rails server
-generate_system_cmd: ruby lib/generator.rb <num_planets> <max_moons>
-visualize_cmd: ruby lib/visualizer.rb
-precompile_assets_cmd: rails assets:precompile
+rebuild_data_cmd: rails galaxy:rebuild   # self-heals galaxy_data.json, system JSONs and SVGs from DB
 ```
 
-**Custom Rake Tasks:**
-- `rails assets:verify_js` - Verify JavaScript syntax
-- `rails assets:verify_css` - Verify CSS syntax
-- `rails data:migrate_to_multi_system` - Migrate single-system data to multi-system structure
-- `rails data:rollback_multi_system` - Rollback multi-system migration
-- `rails data:cleanup_legacy_files` - Clean up legacy single-system files
-- `rails cache:stats` - View cache statistics
-- `rails cache:warm` - Warm up production caches
-- `rails cache:clear_all` - Clear all caches
-- `rails job:benchmark` - Benchmark background jobs
+Other rake tasks: `cache:stats`, `cache:warm`, `cache:clear_all`, `job:benchmark`, `assets:verify_js`, `assets:verify_css`.
 
-## Security
+## Architecture — key decisions
 
-**Current Measures:**
-- Strong parameter whitelisting in controllers (GalaxyController, MeetingsController)
-- JSON validation for participant data and participant_systems
-- Input validation:
-  - System names: 3-50 alphanumeric characters, spaces, hyphens
-  - Numeric parameters: num_planets (1-10), max_moons (0-5)
-  - Custom bodies: mass (1e20-1e40), radius (1e5-1e9), density (500-20000)
-  - Coordinates: galaxy (0-800), minimum distances enforced
-- File path sanitization: prevents path traversal attacks, validates UUID/slug formats
-- Rate limiting via Rack::Attack:
-  - System creation: 5/hour per IP
-  - System regeneration: 10/hour per IP
-  - Meeting creation: 20/hour per IP
-- Orbit validation: ensures systems don't collide or exit canvas
-- Non-root Docker user (uid 1000)
-- Content Security Policy configured
-- Filter parameter logging enabled
-- Brakeman static analysis
-- Security event logging with IP and User-Agent tracking
+**File-path authority: `GalaxyService`.** ALL generated-file locations come from
+`GalaxyService.galaxy_data_path`, `.system_data_path(file_id)`, `.galaxy_svg_path`,
+`.system_svg_path(file_id)`, `.systems_data_dir`, `.systems_svg_dir`.
+Roots are configurable via `config.x.gravikon.data_root` / `.svg_root`
+(`config/application.rb`); the **test environment points them at
+`tmp/test_gravikon/<worker>/`** (per parallel worker, see `test/test_helper.rb`) so
+the suite can never destroy real data. Never hardcode `Rails.root.join("data", ...)`
+for generated files.
 
-**Security Constraints:**
-- No authentication system (single-user educational tool)
-- SQLite not recommended for multi-user production
-- Credentials encrypted via Rails credentials
+**System identity.** A `System` row has two ids: the database `id` (integer) and the
+**file id** (`System#system_id`, the UUID/slug inside `json_file_path`). All file
+names AND `galaxy_data.json` entries are keyed by the file id. Jobs take the DB id
+(`RegenerateSystemJob`) or the file id (`GenerateSystemJob` — controller generates
+the UUID before enqueueing). Mixing them up caused the historical "regeneration
+writes files the app never reads" and "system collides with itself" bugs.
 
-## Performance
+**Physics: `lib/physics_constants.rb`** is the single source for scaled constants
+(`C = 1e7`, `UNIT_METERS = 1e6` → light crosses 1 canvas unit in 0.1 s;
+`GRAVITATIONAL_CONSTANT = 1e-4` for body surface dilation;
+`BLACK_HOLE_GRAVITATIONAL_CONSTANT = 1.1e-16` so BH dilation is ~0.80 at 50 units,
+~0.98 at canvas edge) and the shared dilation formulas. Bodies store **local-only**
+dilation; `RelativisticCalculator` combines it with black-hole dilation at the
+system's *current* position — moving a system never stales its data.
+`Meeting#local_avg_duration` = scheduled minutes (from HH:MM with midnight wrap)
+× average participant dilation. `avg_delay` = mean pairwise signal delay in seconds.
 
-**Caching Strategy:**
-- Galaxy data cached with versioned keys: `galaxy_data_v2`
-- Individual system data cached: `system_data_<id>_v2`
-- Used celestial names cached: `used_celestial_names` (30 min expiry)
-- Meeting statistics per system: `system_<id>_meeting_stats_v2` (30 min expiry)
-- Dashboard statistics cached with version keys
-- SVG timestamps for cache busting: `galaxy_svg_timestamp`, `system_<id>_svg_timestamp`
-- Cache warming on production startup for first 10 systems
-- Solid Cache for production (SQLite-backed)
+**Self-healing:** `GalaxyService.rebuild_galaxy_data!` rebuilds `galaxy_data.json`
+from the DB; `galaxy#index` and `GenerateGalaxyVisualizationJob` invoke it when the
+file is missing; `rails galaxy:rebuild` regenerates everything. Destroying a System
+removes its files AND its galaxy_data entry (model callbacks — no ghost entries).
 
-**Background Jobs:**
-- `GenerateSystemJob` - Async system generation to prevent timeouts
-- `RegenerateSystemJob` - Async system regeneration
-- `GenerateGalaxyVisualizationJob` - Async galaxy SVG generation
-- Solid Queue for job processing
+**No Hotwire.** turbo-rails is not in the bundle; controllers use plain
+redirects/renders, destructive actions use vanilla `onsubmit="return confirm(...)"`.
+Do not add `format.turbo_stream` or `data-turbo-*` — they crash/no-op here.
 
-**Optimizations:**
-- Bootsnap for faster boot times
-- Propshaft for static asset serving
-- Test parallelization enabled
-- Asset minification in production
-- Lazy-load system details on click
-- Separate caching for galaxy metadata and individual systems
-- Efficient relativistic calculations for inter-system distances
+**Meetings controller flow:** `build_meeting_attributes` validates + computes stats
+and returns `{attrs:}` or `{error:}`; create/update share it. Update is a real
+in-place `update!`. Failed submits re-render (422) with user input preserved from
+params. `participant_systems` params must be converted with `.to_h`
+(ActionController::Parameters is not a Hash — this bug silently blocked all
+inter-system meetings historically).
+
+**Models:**
+- `System` — validations (name 3-50 chars, coords 0-800, orbit position excluding
+  its own galaxy entry, path-safety on json_file_path); `system_id`,
+  `data_file_path`, `load_system_data`; destroy cleans files + galaxy entry + caches.
+- `Meeting` — HH:MM string times, JSON `participants` array,
+  `participant_systems` JSON hash (name → system DB id, values normalized to int
+  by `participant_systems_hash`), `duration_minutes`, `formatted_duration/-delay`.
+
+**Views/JS:** `application.css` is the single CSS manifest (@imports gravikon →
+galaxy → systems → meetings). Layout loads logger.js, keyboard_shortcuts.js,
+galaxy.js globally; system detail pages load system_map.js (tooltips) +
+orbital_animation.js (the ONLY animation engine, with play/pause/speed controls);
+meeting forms load meeting_form.js; the inter-system participant picker lives in
+`meetings/_inter_system_participants.html.erb` (shared by new + edit, pairs each
+checkbox to its hidden `participant_systems` field by element id). Chart.js is
+vendored at `app/assets/javascripts/vendor/chart.umd.min.js`. Flash messages are
+rendered by the layout (`.flash-notice` / `.flash-alert` in gravikon.css).
+
+**Jobs:** `GenerateSystemJob`, `RegenerateSystemJob`, `GenerateGalaxyVisualizationJob`
+— fail loudly (no retry_on/discard_on swallowing), clear the *versioned* cache keys
+via GalaxyService, update SVG timestamps, record metrics to
+`job_performance_history` cache (dashboard /dashboard/job_performance).
 
 ## Data
 
-**Database Schema:**
+`systems` table: name, x, y (galaxy coords 0-800), `json_file_path`
+("data/systems/<file_id>.json" — logical identity, resolved through configured roots).
+`meetings` table: start_time/end_time (HH:MM strings), topic, participants (JSON array),
+participant_systems (JSON hash, inter-system only), system_id (intra-system only),
+is_inter_system, local_avg_duration (minutes), avg_delay (seconds).
+Note: a dead `solar_systems` table + `meetings.solar_system_id` FK still exist in the
+schema (pre-multi-system remnant, no model references it).
 
-`systems` table:
-- `id` (integer, primary key)
-- `name` (string) - System name, 3-50 characters
-- `x`, `y` (float) - Galaxy coordinates (0-800)
-- `json_file_path` (string) - Path to system data JSON file
-- `created_at`, `updated_at` (datetime)
-- Validations: name format, uniqueness, coordinates range, orbit position
+Generated files (git-ignored): `data/galaxy_data.json`, `data/systems/<file_id>.json`,
+`public/galaxy.svg`, `public/systems/<file_id>.svg`. Black hole fixed at (400,400),
+min 50 units from BH, min 40 units between systems, planet orbits ≤ 370 units from
+the star (planet spacing shrinks with planet count so 1-10 planets all work).
 
-`meetings` table:
-- `id` (integer, primary key)
-- `start_time`, `end_time` (string, HH:MM format)
-- `topic` (string)
-- `participants` (text, JSON array) - Body names
-- `participant_systems` (text, JSON hash) - Maps participant names to system IDs (for inter-system meetings)
-- `system_id` (integer, foreign key) - Single system for intra-system meetings
-- `is_inter_system` (boolean) - Flag for inter-system meetings
-- `local_avg_duration`, `avg_delay` (float) - Calculated relativistic effects
-- `created_at`, `updated_at` (datetime)
+## Testing
 
-**File-Based Data:**
+- `rails test`: 281 runs / 0 failures / 0 errors / 9 documented skips. Parallelized;
+  each worker gets isolated data roots (test_helper `parallelize_setup`).
+- Helpers in test_helper: `write_system_data(system_or_id, bodies)`,
+  `default_test_bodies(names)`.
+- `test/system/*` are Selenium tests, NOT run by `rails test`; they also use
+  GalaxyService paths now.
+- NEVER write tests that touch `Rails.root/data` or `Rails.root/public` directly —
+  that pattern destroyed dev data historically. Always go through GalaxyService paths.
 
-`data/galaxy_data.json` - Galaxy configuration:
-```json
-{
-  "black_hole": {
-    "name": "Sagittarius Omega",
-    "mass": 8.2e36,
-    "x": 400,
-    "y": 400,
-    "schwarzschild_radius": <calculated>,
-    "dilation": 0.0,
-    "type": "black_hole"
-  },
-  "systems": [
-    { "id": "<system_id>", "x": <float>, "y": <float> }
-  ]
-}
-```
+## Security
 
-`data/systems/<system_id>.json` - Individual system data:
-```json
-{
-  "bodies": [
-    {
-      "name": "Stelaris",
-      "type": "star",
-      "x": 400,
-      "y": 400,
-      "radius": <meters>,
-      "density": <kg/m³>,
-      "mass": <kg>,
-      "dilation": <float>
-    },
-    { "...": "planets and moons..." }
-  ]
-}
-```
-
-`public/galaxy.svg` - Galaxy map visualization
-`public/systems/<system_id>.svg` - Individual system visualizations
-
-**Data Generation:**
-- `lib/system_generator.rb` - Creates random solar systems with physics calculations
-- `lib/generator.rb` - Legacy generator (backwards compatibility)
-- `lib/galaxy_visualizer.rb` - Generates galaxy map SVG
-- `lib/visualizer.rb` - Generates system SVG (supports both legacy and multi-system)
-- Validates: planet count (1-10), moon count (0-5 per planet), custom body parameters
-- Calculates: mass from radius/density, gravitational time dilation
-- Ensures unique celestial names across all systems in galaxy
-
-## Testing Strategy
-
-**Test Suite:**
-- Minitest (Rails default)
-- Parallel test execution enabled
-- Fixtures for test data
-
-**Test Coverage:**
-- Model tests:
-  - Meeting validations, time parsing, JSON handling, system associations
-  - System validations (name, coordinates, orbit position, file path security)
-- Controller tests:
-  - MeetingsController (intra-system and inter-system meetings)
-  - GalaxyController (CRUD operations, validations, security)
-  - DashboardController
-- Service tests:
-  - GalaxyService (caching, system loading, position validation)
-  - RelativisticCalculator (inter-system coordinate transformation)
-- Validator tests:
-  - OrbitValidator (system and body position validation)
-- Job tests:
-  - GenerateSystemJob, RegenerateSystemJob, GenerateGalaxyVisualizationJob
-- Helper tests: Dashboard statistics, meeting statistics per system
-
-**Test Execution:**
-```bash
-rails test                    # All tests
-rails test:models             # Model tests only
-rails test:controllers        # Controller tests only
-rails test test/models/meeting_test.rb  # Single file
-```
-
-**Multi-System Test Coverage:**
-- ✅ Galaxy map rendering with multiple systems
-- ✅ Inter-system meeting calculations with coordinate transformation
-- ✅ System CRUD operations (create, edit, delete, regenerate)
-- ✅ Orbital validation (systems don't overlap or exit canvas)
-- ✅ Name uniqueness across galaxy (cached validation)
-- ✅ System switching UI and navigation
-- ✅ Migration from single-system to multi-system structure
-- ✅ Cache invalidation and warming
-- ✅ Security validations (rate limiting, input validation, path traversal prevention)
+- Strong params everywhere; participants/participant_systems size+structure limits
+  (50 entries / 10KB); custom body ranges (mass 1e20-1e40, radius 1e5-1e9,
+  density 500-2e4); numeric params num_planets 1-10, max_moons 0-5.
+- Path traversal: every file id passes `GalaxyService.sanitize_system_id`
+  (UUID or `[a-z0-9_]+` slug only) — the two weak Brakeman FileAccess findings are
+  reviewed + ignored on this basis (config/brakeman.ignore).
+- Rack::Attack rate limits (system creation 5/h, regeneration 10/h, meetings 20/h
+  per IP); note its MemoryStore counters are per-process.
+- No authentication (single-user educational tool).
 
 ## Conventions
 
-**Code Style:**
-- Rubocop Rails Omakase configuration
-- Frozen string literals (`# frozen_string_literal: true`)
-- Czech language for user-facing strings and comments
-- English for code, variable names, and git commits
+- Czech for user-facing strings/flash/comments in views; English for code and commits.
+- Frozen string literals; Rubocop Rails Omakase — keep `rubocop` at 0 offenses.
+- Times as HH:MM strings; JSON in text columns (see Meeting model helpers).
+- JavaScript in `app/assets/javascripts/` (Propshaft, no bundler); vanilla JS only.
+- Generated data is never committed — rebuild with `rails galaxy:rebuild`.
 
-**Naming Conventions:**
-- Celestial body names from predefined lists (planet_names, moon_names, star_names in generator.rb)
-- Controllers: PascalCase files (e.g., SystemsController.rb), not snake_case
-- Models: snake_case files following Rails conventions
-- JavaScript: camelCase for functions/variables
+## History note (July 2026 overhaul)
 
-**Database Conventions:**
-- Time stored as HH:MM strings (not datetime)
-- Participants stored as JSON arrays
-- Callbacks: `before_validation`, `after_commit` for cache clearing
-
-**File Organization:**
-- Data generators in `lib/`
-- Custom rake tasks in `lib/tasks/`
-- JavaScript in `app/assets/javascripts/` (not app/javascript)
-- System data in `data/` directory
-
-**Git Workflow:**
-- Feature branches with descriptive names
-- Czech commit messages acceptable for user-facing changes
-- Migrations should be reversible
-
-**Multi-System Conventions:**
-- Galaxy data in `data/galaxy_data.json`
-- Individual system data in `data/systems/<system_id>.json`
-- Consistent coordinate system: (400, 400) = galaxy center
-- System IDs: UUIDs or slugified names (validated, no path traversal)
-- SVG viewBox: 800x800 for both galaxy and system views
-- Galaxy coordinates: (0, 0) top-left, (800, 800) bottom-right
-- Minimum distances: 50 units from black hole, 40 units between systems
-- Black hole position: fixed at (400, 400)
-
-## Architecture
-
-**Models:**
-- `System` - Database persistence for solar systems
-  - Associations: `has_many :meetings`
-  - Validations: name format, uniqueness, coordinates, orbit position, file path security
-  - Methods: `load_system_data`, `data_file_exists?`, `slug`
-
-- `Meeting` - Scheduled meetings between celestial bodies
-  - Associations: `belongs_to :system` (optional for inter-system meetings)
-  - Types: Intra-system (single system) or Inter-system (multiple systems)
-  - JSON fields: `participants`, `participant_systems`
-
-**Controllers:**
-- `GalaxyController` - Galaxy map and system management
-  - Actions: index, show_system, new, create, edit_system, update_system, destroy_system, regenerate_system
-  - Security: Strong parameters, numeric validation, custom body validation, orbit validation
-  - Logging: System creation, deletion, failed validations
-
-- `MeetingsController` - Meeting scheduling (both types)
-  - Actions: index, new, new_inter_system, create, edit, update, destroy
-  - Handles coordinate transformation for inter-system meetings
-  - JSON validation for participants and participant_systems
-
-**Services:**
-- `GalaxyService` - Galaxy-level operations with caching
-  - Methods: `load_galaxy_data`, `load_system_data`, `add_system`, `remove_system`
-  - Validation: `validate_system_position`, `sanitize_system_id`
-  - Cache management: galaxy, systems, used names, meeting stats, SVG timestamps
-  - Security: Path sanitization, collision detection
-
-- `RelativisticCalculator` - Physics calculations
-  - Coordinate transformation (local → galaxy)
-  - Time dilation calculations
-  - Signal delay calculations
-
-**Validators:**
-- `OrbitValidator` - Validates orbital positions
-  - System-level: canvas bounds, distance from black hole, collision detection
-  - Body-level: canvas bounds, collision detection within system
-
-**Generators:**
-- `SystemGenerator` - Creates solar systems with realistic physics
-  - Random planet/moon generation with configurable parameters
-  - Custom body support with validation
-  - Unique name generation (checks against all systems)
-  - Mass and time dilation calculations
-
-**Visualizers:**
-- `GalaxyVisualizer` - Generates galaxy map SVG
-  - Renders black hole, orbital paths, system markers
-  - Interactive markers with data attributes
-
-- `PlanetarySystem` (visualizer.rb) - Generates system SVG
-  - Supports both legacy and multi-system modes
-  - Renders star, planets, moons with orbits
-
-**Background Jobs:**
-- `GenerateSystemJob` - Async system generation
-- `RegenerateSystemJob` - Async system regeneration
-- `GenerateGalaxyVisualizationJob` - Async galaxy SVG generation
-
-**Initializers:**
-- `cache_warming.rb` - Warms caches on production startup
-- `rack_attack.rb` - Rate limiting configuration
+The codebase was originally assembled by an automated "code factory" pipeline and
+accumulated: 500s on every create action (Rack::Attack subscriber bug + missing
+turbo-rails), a destructive test suite that wiped real data, a broken
+regeneration pipeline (DB-id/file-id mismatch, self-collision), inert physics
+(sqrt DomainError rescued to 1.0, dilation factor displayed as minutes), duplicate
+animation engines, and a legacy single-system feature whose regenerate button
+deleted all meetings. All of the above was fixed/removed in the
+2026-07 commits — see `git log` for the detailed inventory before extending old patterns.

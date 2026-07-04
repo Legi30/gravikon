@@ -116,7 +116,7 @@ class MeetingsController < ApplicationController
     return [] unless system
 
     # Use GalaxyService caching for system data
-    system_file_id = File.basename(system.json_file_path, '.json')
+    system_file_id = File.basename(system.json_file_path, ".json")
     system_data = GalaxyService.load_system_data(system_file_id)
     return [] unless system_data
 
@@ -134,7 +134,7 @@ class MeetingsController < ApplicationController
       next unless system
 
       # Use GalaxyService caching for system data
-      system_file_id = File.basename(system.json_file_path, '.json')
+      system_file_id = File.basename(system.json_file_path, ".json")
       system_data = GalaxyService.load_system_data(system_file_id)
       next unless system_data
 
@@ -173,9 +173,9 @@ class MeetingsController < ApplicationController
   def participant_systems_params
     permitted = if params[:participant_systems].present?
                   params.permit(participant_systems: {})[:participant_systems]
-                elsif params.dig(:meeting, :participant_systems).present?
+    elsif params.dig(:meeting, :participant_systems).present?
                   params.require(:meeting).permit(participant_systems: {})[:participant_systems]
-                end
+    end
     return nil unless permitted.respond_to?(:to_h)
 
     permitted.to_h.presence
@@ -246,7 +246,7 @@ class MeetingsController < ApplicationController
     # Prepare participants with system information for the calculator
     participants_with_systems = if is_inter_system
       parsed_participants.map do |body|
-        { body: body, system_id: participant_systems[body['name']] }
+        { body: body, system_id: participant_systems[body["name"]] }
       end
     else
       parsed_participants.map do |body|
@@ -288,7 +288,7 @@ class MeetingsController < ApplicationController
     if meeting.is_inter_system
       meeting.participant_systems_hash.values.uniq.compact
     elsif meeting.system_id
-      [meeting.system_id]
+      [ meeting.system_id ]
     else
       []
     end
@@ -311,7 +311,7 @@ class MeetingsController < ApplicationController
       next unless system
 
       # Use GalaxyService caching for system data
-      system_file_id = File.basename(system.json_file_path, '.json')
+      system_file_id = File.basename(system.json_file_path, ".json")
       system_data = GalaxyService.load_system_data(system_file_id)
       next unless system_data
 

@@ -4,21 +4,16 @@ require "test_helper"
 
 class SystemGeneratorTest < ActiveSupport::TestCase
   setup do
-    @test_output_dir = Rails.root.join('data', 'systems')
+    @test_output_dir = GalaxyService.systems_data_dir
     FileUtils.mkdir_p(@test_output_dir)
-  end
-
-  teardown do
-    # Clean up test files
-    Dir.glob(@test_output_dir.join('test_*.json')).each { |f| File.delete(f) }
   end
 
   # Test accepts system_id parameter and uses it for output filename
   test "accepts system_id parameter and uses it for output filename" do
-    system_id = 'test_system_001'
+    system_id = "test_system_001"
     generator = SystemGenerator.new(
       system_id: system_id,
-      system_name: 'Test System',
+      system_name: "Test System",
       num_planets: 3
     )
 
@@ -31,8 +26,8 @@ class SystemGeneratorTest < ActiveSupport::TestCase
   # Test accepts system_name, system_x, system_y for galaxy context
   test "accepts system_name and position parameters for galaxy context" do
     generator = SystemGenerator.new(
-      system_id: 'test_system_002',
-      system_name: 'Alpha Centauri',
+      system_id: "test_system_002",
+      system_name: "Alpha Centauri",
       system_x: 300,
       system_y: 400,
       num_planets: 2
@@ -44,41 +39,44 @@ class SystemGeneratorTest < ActiveSupport::TestCase
 
   # Test outputs to data/systems/<system_id>.json
   test "outputs to correct path data/systems/<system_id>.json" do
-    system_id = 'test_system_003'
+    system_id = "test_system_003"
 
     # Mock or stub the generator to test output path
-    expected_path = Rails.root.join('data', 'systems', "#{system_id}.json")
+    expected_path = GalaxyService.system_data_path(system_id)
 
     # The generator should use this path format
-    assert expected_path.to_s.include?('data/systems/')
-    assert expected_path.to_s.end_with?('.json')
+    assert expected_path.to_s.include?("data/systems/")
+    assert expected_path.to_s.end_with?(".json")
   end
 
   # Test generates unique names checking against all existing systems
   test "generates unique body names" do
-    # This test verifies the generator checks for name uniqueness
-    # across all systems in the galaxy
-    generator = SystemGenerator.new(
-      system_id: 'test_system_004',
-      system_name: 'Test',
-      num_planets: 2
-    )
+    # A pre-existing system already uses some names — the generator must not reuse them
+    taken_names = SystemGenerator::PLANET_NAMES.first(3) + [ SystemGenerator::STAR_NAMES.first ]
+    write_system_data("existing_sys", taken_names.map { |n| { "name" => n, "type" => "planet" } })
 
-    # Generator should have mechanism to check used names
-    assert generator.respond_to?(:check_name_uniqueness) ||
-           generator.respond_to?(:used_names) ||
-           generator.respond_to?(:load_used_names_from_existing_systems)
+    generator = SystemGenerator.new(
+      system_id: "test_system_004",
+      system_name: "Test",
+      num_planets: 3
+    )
+    data = generator.generate
+
+    assert_not_nil data
+    generated_names = data[:bodies].map { |b| b[:name] }
+    assert_empty generated_names & taken_names, "Generator reused names from an existing system"
+    assert_equal generated_names.uniq.size, generated_names.size, "Generator produced duplicate names"
   end
 
   # Test custom mode accepts specific planet/moon parameters
   test "custom mode accepts specific planet and moon parameters" do
     custom_bodies = [
-      { type: 'planet', mass: 5.97e24, radius: 6.371e6, density: 5514 }
+      { type: "planet", mass: 5.97e24, radius: 6.371e6, density: 5514 }
     ]
 
     generator = SystemGenerator.new(
-      system_id: 'test_system_005',
-      system_name: 'Custom System',
+      system_id: "test_system_005",
+      system_name: "Custom System",
       custom_bodies: custom_bodies
     )
 
@@ -87,19 +85,17 @@ class SystemGeneratorTest < ActiveSupport::TestCase
            generator.respond_to?(:custom_bodies)
   end
 
-  # Test calculates time dilation relative to black hole
+  # Black hole dilation is applied by RelativisticCalculator at meeting time —
+  # generated bodies store only their LOCAL surface dilation
   test "calculates time dilation relative to black hole based on system position" do
-    generator = SystemGenerator.new(
-      system_id: 'test_system_006',
-      system_name: 'Test',
-      system_x: 300,
-      system_y: 300,
-      num_planets: 1
-    )
+    # ~141 units from the galaxy center
+    dilation = PhysicsConstants.gravitational_dilation(PhysicsConstants::BLACK_HOLE_MASS, 141.4)
+    assert dilation > 0.0
+    assert dilation < 1.0
 
-    # Generator should calculate or have access to black hole effects
-    assert generator.respond_to?(:calculate_black_hole_effects) ||
-           generator.class.const_defined?(:GRAVITATIONAL_CONSTANT)
+    # Closer to the black hole means stronger dilation (smaller factor)
+    closer = PhysicsConstants.gravitational_dilation(PhysicsConstants::BLACK_HOLE_MASS, 60)
+    assert closer < dilation
   end
 
   # Test uses expanded name lists
@@ -121,8 +117,8 @@ class SystemGeneratorTest < ActiveSupport::TestCase
   # Test validates body positions using OrbitValidator
   test "validates body positions to ensure valid orbits" do
     generator = SystemGenerator.new(
-      system_id: 'test_system_007',
-      system_name: 'Test',
+      system_id: "test_system_007",
+      system_name: "Test",
       num_planets: 2
     )
 
@@ -137,8 +133,8 @@ class SystemGeneratorTest < ActiveSupport::TestCase
     # Should handle out-of-range values
     assert_nothing_raised do
       generator = SystemGenerator.new(
-        system_id: 'test_system_008',
-        system_name: 'Test',
+        system_id: "test_system_008",
+        system_name: "Test",
         num_planets: 0  # Invalid
       )
     end
@@ -146,9 +142,8 @@ class SystemGeneratorTest < ActiveSupport::TestCase
 
   # Test physical constants are defined
   test "defines required physical constants" do
-    # Generator should have access to physics constants
-    assert defined?(SystemGenerator::GRAVITATIONAL_CONSTANT) ||
-           defined?(SystemGenerator::C) ||
-           SystemGenerator.const_defined?(:G)
+    assert_equal 0.0001, PhysicsConstants::GRAVITATIONAL_CONSTANT
+    assert_equal 10_000_000, PhysicsConstants::C
+    assert_equal 1_000_000, PhysicsConstants::UNIT_METERS
   end
 end

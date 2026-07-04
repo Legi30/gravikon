@@ -1,18 +1,18 @@
 # frozen_string_literal: true
 
-require 'json'
-require 'securerandom'
-require 'fileutils'
+require "json"
+require "securerandom"
+require "fileutils"
 
 # Load OrbitValidator if running from Rails context
 if defined?(Rails)
-  require_relative '../app/validators/orbit_validator'
+  require_relative "../app/validators/orbit_validator"
 end
 
 # Object-oriented system generator for creating solar systems
 # Can be used from Rails controllers, jobs, and command line
 class SystemGenerator
-  STAR_POSITION = [PhysicsConstants::SYSTEM_LOCAL_CENTER, PhysicsConstants::SYSTEM_LOCAL_CENTER].freeze
+  STAR_POSITION = [ PhysicsConstants::SYSTEM_LOCAL_CENTER, PhysicsConstants::SYSTEM_LOCAL_CENTER ].freeze
 
   # Name lists (expanded in T001)
   PLANET_NAMES = %w[
@@ -81,9 +81,9 @@ class SystemGenerator
 
     bodies = if @custom_bodies
                generate_custom_system
-             else
+    else
                generate_random_system
-             end
+    end
 
     return nil if bodies.nil?
 
@@ -174,14 +174,14 @@ class SystemGenerator
     systems_dir = GalaxyService.systems_data_dir
     return unless Dir.exist?(systems_dir)
 
-    Dir.glob(File.join(systems_dir, '*.json')).each do |file|
+    Dir.glob(File.join(systems_dir, "*.json")).each do |file|
       # Skip the current system being regenerated
       next if file.include?("#{@system_id}.json")
 
       begin
         data = JSON.parse(File.read(file))
-        data['bodies']&.each do |body|
-          @used_names << body['name'] if body['name']
+        data["bodies"]&.each do |body|
+          @used_names << body["name"] if body["name"]
         end
       rescue => e
         log_warn("Failed to load names from #{file}: #{e.message}")
@@ -237,7 +237,7 @@ class SystemGenerator
 
     {
       name: random_name(STAR_NAMES),
-      type: 'star',
+      type: "star",
       x: STAR_POSITION[0],
       y: STAR_POSITION[1],
       radius: star_radius,
@@ -263,7 +263,7 @@ class SystemGenerator
       angle = rand * 2 * Math::PI
       # Spacing shrinks with planet count so the outermost orbit always fits
       # within OrbitValidator::MAX_ORBIT_RADIUS_FROM_STAR (370 units)
-      spacing = [(240.0 / [@num_planets - 1, 1].max).floor, 60].min
+      spacing = [ (240.0 / [ @num_planets - 1, 1 ].max).floor, 60 ].min
       distance = 100 + index * spacing + rand(-10..10)
       planet_x = star[:x] + distance * Math.cos(angle)
       planet_y = star[:y] + distance * Math.sin(angle)
@@ -293,7 +293,7 @@ class SystemGenerator
 
       return {
         name: random_name(PLANET_NAMES),
-        type: 'planet',
+        type: "planet",
         x: planet_x.round(2),
         y: planet_y.round(2),
         radius: planet_radius,
@@ -346,7 +346,7 @@ class SystemGenerator
 
       return {
         name: random_name(MOON_NAMES),
-        type: 'moon',
+        type: "moon",
         x: moon_x.round(2),
         y: moon_y.round(2),
         radius: moon_radius,
@@ -361,21 +361,21 @@ class SystemGenerator
   # @param spec [Hash] Body specification
   # @return [Hash] Body data
   def generate_custom_body(spec)
-    body_type = spec[:type] || spec['type']
-    name = spec[:name] || spec['name']
+    body_type = spec[:type] || spec["type"]
+    name = spec[:name] || spec["name"]
 
     # Use provided name or generate random one
     name = case body_type
-           when 'star' then name || random_name(STAR_NAMES)
-           when 'planet' then name || random_name(PLANET_NAMES)
-           when 'moon' then name || random_name(MOON_NAMES)
-           else name || "Body-#{SecureRandom.hex(4)}"
-           end
+    when "star" then name || random_name(STAR_NAMES)
+    when "planet" then name || random_name(PLANET_NAMES)
+    when "moon" then name || random_name(MOON_NAMES)
+    else name || "Body-#{SecureRandom.hex(4)}"
+    end
 
-    radius = (spec[:radius] || spec['radius'] || default_radius_for_type(body_type)).to_f
-    density = (spec[:density] || spec['density'] || default_density_for_type(body_type)).to_f
-    x = (spec[:x] || spec['x'] || STAR_POSITION[0]).to_f
-    y = (spec[:y] || spec['y'] || STAR_POSITION[1]).to_f
+    radius = (spec[:radius] || spec["radius"] || default_radius_for_type(body_type)).to_f
+    density = (spec[:density] || spec["density"] || default_density_for_type(body_type)).to_f
+    x = (spec[:x] || spec["x"] || STAR_POSITION[0]).to_f
+    y = (spec[:y] || spec["y"] || STAR_POSITION[1]).to_f
 
     mass = calculate_mass(radius, density)
 
@@ -387,7 +387,7 @@ class SystemGenerator
       radius: radius,
       density: density,
       mass: mass,
-      dilation: body_type == 'star' ? 1.0 : PhysicsConstants.surface_dilation(mass, radius)
+      dilation: body_type == "star" ? 1.0 : PhysicsConstants.surface_dilation(mass, radius)
     }
   end
 
@@ -429,9 +429,9 @@ class SystemGenerator
   # @return [Integer] Default radius
   def default_radius_for_type(type)
     case type
-    when 'star' then 75_000_000
-    when 'planet' then 2_500_000
-    when 'moon' then 500_000
+    when "star" then 75_000_000
+    when "planet" then 2_500_000
+    when "moon" then 500_000
     else 1_000_000
     end
   end
@@ -441,9 +441,9 @@ class SystemGenerator
   # @return [Integer] Default density
   def default_density_for_type(type)
     case type
-    when 'star' then 1500
-    when 'planet' then 4500
-    when 'moon' then 3500
+    when "star" then 1500
+    when "planet" then 4500
+    when "moon" then 3500
     else 3000
     end
   end
@@ -483,7 +483,7 @@ class SystemGenerator
   def log_debug(message)
     if defined?(Rails)
       Rails.logger.debug(message)
-    elsif ENV['DEBUG']
+    elsif ENV["DEBUG"]
       puts("DEBUG: #{message}")
     end
   end

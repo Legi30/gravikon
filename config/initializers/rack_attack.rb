@@ -17,34 +17,34 @@ class Rack::Attack
 
   # Return 429 (Too Many Requests) for throttled requests with standard rate limit headers
   self.throttled_responder = lambda do |env|
-    match_data = env['rack.attack.match_data']
+    match_data = env["rack.attack.match_data"]
     now = match_data[:epoch_time]
     retry_after = match_data[:period] - (now % match_data[:period])
 
     headers = {
-      'Content-Type' => 'text/plain',
-      'Retry-After' => retry_after.to_s,
-      'X-RateLimit-Limit' => match_data[:limit].to_s,
-      'X-RateLimit-Remaining' => '0',
-      'X-RateLimit-Reset' => (now + retry_after).to_s
+      "Content-Type" => "text/plain",
+      "Retry-After" => retry_after.to_s,
+      "X-RateLimit-Limit" => match_data[:limit].to_s,
+      "X-RateLimit-Remaining" => "0",
+      "X-RateLimit-Reset" => (now + retry_after).to_s
     }
 
-    [429, headers, ["Příliš mnoho požadavků. Zkuste to prosím později.\n"]]
+    [ 429, headers, [ "Příliš mnoho požadavků. Zkuste to prosím později.\n" ] ]
   end
 
   ### Throttle Rules ###
 
   # Throttle system creation requests
   # Allow 5 system creations per hour per IP
-  throttle('system_creation/ip', limit: 5, period: 1.hour) do |req|
-    if req.path == '/galaxy/systems' && req.post?
+  throttle("system_creation/ip", limit: 5, period: 1.hour) do |req|
+    if req.path == "/galaxy/systems" && req.post?
       req.ip
     end
   end
 
   # Throttle system regeneration requests (galaxy route)
   # Allow 10 regenerations per hour per IP
-  throttle('system_regeneration/ip', limit: 10, period: 1.hour) do |req|
+  throttle("system_regeneration/ip", limit: 10, period: 1.hour) do |req|
     if req.path.match?(%r{^/galaxy/systems/.+/regenerate$}) && req.post?
       req.ip
     end
@@ -52,15 +52,15 @@ class Rack::Attack
 
   # Throttle legacy system regeneration requests
   # Allow 10 regenerations per hour per IP
-  throttle('legacy_system_regeneration/ip', limit: 10, period: 1.hour) do |req|
-    if req.path == '/systems/regenerate' && req.post?
+  throttle("legacy_system_regeneration/ip", limit: 10, period: 1.hour) do |req|
+    if req.path == "/systems/regenerate" && req.post?
       req.ip
     end
   end
 
   # Throttle system update requests
   # Allow 20 updates per hour per IP
-  throttle('system_update/ip', limit: 20, period: 1.hour) do |req|
+  throttle("system_update/ip", limit: 20, period: 1.hour) do |req|
     if req.path.match?(%r{^/galaxy/systems/.+$}) && (req.put? || req.patch?)
       req.ip
     end
@@ -68,7 +68,7 @@ class Rack::Attack
 
   # Throttle system deletion requests
   # Allow 10 deletions per hour per IP
-  throttle('system_deletion/ip', limit: 10, period: 1.hour) do |req|
+  throttle("system_deletion/ip", limit: 10, period: 1.hour) do |req|
     if req.path.match?(%r{^/galaxy/systems/.+$}) && req.delete?
       req.ip
     end
@@ -76,15 +76,15 @@ class Rack::Attack
 
   # Throttle meeting creation requests
   # Allow 20 meetings per hour per IP
-  throttle('meeting_creation/ip', limit: 20, period: 1.hour) do |req|
-    if req.path == '/meetings' && req.post?
+  throttle("meeting_creation/ip", limit: 20, period: 1.hour) do |req|
+    if req.path == "/meetings" && req.post?
       req.ip
     end
   end
 
   # General throttle for all POST/PUT/PATCH/DELETE requests
   # Allow 100 requests per 5 minutes per IP
-  throttle('req/ip', limit: 100, period: 5.minutes) do |req|
+  throttle("req/ip", limit: 100, period: 5.minutes) do |req|
     if %w[POST PUT PATCH DELETE].include?(req.request_method)
       req.ip
     end
@@ -92,7 +92,7 @@ class Rack::Attack
 
   # General throttle for all GET requests
   # Allow 300 requests per 5 minutes per IP
-  throttle('get/ip', limit: 300, period: 5.minutes) do |req|
+  throttle("get/ip", limit: 300, period: 5.minutes) do |req|
     if req.get?
       req.ip
     end
@@ -101,24 +101,24 @@ class Rack::Attack
   ### Blocklist & Safelist ###
 
   # Always allow requests from localhost in development
-  safelist('allow-localhost') do |req|
-    Rails.env.development? && ['127.0.0.1', '::1'].include?(req.ip)
+  safelist("allow-localhost") do |req|
+    Rails.env.development? && [ "127.0.0.1", "::1" ].include?(req.ip)
   end
 
   # Block requests with suspicious patterns
-  blocklist('block-path-traversal') do |req|
+  blocklist("block-path-traversal") do |req|
     # Block requests with path traversal attempts
-    req.path.include?('..') || req.query_string.include?('..')
+    req.path.include?("..") || req.query_string.include?("..")
   end
 
   # Block requests with suspicious user agents
-  blocklist('block-suspicious-agents') do |req|
+  blocklist("block-suspicious-agents") do |req|
     # Block common malicious user agents
     agent = req.user_agent.to_s.downcase
-    agent.include?('sqlmap') ||
-      agent.include?('nikto') ||
-      agent.include?('scanner') ||
-      agent.include?('exploit')
+    agent.include?("sqlmap") ||
+      agent.include?("nikto") ||
+      agent.include?("scanner") ||
+      agent.include?("exploit")
   end
 
   ### Rate Limit Headers for Successful Requests ###
@@ -130,7 +130,7 @@ class Rack::Attack
   ### Logging ###
 
   # Log blocked and throttled requests
-  ActiveSupport::Notifications.subscribe('rack.attack') do |_name, _start, _finish, _request_id, payload|
+  ActiveSupport::Notifications.subscribe("rack.attack") do |_name, _start, _finish, _request_id, payload|
     req = payload[:request]
 
     case payload[:name]
@@ -142,7 +142,6 @@ class Rack::Attack
       Rails.logger.debug("RACK ATTACK - SAFELISTED: #{req.ip} - #{req.path}")
     end
   end
-
 end
 
 # Enable Rack::Attack middleware

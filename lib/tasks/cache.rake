@@ -9,7 +9,7 @@ namespace :cache do
       # Clear galaxy cache
       Rails.cache.delete("galaxy_data_#{GalaxyService::CACHE_VERSION}")
       Rails.cache.delete_matched("galaxy_*")
-      Rails.cache.delete('galaxy_data') # Legacy key
+      Rails.cache.delete("galaxy_data") # Legacy key
       puts "  ✓ Galaxy cache cleared"
 
       # Clear all system data caches
@@ -19,15 +19,15 @@ namespace :cache do
       puts "  ✓ System data caches cleared"
 
       # Clear used names cache
-      Rails.cache.delete('used_celestial_names')
+      Rails.cache.delete("used_celestial_names")
       puts "  ✓ Used celestial names cache cleared"
 
       # Clear SVG timestamps
-      Rails.cache.delete('galaxy_svg_timestamp')
+      Rails.cache.delete("galaxy_svg_timestamp")
       puts "  ✓ SVG timestamp caches cleared"
 
       # Clear legacy system_data cache
-      Rails.cache.delete('system_data')
+      Rails.cache.delete("system_data")
       puts "  ✓ Legacy system_data cache cleared"
 
       puts "\n✓ All system-related caches cleared successfully!"
@@ -39,7 +39,7 @@ namespace :cache do
   end
 
   desc "Clear cache for a specific system"
-  task :clear_system, [:system_id] => :environment do |_t, args|
+  task :clear_system, [ :system_id ] => :environment do |_t, args|
     system_id = args[:system_id]
 
     if system_id.blank?
@@ -77,7 +77,7 @@ namespace :cache do
       GalaxyService.clear_galaxy_cache
       puts "  ✓ Galaxy cache cleared"
 
-      Rails.cache.delete('galaxy_svg_timestamp')
+      Rails.cache.delete("galaxy_svg_timestamp")
       puts "  ✓ Galaxy SVG timestamp cleared"
 
       puts "\n✓ Galaxy cache cleared successfully!"
@@ -124,7 +124,7 @@ namespace :cache do
 
       # Check each system
       systems.each do |system|
-        system_file_id = File.basename(system.json_file_path, '.json')
+        system_file_id = File.basename(system.json_file_path, ".json")
         system_key = "system_data_#{system_file_id}_#{GalaxyService::CACHE_VERSION}"
         stats_key = "system_#{system_file_id}_meeting_stats_#{GalaxyService::CACHE_VERSION}"
         svg_key = "system_#{system_file_id}_svg_timestamp"
@@ -159,10 +159,10 @@ namespace :cache do
 
       # Load each system's data
       System.find_each do |system|
-        system_file_id = File.basename(system.json_file_path, '.json')
+        system_file_id = File.basename(system.json_file_path, ".json")
         system_data = GalaxyService.load_system_data(system_file_id)
         if system_data
-          body_count = system_data['bodies']&.count || 0
+          body_count = system_data["bodies"]&.count || 0
           puts "  ✓ System '#{system.name}' loaded (#{body_count} bodies)"
         else
           puts "  ✗ System '#{system.name}' - no data file"

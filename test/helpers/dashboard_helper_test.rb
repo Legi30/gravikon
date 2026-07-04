@@ -1,6 +1,10 @@
 require "test_helper"
 
 class DashboardHelperTest < ActionView::TestCase
+  setup do
+    Meeting.delete_all
+  end
+
   # === total_meetings_count ===
 
   test "total_meetings_count returns 0 when no meetings exist" do
@@ -198,13 +202,15 @@ class DashboardHelperTest < ActionView::TestCase
   end
 
   test "participant_frequency handles malformed JSON gracefully" do
-    Meeting.create!(
+    # Malformed JSON can't pass validations — simulate a legacy corrupted row
+    corrupted = Meeting.new(
       start_time: "09:00",
       end_time: "10:00",
-      participants: 'invalid json',
+      participants: "invalid json",
       local_avg_duration: 60,
       avg_delay: 120
     )
+    corrupted.save!(validate: false)
     Meeting.create!(
       start_time: "10:00",
       end_time: "11:00",

@@ -6,8 +6,8 @@ class SingleSystemMeetingTest < ApplicationSystemTestCase
   setup do
     @system = System.create!(name: "Sol", x: 300, y: 300, json_file_path: "data/systems/sol.json")
 
-    FileUtils.mkdir_p(Rails.root.join("data/systems"))
-    File.write(Rails.root.join("data/systems/sol.json"), {
+    FileUtils.mkdir_p(GalaxyService.systems_data_dir)
+    File.write(GalaxyService.system_data_path("sol"), {
       bodies: [
         { name: "Sun", type: "star", x: 400, y: 400, dilation: 1.0 },
         { name: "Earth", type: "planet", x: 500, y: 400, dilation: 0.9999 },
@@ -17,7 +17,7 @@ class SingleSystemMeetingTest < ApplicationSystemTestCase
   end
 
   teardown do
-    File.delete(Rails.root.join("data/systems/sol.json")) rescue nil
+    File.delete(GalaxyService.system_data_path("sol")) rescue nil
     @system.destroy if @system && !@system.destroyed?
   end
 
@@ -25,7 +25,7 @@ class SingleSystemMeetingTest < ApplicationSystemTestCase
   test "accessing new meeting form shows bodies from specified system" do
     visit new_meeting_path(system_id: @system.id)
 
-    assert_selector 'form'
+    assert_selector "form"
     # Should show system-specific bodies
     assert_text /Earth|Mars/i, wait: 5
   end
@@ -34,17 +34,17 @@ class SingleSystemMeetingTest < ApplicationSystemTestCase
   test "form submission creates meeting with system_id set" do
     visit new_meeting_path(system_id: @system.id)
 
-    fill_in 'Začátek', with: "09:00", match: :first
-    fill_in 'Konec', with: "10:00", match: :first
+    fill_in "Začátek", with: "09:00", match: :first
+    fill_in "Konec", with: "10:00", match: :first
 
     # Select participants
-    check "Earth", allow_label_click: true if has_field?("Earth", type: 'checkbox')
-    check "Mars", allow_label_click: true if has_field?("Mars", type: 'checkbox')
+    check "Earth", allow_label_click: true if has_field?("Earth", type: "checkbox")
+    check "Mars", allow_label_click: true if has_field?("Mars", type: "checkbox")
 
     # Wait for button to become enabled
-    assert_button 'Vytvořit schůzku', disabled: false, wait: 5
+    assert_button "Vytvořit schůzku", disabled: false, wait: 5
 
-    click_button 'Vytvořit schůzku', match: :first
+    click_button "Vytvořit schůzku", match: :first
 
     meeting = Meeting.last
     assert_equal @system.id, meeting.system_id if meeting
@@ -54,16 +54,16 @@ class SingleSystemMeetingTest < ApplicationSystemTestCase
   test "created single-system meeting has is_inter_system=false" do
     visit new_meeting_path(system_id: @system.id)
 
-    fill_in 'Začátek', with: "09:00", match: :first
-    fill_in 'Konec', with: "10:00", match: :first
+    fill_in "Začátek", with: "09:00", match: :first
+    fill_in "Konec", with: "10:00", match: :first
 
-    check "Earth", allow_label_click: true if has_field?("Earth", type: 'checkbox')
-    check "Mars", allow_label_click: true if has_field?("Mars", type: 'checkbox')
+    check "Earth", allow_label_click: true if has_field?("Earth", type: "checkbox")
+    check "Mars", allow_label_click: true if has_field?("Mars", type: "checkbox")
 
     # Wait for button to become enabled
-    assert_button 'Vytvořit schůzku', disabled: false, wait: 5
+    assert_button "Vytvořit schůzku", disabled: false, wait: 5
 
-    click_button 'Vytvořit schůzku', match: :first
+    click_button "Vytvořit schůzku", match: :first
 
     meeting = Meeting.last
     assert_not meeting.is_inter_system if meeting

@@ -34,7 +34,7 @@ namespace :job do
         duration = Time.current - start_time
 
         # Retrieve metrics from cache
-        history = Rails.cache.fetch('job_performance_history') { [] }
+        history = Rails.cache.fetch("job_performance_history") { [] }
         latest = history.last
 
         results << {
@@ -149,7 +149,7 @@ namespace :job do
 
   desc "View recent job performance history"
   task performance_history: :environment do
-    history = Rails.cache.fetch('job_performance_history') { [] }
+    history = Rails.cache.fetch("job_performance_history") { [] }
 
     if history.empty?
       puts "\nNo job performance data available yet."
@@ -195,7 +195,7 @@ namespace :job do
 
   desc "Clear job performance history"
   task clear_history: :environment do
-    Rails.cache.delete('job_performance_history')
+    Rails.cache.delete("job_performance_history")
     puts "\n✅ Job performance history cleared\n"
   end
 end

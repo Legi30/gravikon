@@ -4,8 +4,8 @@ require "test_helper"
 
 class GalaxyServiceTest < ActiveSupport::TestCase
   setup do
-    @test_galaxy_file = Rails.root.join('data', 'galaxy_data.json')
-    @backup_file = Rails.root.join('data', 'galaxy_data.json.backup')
+    @test_galaxy_file = GalaxyService.galaxy_data_path
+    @backup_file = Rails.root.join("tmp", "galaxy_data.json.backup")
 
     # Backup existing galaxy data if it exists
     if File.exist?(@test_galaxy_file)
@@ -14,16 +14,16 @@ class GalaxyServiceTest < ActiveSupport::TestCase
 
     # Create test galaxy data
     @test_galaxy_data = {
-      'black_hole' => {
-        'name' => 'Sagittarius Omega',
-        'mass' => 8.2e36,
-        'x' => 400,
-        'y' => 400,
-        'type' => 'black_hole'
+      "black_hole" => {
+        "name" => "Sagittarius Omega",
+        "mass" => 8.2e36,
+        "x" => 400,
+        "y" => 400,
+        "type" => "black_hole"
       },
-      'systems' => [
-        { 'id' => 'test_system_1', 'x' => 300.0, 'y' => 300.0 },
-        { 'id' => 'test_system_2', 'x' => 500.0, 'y' => 500.0 }
+      "systems" => [
+        { "id" => "test_system_1", "x" => 300.0, "y" => 300.0 },
+        { "id" => "test_system_2", "x" => 500.0, "y" => 500.0 }
       ]
     }
 
@@ -50,12 +50,12 @@ class GalaxyServiceTest < ActiveSupport::TestCase
     data = GalaxyService.load_galaxy_data
 
     assert_not_nil data
-    assert_equal 'Sagittarius Omega', data['black_hole']['name']
-    assert_equal 400, data['black_hole']['x']
-    assert_equal 400, data['black_hole']['y']
-    assert_equal 2, data['systems'].length
-    assert_equal 'test_system_1', data['systems'][0]['id']
-    assert_equal 300.0, data['systems'][0]['x']
+    assert_equal "Sagittarius Omega", data["black_hole"]["name"]
+    assert_equal 400, data["black_hole"]["x"]
+    assert_equal 400, data["black_hole"]["y"]
+    assert_equal 2, data["systems"].length
+    assert_equal "test_system_1", data["systems"][0]["id"]
+    assert_equal 300.0, data["systems"][0]["x"]
   end
 
   # Test load_galaxy_data caches result with Rails.cache.fetch
@@ -66,27 +66,27 @@ class GalaxyServiceTest < ActiveSupport::TestCase
 
     # Modify the file
     modified_data = @test_galaxy_data.dup
-    modified_data['black_hole']['name'] = 'Modified Name'
+    modified_data["black_hole"]["name"] = "Modified Name"
     File.write(@test_galaxy_file, JSON.pretty_generate(modified_data))
 
     # Second call should return cached data (not modified data)
     data2 = GalaxyService.load_galaxy_data
-    assert_equal 'Sagittarius Omega', data2['black_hole']['name']
-    assert_not_equal 'Modified Name', data2['black_hole']['name']
+    assert_equal "Sagittarius Omega", data2["black_hole"]["name"]
+    assert_not_equal "Modified Name", data2["black_hole"]["name"]
   end
 
   # Test add_system updates galaxy_data.json with new system reference
   test "add_system updates galaxy_data.json with new system reference" do
-    result = GalaxyService.add_system('new_system', 600.0, 300.0)
+    result = GalaxyService.add_system("new_system", 600.0, 300.0)
     assert result, "add_system should return true"
 
     # Re-read file to verify it was updated
     data = JSON.parse(File.read(@test_galaxy_file))
-    new_system = data['systems'].find { |s| s['id'] == 'new_system' }
+    new_system = data["systems"].find { |s| s["id"] == "new_system" }
 
     assert_not_nil new_system
-    assert_equal 600.0, new_system['x']
-    assert_equal 300.0, new_system['y']
+    assert_equal 600.0, new_system["x"]
+    assert_equal 300.0, new_system["y"]
   end
 
   # Test add_system invalidates galaxy_data cache
@@ -95,25 +95,25 @@ class GalaxyServiceTest < ActiveSupport::TestCase
     GalaxyService.load_galaxy_data
 
     # Add new system
-    GalaxyService.add_system('new_system', 600.0, 300.0)
+    GalaxyService.add_system("new_system", 600.0, 300.0)
 
     # Load again - should reflect the new system
     data = GalaxyService.load_galaxy_data
-    new_system = data['systems'].find { |s| s['id'] == 'new_system' }
+    new_system = data["systems"].find { |s| s["id"] == "new_system" }
     assert_not_nil new_system, "Cache should be invalidated and new system should be visible"
   end
 
   # Test remove_system removes system from galaxy_data.json systems array
   test "remove_system removes system from galaxy_data.json systems array" do
-    result = GalaxyService.remove_system('test_system_1')
+    result = GalaxyService.remove_system("test_system_1")
     assert result, "remove_system should return true"
 
     # Re-read file to verify removal
     data = JSON.parse(File.read(@test_galaxy_file))
-    removed_system = data['systems'].find { |s| s['id'] == 'test_system_1' }
+    removed_system = data["systems"].find { |s| s["id"] == "test_system_1" }
 
     assert_nil removed_system
-    assert_equal 1, data['systems'].length
+    assert_equal 1, data["systems"].length
   end
 
   # Test remove_system invalidates galaxy_data cache
@@ -122,11 +122,11 @@ class GalaxyServiceTest < ActiveSupport::TestCase
     GalaxyService.load_galaxy_data
 
     # Remove system
-    GalaxyService.remove_system('test_system_1')
+    GalaxyService.remove_system("test_system_1")
 
     # Load again - should reflect the removal
     data = GalaxyService.load_galaxy_data
-    removed_system = data['systems'].find { |s| s['id'] == 'test_system_1' }
+    removed_system = data["systems"].find { |s| s["id"] == "test_system_1" }
     assert_nil removed_system, "Cache should be invalidated and system should be removed"
   end
 
@@ -174,8 +174,8 @@ class GalaxyServiceTest < ActiveSupport::TestCase
     # Should not crash and should return default structure
     data = GalaxyService.load_galaxy_data
     assert_not_nil data
-    assert_not_nil data['black_hole']
-    assert_not_nil data['systems']
+    assert_not_nil data["black_hole"]
+    assert_not_nil data["systems"]
   end
 
   test "handles corrupt galaxy_data.json gracefully" do
@@ -186,27 +186,27 @@ class GalaxyServiceTest < ActiveSupport::TestCase
     # Should not crash and should return default structure
     data = GalaxyService.load_galaxy_data
     assert_not_nil data
-    assert_not_nil data['black_hole']
-    assert_not_nil data['systems']
+    assert_not_nil data["black_hole"]
+    assert_not_nil data["systems"]
   end
 
   # Test add_system updates existing system position
   test "add_system updates existing system position if already present" do
     # Add system at one position
-    GalaxyService.add_system('movable_system', 200.0, 200.0)
+    GalaxyService.add_system("movable_system", 200.0, 200.0)
 
     # Move it to another position
-    result = GalaxyService.add_system('movable_system', 250.0, 250.0)
+    result = GalaxyService.add_system("movable_system", 250.0, 250.0)
     assert result
 
     # Verify position was updated
     data = JSON.parse(File.read(@test_galaxy_file))
-    system = data['systems'].find { |s| s['id'] == 'movable_system' }
-    assert_equal 250.0, system['x']
-    assert_equal 250.0, system['y']
+    system = data["systems"].find { |s| s["id"] == "movable_system" }
+    assert_equal 250.0, system["x"]
+    assert_equal 250.0, system["y"]
 
     # Should only have one entry for this system
-    matching_systems = data['systems'].select { |s| s['id'] == 'movable_system' }
+    matching_systems = data["systems"].select { |s| s["id"] == "movable_system" }
     assert_equal 1, matching_systems.length
   end
 
@@ -217,7 +217,7 @@ class GalaxyServiceTest < ActiveSupport::TestCase
     assert_not result[:valid]
 
     # But should succeed when excluding test_system_1
-    result = GalaxyService.validate_system_position(300, 300, exclude_system_id: 'test_system_1')
+    result = GalaxyService.validate_system_position(300, 300, exclude_system_id: "test_system_1")
     assert result[:valid], "Should be valid when excluding self: #{result[:errors]}"
   end
 

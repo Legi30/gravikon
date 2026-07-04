@@ -61,9 +61,9 @@ module OrbitValidator
       end
 
       # Get black hole position (default to center if not provided)
-      black_hole = galaxy_data['black_hole'] || galaxy_data[:black_hole]
-      bh_x = black_hole ? (black_hole['x'] || black_hole[:x] || GALAXY_CENTER_X) : GALAXY_CENTER_X
-      bh_y = black_hole ? (black_hole['y'] || black_hole[:y] || GALAXY_CENTER_Y) : GALAXY_CENTER_Y
+      black_hole = galaxy_data["black_hole"] || galaxy_data[:black_hole]
+      bh_x = black_hole ? (black_hole["x"] || black_hole[:x] || GALAXY_CENTER_X) : GALAXY_CENTER_X
+      bh_y = black_hole ? (black_hole["y"] || black_hole[:y] || GALAXY_CENTER_Y) : GALAXY_CENTER_Y
 
       # Check distance from black hole (must be outside Schwarzschild radius + safety margin)
       distance_from_black_hole = calculate_distance(system_x, system_y, bh_x, bh_y)
@@ -72,14 +72,14 @@ module OrbitValidator
       end
 
       # Check collision with other systems
-      systems = galaxy_data['systems'] || galaxy_data[:systems] || []
+      systems = galaxy_data["systems"] || galaxy_data[:systems] || []
       systems.each do |system|
         # Skip if this is the system being updated
-        system_id_str = (system['id'] || system[:id]).to_s
+        system_id_str = (system["id"] || system[:id]).to_s
         next if exclude_system_id && system_id_str == exclude_system_id.to_s
 
-        other_x = system['x'] || system[:x]
-        other_y = system['y'] || system[:y]
+        other_x = system["x"] || system[:x]
+        other_y = system["y"] || system[:y]
 
         next unless other_x && other_y
 
@@ -97,7 +97,7 @@ module OrbitValidator
     rescue => e
       {
         valid: false,
-        errors: ["Chyba při validaci pozice systému: #{e.message}"]
+        errors: [ "Chyba při validaci pozice systému: #{e.message}" ]
       }
     end
 
@@ -152,14 +152,14 @@ module OrbitValidator
       # Check collision with existing bodies if provided
       if existing_bodies && existing_bodies.any?
         existing_bodies.each do |other_body|
-          other_x = other_body['x'] || other_body[:x]
-          other_y = other_body['y'] || other_body[:y]
+          other_x = other_body["x"] || other_body[:x]
+          other_y = other_body["y"] || other_body[:y]
 
           next unless other_x && other_y
 
           distance = calculate_distance(body_x, body_y, other_x, other_y)
           if distance < MIN_BODY_DISTANCE
-            other_name = other_body['name'] || other_body[:name] || 'jiné těleso'
+            other_name = other_body["name"] || other_body[:name] || "jiné těleso"
             errors << "Těleso je příliš blízko k #{other_name} (min. vzdálenost: #{MIN_BODY_DISTANCE})"
             break # Only report first collision
           end
@@ -173,7 +173,7 @@ module OrbitValidator
     rescue => e
       {
         valid: false,
-        errors: ["Chyba při validaci pozice tělesa: #{e.message}"]
+        errors: [ "Chyba při validaci pozice tělesa: #{e.message}" ]
       }
     end
 
@@ -187,18 +187,18 @@ module OrbitValidator
       errors = []
 
       bodies.each_with_index do |body, index|
-        body_x = body['x'] || body[:x]
-        body_y = body['y'] || body[:y]
-        body_name = body['name'] || body[:name] || "Těleso #{index + 1}"
-        body_type = body['type'] || body[:type]
+        body_x = body["x"] || body[:x]
+        body_y = body["y"] || body[:y]
+        body_name = body["name"] || body[:name] || "Těleso #{index + 1}"
+        body_type = body["type"] || body[:type]
 
         # Skip if coordinates missing
         next unless body_x && body_y
 
         # Find parent body (star for planets, planet for moons)
         parent = find_parent_body(body, bodies)
-        parent_x = parent ? (parent['x'] || parent[:x]) : SYSTEM_CENTER_X
-        parent_y = parent ? (parent['y'] || parent[:y]) : SYSTEM_CENTER_Y
+        parent_x = parent ? (parent["x"] || parent[:x]) : SYSTEM_CENTER_X
+        parent_y = parent ? (parent["y"] || parent[:y]) : SYSTEM_CENTER_Y
 
         # Get other bodies for collision detection (exclude current body)
         other_bodies = bodies.select.with_index { |_, i| i != index }
@@ -241,24 +241,24 @@ module OrbitValidator
     # @param bodies [Array<Hash>] All bodies in system
     # @return [Hash, nil] Parent body or nil if none found
     def find_parent_body(body, bodies)
-      body_type = body['type'] || body[:type]
+      body_type = body["type"] || body[:type]
 
       case body_type
-      when 'planet'
+      when "planet"
         # Parent is the star
-        bodies.find { |b| (b['type'] || b[:type]) == 'star' }
-      when 'moon'
+        bodies.find { |b| (b["type"] || b[:type]) == "star" }
+      when "moon"
         # Parent is the closest planet
         # This is a simplification - in reality we'd need more metadata
-        planets = bodies.select { |b| (b['type'] || b[:type]) == 'planet' }
+        planets = bodies.select { |b| (b["type"] || b[:type]) == "planet" }
         return nil if planets.empty?
 
-        body_x = body['x'] || body[:x]
-        body_y = body['y'] || body[:y]
+        body_x = body["x"] || body[:x]
+        body_y = body["y"] || body[:y]
 
         planets.min_by do |planet|
-          planet_x = planet['x'] || planet[:x]
-          planet_y = planet['y'] || planet[:y]
+          planet_x = planet["x"] || planet[:x]
+          planet_y = planet["y"] || planet[:y]
           calculate_distance(body_x, body_y, planet_x, planet_y)
         end
       else

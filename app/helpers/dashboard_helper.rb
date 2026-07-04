@@ -97,7 +97,7 @@ module DashboardHelper
     return "0 s" if seconds.nil? || seconds.zero?
 
     if seconds >= 60
-      minutes = (seconds / 60).round(2)
+      minutes = (seconds / 60.0).round(2)
       "#{minutes} min"
     else
       "#{seconds.round(2)} s"

@@ -4,15 +4,15 @@ require "application_system_test_case"
 
 class GalaxyInteractivityTest < ApplicationSystemTestCase
   setup do
-    @test_galaxy_file = Rails.root.join('data', 'galaxy_data.json')
+    @test_galaxy_file = GalaxyService.galaxy_data_path
     @test_galaxy_data = {
-      'black_hole' => { 'name' => 'Sagittarius Omega', 'x' => 400, 'y' => 400 },
-      'systems' => []
+      "black_hole" => { "name" => "Sagittarius Omega", "x" => 400, "y" => 400 },
+      "systems" => []
     }
     FileUtils.mkdir_p(File.dirname(@test_galaxy_file))
     File.write(@test_galaxy_file, JSON.pretty_generate(@test_galaxy_data))
 
-    @test_svg_file = Rails.root.join('public', 'galaxy.svg')
+    @test_svg_file = GalaxyService.galaxy_svg_path
     FileUtils.mkdir_p(File.dirname(@test_svg_file))
     File.write(@test_svg_file, '<svg width="800" height="800"><circle cx="400" cy="400" r="20" data-system-id="test" /></svg>')
   end
@@ -29,9 +29,9 @@ class GalaxyInteractivityTest < ApplicationSystemTestCase
     visit galaxy_index_path
 
     # Look for interactive elements
-    if has_selector?('circle[data-system-id], .system-marker', wait: 5)
+    if has_selector?("circle[data-system-id], .system-marker", wait: 5)
       # Hover should work with JavaScript enabled
-      assert_selector 'svg, .galaxy-map'
+      assert_selector "svg, .galaxy-map"
     end
 
     system.destroy
@@ -41,9 +41,9 @@ class GalaxyInteractivityTest < ApplicationSystemTestCase
   test "clicking system circle navigates to system show page" do
     system = System.create!(name: "Click Test", x: 300, y: 300, json_file_path: "data/systems/click_test.json")
 
-    FileUtils.mkdir_p(Rails.root.join("data/systems"))
-    File.write(Rails.root.join("data/systems/click_test.json"), {
-      bodies: [{ name: "Star", type: "star" }]
+    FileUtils.mkdir_p(GalaxyService.systems_data_dir)
+    File.write(GalaxyService.system_data_path("click_test"), {
+      bodies: [ { name: "Star", type: "star" } ]
     }.to_json)
 
     visit galaxy_index_path
@@ -54,7 +54,7 @@ class GalaxyInteractivityTest < ApplicationSystemTestCase
       assert_text /Click Test/, wait: 5
     end
 
-    File.delete(Rails.root.join("data/systems/click_test.json")) rescue nil
+    File.delete(GalaxyService.system_data_path("click_test")) rescue nil
     system.destroy
   end
 
@@ -63,8 +63,8 @@ class GalaxyInteractivityTest < ApplicationSystemTestCase
     visit new_galaxy_system_path
 
     # Position picker should be visible
-    if has_selector?('.position-picker, #position-picker, [data-position-picker]', wait: 5)
-      assert_selector '.position-picker, #position-picker'
+    if has_selector?(".position-picker, #position-picker, [data-position-picker]", wait: 5)
+      assert_selector ".position-picker, #position-picker"
     end
 
     # Should have coordinate inputs
@@ -77,7 +77,7 @@ class GalaxyInteractivityTest < ApplicationSystemTestCase
     visit new_galaxy_system_path
 
     # If position picker exists with click functionality
-    if has_selector?('.position-picker, #position-picker', wait: 5)
+    if has_selector?(".position-picker, #position-picker", wait: 5)
       # Coordinates should be settable
       fill_in /X.*coordinate|x/i, with: "300", match: :first
       fill_in /Y.*coordinate|y/i, with: "300", match: :first
@@ -92,7 +92,7 @@ class GalaxyInteractivityTest < ApplicationSystemTestCase
     visit galaxy_index_path
 
     # Should not crash with empty systems
-    assert_selector 'body'
+    assert_selector "body"
     assert_text /Galaxy|Galaxie/, wait: 5
   end
 end

@@ -205,9 +205,9 @@ class SystemTest < ActiveSupport::TestCase
 
   test "load_system_data returns parsed JSON for valid file" do
     # Create a temporary test file
-    test_file_path = Rails.root.join("data/systems/test_load.json")
+    test_file_path = GalaxyService.system_data_path("test_load")
     FileUtils.mkdir_p(File.dirname(test_file_path))
-    File.write(test_file_path, { bodies: [{ name: "Earth", type: "planet" }] }.to_json)
+    File.write(test_file_path, { bodies: [ { name: "Earth", type: "planet" } ] }.to_json)
 
     system = System.new(
       name: "Test",
@@ -226,7 +226,7 @@ class SystemTest < ActiveSupport::TestCase
 
   test "load_system_data handles malformed JSON gracefully" do
     # Create a temporary test file with invalid JSON
-    test_file_path = Rails.root.join("data/systems/test_malformed.json")
+    test_file_path = GalaxyService.system_data_path("test_malformed")
     FileUtils.mkdir_p(File.dirname(test_file_path))
     File.write(test_file_path, "{ invalid json }")
 
@@ -245,7 +245,7 @@ class SystemTest < ActiveSupport::TestCase
 
   test "data_file_exists? returns true for existing file" do
     # Create a temporary test file
-    test_file_path = Rails.root.join("data/systems/test_exists.json")
+    test_file_path = GalaxyService.system_data_path("test_exists")
     FileUtils.mkdir_p(File.dirname(test_file_path))
     File.write(test_file_path, "{}")
 

@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
-require_relative '../validators/orbit_validator'
-require 'erb'
+require_relative "../validators/orbit_validator"
+require "erb"
 
 # Galaxy service for managing galaxy-level data and operations
 # Handles loading, validation, and manipulation of galaxy data including
 # the central black hole and all solar systems
 class GalaxyService
-  GALAXY_CENTER = [PhysicsConstants::GALAXY_CENTER_X, PhysicsConstants::GALAXY_CENTER_Y].freeze
+  GALAXY_CENTER = [ PhysicsConstants::GALAXY_CENTER_X, PhysicsConstants::GALAXY_CENTER_Y ].freeze
   CANVAS_SIZE = 800
 
   # Minimum distances for collision detection
@@ -15,7 +15,7 @@ class GalaxyService
   MIN_DISTANCE_BETWEEN_SYSTEMS = 40 # Minimum distance between system centers
 
   # Cache versioning for schema changes
-  CACHE_VERSION = 'v2'
+  CACHE_VERSION = "v2"
 
   class << self
     # --- File locations -----------------------------------------------------
@@ -25,20 +25,20 @@ class GalaxyService
 
     # Root directory for JSON data files
     def data_root
-      Pathname.new(Rails.application.config.x.gravikon.data_root || Rails.root.join('data'))
+      Pathname.new(Rails.application.config.x.gravikon.data_root || Rails.root.join("data"))
     end
 
     # Root directory for generated SVG files (public/ in dev & production)
     def svg_root
-      Pathname.new(Rails.application.config.x.gravikon.svg_root || Rails.root.join('public'))
+      Pathname.new(Rails.application.config.x.gravikon.svg_root || Rails.root.join("public"))
     end
 
     def galaxy_data_path
-      data_root.join('galaxy_data.json')
+      data_root.join("galaxy_data.json")
     end
 
     def systems_data_dir
-      data_root.join('systems')
+      data_root.join("systems")
     end
 
     # @param file_id [String] System file id (UUID or slug, sanitized)
@@ -50,11 +50,11 @@ class GalaxyService
     end
 
     def galaxy_svg_path
-      svg_root.join('galaxy.svg')
+      svg_root.join("galaxy.svg")
     end
 
     def systems_svg_dir
-      svg_root.join('systems')
+      svg_root.join("systems")
     end
 
     # @param file_id [String] System file id (UUID or slug, sanitized)
@@ -70,10 +70,10 @@ class GalaxyService
       cache_key = "galaxy_data_#{CACHE_VERSION}"
 
       Rails.cache.fetch(cache_key, expires_in: 1.hour) do
-        log_cache_miss('galaxy_data')
+        log_cache_miss("galaxy_data")
         load_galaxy_data_from_file
       end.tap do
-        log_cache_hit('galaxy_data')
+        log_cache_hit("galaxy_data")
       end
     end
 
@@ -107,17 +107,17 @@ class GalaxyService
       galaxy_data = load_galaxy_data_from_file
 
       # Check if system already exists
-      existing = galaxy_data['systems'].find { |s| s['id'].to_s == system_id.to_s }
+      existing = galaxy_data["systems"].find { |s| s["id"].to_s == system_id.to_s }
       if existing
         # Update existing system position
-        existing['x'] = x.to_f
-        existing['y'] = y.to_f
+        existing["x"] = x.to_f
+        existing["y"] = y.to_f
       else
         # Add new system reference
-        galaxy_data['systems'] << {
-          'id' => system_id.to_s,
-          'x' => x.to_f,
-          'y' => y.to_f
+        galaxy_data["systems"] << {
+          "id" => system_id.to_s,
+          "x" => x.to_f,
+          "y" => y.to_f
         }
       end
 
@@ -136,7 +136,7 @@ class GalaxyService
       galaxy_data = load_galaxy_data_from_file
 
       # Remove system from array
-      galaxy_data['systems'].reject! { |s| s['id'].to_s == system_id.to_s }
+      galaxy_data["systems"].reject! { |s| s["id"].to_s == system_id.to_s }
 
       save_galaxy_data(galaxy_data)
       clear_galaxy_cache
@@ -165,7 +165,7 @@ class GalaxyService
       Rails.logger.error("Failed to validate system position: #{e.message}")
       {
         valid: false,
-        errors: ["Chyba při validaci pozice: #{e.message}"]
+        errors: [ "Chyba při validaci pozice: #{e.message}" ]
       }
     end
 
@@ -189,7 +189,7 @@ class GalaxyService
       Rails.cache.delete("galaxy_data_#{CACHE_VERSION}")
       Rails.cache.delete_matched("galaxy_*")
       # Also clear legacy cache key
-      Rails.cache.delete('galaxy_data')
+      Rails.cache.delete("galaxy_data")
       Rails.logger.info("Galaxy cache cleared")
     rescue => e
       Rails.logger.error("Failed to clear galaxy cache: #{e.message}")
@@ -210,7 +210,7 @@ class GalaxyService
     # Clear all system-related caches
     def clear_all_system_caches
       Rails.cache.delete_matched("system_*")
-      Rails.cache.delete('used_celestial_names')
+      Rails.cache.delete("used_celestial_names")
       Rails.logger.info("All system caches cleared")
     rescue => e
       Rails.logger.error("Failed to clear all system caches: #{e.message}")
@@ -219,17 +219,17 @@ class GalaxyService
     # Get or cache used celestial names across all systems
     # @return [Array<String>] List of used names
     def get_used_celestial_names
-      Rails.cache.fetch('used_celestial_names', expires_in: 30.minutes) do
-        log_cache_miss('used_celestial_names')
+      Rails.cache.fetch("used_celestial_names", expires_in: 30.minutes) do
+        log_cache_miss("used_celestial_names")
         load_used_names_from_all_systems
       end.tap do
-        log_cache_hit('used_celestial_names')
+        log_cache_hit("used_celestial_names")
       end
     end
 
     # Invalidate used names cache (called when system is created/updated)
     def invalidate_used_names_cache
-      Rails.cache.delete('used_celestial_names')
+      Rails.cache.delete("used_celestial_names")
       Rails.logger.debug("Used celestial names cache invalidated")
     end
 
@@ -238,7 +238,7 @@ class GalaxyService
     # @param system_id [String, nil] System ID for system SVG
     # @return [Integer] Unix timestamp
     def get_svg_timestamp(svg_type, system_id: nil)
-      cache_key = svg_type == :galaxy ? 'galaxy_svg_timestamp' : "system_#{system_id}_svg_timestamp"
+      cache_key = svg_type == :galaxy ? "galaxy_svg_timestamp" : "system_#{system_id}_svg_timestamp"
 
       cached_time = Rails.cache.read(cache_key)
       return cached_time if cached_time
@@ -255,7 +255,7 @@ class GalaxyService
     # @param svg_type [Symbol] :galaxy or :system
     # @param system_id [String, nil] System ID for system SVG
     def update_svg_timestamp(svg_type, system_id: nil)
-      cache_key = svg_type == :galaxy ? 'galaxy_svg_timestamp' : "system_#{system_id}_svg_timestamp"
+      cache_key = svg_type == :galaxy ? "galaxy_svg_timestamp" : "system_#{system_id}_svg_timestamp"
       timestamp = Time.current.to_i
       Rails.cache.write(cache_key, timestamp, expires_in: 1.hour)
       Rails.logger.debug("Updated SVG timestamp for #{svg_type}#{system_id ? " (#{system_id})" : ''}")
@@ -294,10 +294,10 @@ class GalaxyService
         file_id = system.system_id
         next if file_id.blank?
 
-        galaxy_data['systems'] << {
-          'id' => file_id,
-          'x' => system.x.to_f,
-          'y' => system.y.to_f
+        galaxy_data["systems"] << {
+          "id" => file_id,
+          "x" => system.x.to_f,
+          "y" => system.y.to_f
         }
       end
 
@@ -346,16 +346,16 @@ class GalaxyService
       black_hole_mass = 8.2e36
 
       {
-        'black_hole' => {
-          'name' => 'Sagittarius Omega',
-          'mass' => black_hole_mass,
-          'x' => GALAXY_CENTER[0],
-          'y' => GALAXY_CENTER[1],
-          'schwarzschild_radius' => calculate_schwarzschild_radius(black_hole_mass),
-          'dilation' => calculate_event_horizon_dilation(black_hole_mass),
-          'type' => 'black_hole'
+        "black_hole" => {
+          "name" => "Sagittarius Omega",
+          "mass" => black_hole_mass,
+          "x" => GALAXY_CENTER[0],
+          "y" => GALAXY_CENTER[1],
+          "schwarzschild_radius" => calculate_schwarzschild_radius(black_hole_mass),
+          "dilation" => calculate_event_horizon_dilation(black_hole_mass),
+          "type" => "black_hole"
         },
-        'systems' => []
+        "systems" => []
       }
     end
 
@@ -392,11 +392,11 @@ class GalaxyService
 
       return used_names unless Dir.exist?(systems_dir)
 
-      Dir.glob(File.join(systems_dir, '*.json')).each do |file|
+      Dir.glob(File.join(systems_dir, "*.json")).each do |file|
         begin
           data = JSON.parse(File.read(file))
-          data['bodies']&.each do |body|
-            used_names << body['name'] if body['name']
+          data["bodies"]&.each do |body|
+            used_names << body["name"] if body["name"]
           end
         rescue => e
           Rails.logger.warn("Failed to load names from #{file}: #{e.message}")
@@ -412,9 +412,9 @@ class GalaxyService
     def calculate_system_meeting_stats(system_id)
       meetings = if defined?(Meeting)
                    Meeting.where(system_id: system_id)
-                 else
+      else
                    []
-                 end
+      end
 
       {
         total_meetings: meetings.count,
@@ -455,19 +455,19 @@ class GalaxyService
       id_str = system_id.to_s
 
       # Reject paths containing '..' (path traversal)
-      if id_str.include?('..')
+      if id_str.include?("..")
         Rails.logger.warn("Security: Path traversal attempt in system_id: #{id_str}")
         return nil
       end
 
       # Reject paths containing '/' (directory traversal)
-      if id_str.include?('/')
+      if id_str.include?("/")
         Rails.logger.warn("Security: Directory traversal attempt in system_id: #{id_str}")
         return nil
       end
 
       # Reject paths containing '\' (Windows path separator)
-      if id_str.include?('\\')
+      if id_str.include?("\\")
         Rails.logger.warn("Security: Backslash in system_id: #{id_str}")
         return nil
       end
@@ -476,12 +476,12 @@ class GalaxyService
       # UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
       # Slug format: alphanumeric and underscores only
       if id_str.match?(/\A[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\z/i)
-        return id_str.downcase
+        id_str.downcase
       elsif id_str.match?(/\A[a-z0-9_]+\z/i)
-        return id_str.downcase
+        id_str.downcase
       else
         Rails.logger.warn("Security: Invalid system_id format: #{id_str}")
-        return nil
+        nil
       end
     end
   end
