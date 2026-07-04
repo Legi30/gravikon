@@ -4,26 +4,56 @@
 
 <div id="flash-messages" role="alert" aria-live="polite" aria-atomic="true"></div>
 
-<% if @systems.present? && @systems.count > 1 %>
-  <div class="content-section">
-    <div class="card fade-in">
-      <h3>Filtrovat schůzky</h3>
-      <div class="filter-controls" style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem;">
-        <div class="filter-group">
-          <label for="system-filter" style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Podle soustavy:</label>
-          <select id="system-filter" class="form-control" style="min-width: 200px;" aria-label="Filtrovat podle soustavy">
-            <option value="">Všechny schůzky</option>
-            <option value="inter-system">Pouze mezisystémové</option>
-            <option value="single-system">Pouze v rámci soustavy</option>
-            <% @systems.each do |system| %>
-              <option value="system-<%= system.id %>"><%= system.name %></option>
-            <% end %>
-          </select>
-        </div>
-      </div>
+<div class="content-section">
+  <div class="card fade-in meetings-toolbar">
+    <div class="meetings-filter">
+      <% if @systems.present? && @systems.count > 1 %>
+        <label for="system-filter" style="margin-bottom: 0.5rem;">Podle soustavy:</label>
+        <select id="system-filter" class="form-control" style="min-width: 220px;" aria-label="Filtrovat podle soustavy">
+          <option value="">Všechny schůzky</option>
+          <option value="inter-system">Pouze mezisystémové</option>
+          <option value="single-system">Pouze v rámci soustavy</option>
+          <% @systems.each do |system| %>
+            <option value="system-<%= system.id %>"><%= system.name %></option>
+          <% end %>
+        </select>
+      <% end %>
+    </div>
+
+    <div class="meetings-toolbar-actions">
+      <%= link_to "Naplánovat novou schůzku", new_meeting_path, class: "btn btn-primary", "aria-label" => "Naplánovat novou schůzku - klávesová zkratka N", title: "Naplánovat novou schůzku (klávesová zkratka: N)" %>
+      <% if @systems.present? && @systems.count >= 2 %>
+        <%= link_to "🌌 Mezisystémová schůzka", new_inter_system_meetings_path, class: "btn btn-accent", "aria-label" => "Naplánovat schůzku mezi soustavami" %>
+      <% end %>
     </div>
   </div>
-<% end %>
+</div>
+
+<style>
+  .meetings-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    padding: 1.25rem 1.5rem;
+  }
+
+  .meetings-filter {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .meetings-filter select {
+    width: auto;
+  }
+
+  .meetings-toolbar-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+</style>
 
 <div class="content-section">
   <div class="card fade-in">
@@ -58,13 +88,6 @@
     </div>
   </div>
 </div>
-
-<nav class="actions" role="navigation" aria-label="Akce se schůzkami">
-  <%= link_to "Naplánovat novou schůzku", new_meeting_path, class: "btn btn-primary", "aria-label" => "Naplánovat novou schůzku - klávesová zkratka N", title: "Naplánovat novou schůzku (klávesová zkratka: N)" %>
-  <% if @systems.present? && @systems.count >= 2 %>
-    <%= link_to "🌌 Mezisystémová schůzka", new_inter_system_meetings_path, class: "btn btn-accent", "aria-label" => "Naplánovat schůzku mezi soustavami" %>
-  <% end %>
-</nav>
 
 <!-- Include relativistic visualization JavaScript -->
 <script src="<%= asset_path('relativistic_viz.js') %>"></script>

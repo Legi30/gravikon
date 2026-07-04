@@ -129,8 +129,10 @@ Keep it that way for any new system routes.
 **About page:** `/o-aplikaci` (`PagesController#about`) webifies the original
 assignment (Gravikon.pdf — served copy at `public/Gravikon.pdf`, source in the
 repo root is git-ignored): the Xentor story, the physics formulas (CSS-rendered,
-no MathJax) and the extension checklist. Linked from the nav (🚀 O aplikaci,
-shortcut `O`) and from a one-line intro above the galaxy landing map.
+no MathJax) and the extension checklist. Linked from the nav (🚀 O aplikaci, shortcut O) and from the galaxy landing
+map intro link. The keyboard-shortcut table lives on this page (the Nápověda
+nav tab + modal were removed). Favicon: black-hole icon (public/icon.svg,
+rasterized icon.png/favicon.ico).
 
 **Jobs:** `GenerateSystemJob`, `RegenerateSystemJob`, `GenerateGalaxyVisualizationJob`
 — fail loudly (no retry_on/discard_on swallowing), clear the *versioned* cache keys

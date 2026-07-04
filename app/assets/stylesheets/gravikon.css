@@ -1112,99 +1112,6 @@ tr:hover td {
 }
 
 /* === Keyboard Shortcuts Modal === */
-.modal {
-  display: none;
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 10000;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.85);
-  -webkit-backdrop-filter: blur(5px);
-  backdrop-filter: blur(5px);
-}
-
-.modal-content {
-  position: relative;
-  z-index: 10001;
-  background: linear-gradient(135deg, var(--surface) 0%, rgba(15, 18, 35, 0.98) 100%);
-  border: 1px solid rgba(255, 215, 0, 0.35);
-  border-radius: var(--radius-lg);
-  max-width: 480px;
-  width: 90%;
-  max-height: 80vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
-  animation: modalFadeIn 0.25s ease;
-}
-
-@keyframes modalFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-30px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--spacing-md) var(--spacing-lg);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.modal-header h2 {
-  margin: 0;
-  font-size: 1.2rem;
-  color: var(--accent);
-}
-
-.modal-close {
-  background: transparent;
-  border: none;
-  color: rgba(255, 255, 255, 0.55);
-  font-size: 1.6rem;
-  line-height: 1;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal-close:hover,
-.modal-close:focus {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--accent);
-}
-
-.modal-body {
-  padding: var(--spacing-lg);
-}
-
-.modal-description {
-  margin-bottom: var(--spacing-md);
-  color: rgba(224, 224, 224, 0.9);
-}
-
 .shortcuts-table {
   width: 100%;
   border-collapse: collapse;
@@ -1243,45 +1150,7 @@ tr:hover td {
   text-align: center;
 }
 
-.modal-note {
-  margin-top: var(--spacing-sm);
-  color: rgba(224, 224, 224, 0.55);
-  font-size: 0.85rem;
-}
 
-/* Help button in navigation */
-.help-button {
-  background: rgba(255, 215, 0, 0.05);
-  border: 1px solid rgba(255, 215, 0, 0.2);
-}
-
-.help-button:hover {
-  background: rgba(255, 215, 0, 0.15);
-  border-color: var(--accent);
-}
-
-/* Responsive modal */
-@media (max-width: 768px) {
-  .modal-content {
-    width: 95%;
-    max-height: 90vh;
-  }
-
-  .modal-header h2 {
-    font-size: 1.5rem;
-  }
-
-  .keyboard-key {
-    min-width: 35px;
-    font-size: 1rem;
-  }
-
-  .shortcuts-table th,
-  .shortcuts-table td {
-    padding: var(--spacing-xs);
-    font-size: 0.9rem;
-  }
-}
 
 /* === Flash messages (server-side notices/alerts) === */
 .flash {

@@ -17,23 +17,16 @@
   <td><%= "#{meeting.start_time || '?'} - #{meeting.end_time || '?'}" %></td>
   <td>
     <% if is_inter_system && meeting.participant_systems.present? %>
-      <%# Show participants with their system names for inter-system meetings %>
-      <%
-        participant_systems_hash = meeting.participant_systems_hash
-        participants_with_systems = meeting.participants_array.map do |participant_name|
-          system_id = participant_systems_hash[participant_name]
-          if system_id
-            participant_system = @systems_by_id[system_id]
-            system_label = participant_system ? participant_system.name : "?"
-            "#{participant_name} (#{system_label})"
-          else
-            participant_name
-          end
-        end
-      %>
-      <%= participants_with_systems.join(", ") %>
+      <%# Inter-system meetings list only the involved SYSTEMS, not bodies %>
+      <% system_names = meeting.participant_systems_hash.values.uniq.map { |sid| @systems_by_id[sid]&.name }.compact %>
+      <%= system_names.first(4).join(", ") %><%= "…" if system_names.size > 4 %>
     <% else %>
-      <%= meeting.participants_array.presence&.join(", ") || "(neznámí účastníci)" %>
+      <% names = meeting.participants_array %>
+      <% if names.any? %>
+        <%= names.first(4).join(", ") %><%= "…" if names.size > 4 %>
+      <% else %>
+        (neznámí účastníci)
+      <% end %>
     <% end %>
   </td>
   <td>
