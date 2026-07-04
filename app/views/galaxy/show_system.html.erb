@@ -164,8 +164,20 @@
     <%= raw @system_svg %>
   </div>
 
+  <div class="animation-controls" role="group" aria-label="Ovládání animace orbit" style="display: flex; gap: 0.75rem; align-items: center; justify-content: center; margin-top: 1rem;">
+    <button id="orbit-play-pause" class="btn btn-secondary btn-sm" type="button">⏸ Pozastavit</button>
+    <button id="orbit-reset" class="btn btn-secondary btn-sm" type="button">↻ Resetovat</button>
+    <label for="orbit-speed" style="margin: 0;">Rychlost:</label>
+    <input type="range" id="orbit-speed" min="0.1" max="5" step="0.1" value="1" style="width: 140px;">
+    <span id="speed-label">1.0×</span>
+  </div>
+
   <!-- Tooltip for celestial body information -->
   <div id="tooltip" role="tooltip" aria-live="polite"></div>
+
+  <!-- Interactive map features: tooltips + orbital animation -->
+  <script src="<%= asset_path('system_map.js') %>"></script>
+  <script src="<%= asset_path('orbital_animation.js') %>"></script>
 <% else %>
   <div class="content-section">
     <div class="card fade-in">
@@ -218,27 +230,3 @@
   });
 </script>
 
-<style>
-  .btn-danger {
-    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-    color: white;
-  }
-
-  .btn-danger:hover {
-    background: linear-gradient(135deg, #c0392b 0%, #a93226 100%);
-  }
-
-  #tooltip {
-    display: none;
-    position: absolute;
-    background: rgba(0, 0, 0, 0.9);
-    color: white;
-    padding: 0.75rem;
-    border-radius: 6px;
-    font-size: 0.9rem;
-    z-index: 1000;
-    pointer-events: none;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    max-width: 400px;
-  }
-</style>

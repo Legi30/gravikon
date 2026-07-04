@@ -1259,3 +1259,24 @@ tr:hover td {
     font-size: 0.9rem;
   }
 }
+
+/* === Flash messages (server-side notices/alerts) === */
+.flash {
+  padding: 0.9rem 1.25rem;
+  border-radius: 8px;
+  margin-bottom: 1.25rem;
+  font-weight: 500;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.flash-notice {
+  background: rgba(46, 213, 115, 0.12);
+  border: 1px solid rgba(46, 213, 115, 0.5);
+  color: #2ed573;
+}
+
+.flash-alert {
+  background: rgba(231, 76, 60, 0.12);
+  border: 1px solid rgba(231, 76, 60, 0.5);
+  color: #ff6b6b;
+}

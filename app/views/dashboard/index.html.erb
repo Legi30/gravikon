@@ -155,11 +155,11 @@
 <!-- Navigation Actions -->
 <div class="actions">
   <%= link_to "📅 Schůzky", meetings_path, class: "btn btn-primary" %>
-  <%= link_to "🗺 Mapa soustavy", systems_path, class: "btn btn-secondary" %>
+  <%= link_to "🌌 Mapa galaxie", galaxy_index_path, class: "btn btn-secondary" %>
 </div>
 
-<!-- Chart.js Library from CDN -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- Chart.js Library (vendored locally) -->
+<script src="<%= asset_path('vendor/chart.umd.min.js') %>"></script>
 
 <!-- Initialize Charts -->
 <script>

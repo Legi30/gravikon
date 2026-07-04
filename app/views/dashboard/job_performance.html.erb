@@ -1,116 +1,122 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Job Performance - Gravikon</title>
-  <%= stylesheet_link_tag "gravikon" %>
-  <style>
-    .job-stats-container { max-width: 1200px; margin: 40px auto; padding: 20px; }
-    .stats-header { text-align: center; margin-bottom: 40px; }
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }
-    .stat-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    .stat-card.success { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
-    .stat-card.warning { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
-    .stat-label { font-size: 0.9em; opacity: 0.9; margin-bottom: 8px; }
-    .stat-value { font-size: 2.5em; font-weight: bold; }
-    .history-table { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 30px; }
-    .back-link { display: inline-block; margin-bottom: 20px; color: #667eea; text-decoration: none; font-weight: 500; }
-    .alert-box { padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-    .alert-success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
-    .alert-warning { background: #fff3cd; border: 1px solid #ffeeba; color: #856404; }
-  </style>
-</head>
-<body>
-  <div class="job-stats-container">
-    <%= link_to "← Back to Dashboard", dashboard_path, class: "back-link" %>
+<div class="page-header">
+  <h1>⚡ Výkon úloh na pozadí</h1>
+  <p style="color: rgba(255, 255, 255, 0.8); margin-top: 0.5rem;">Sledování doby běhu generování a vizualizace soustav</p>
+</div>
 
-    <div class="stats-header">
-      <h1>⚡ Background Job Performance</h1>
-      <p style="color: #666;">GenerateSystemJob execution time monitoring</p>
+<% if @job_history.empty? %>
+  <div class="content-section">
+    <div class="card fade-in" style="border-left: 4px solid #667eea;">
+      ℹ️ <strong>Žádná data o výkonu</strong> — zatím neproběhla žádná generace. Vytvořte nebo regenerujte soustavu pro sběr metrik.
     </div>
-
-    <% if @job_history.empty? %>
-      <div class="alert-box alert-warning">
-        ℹ️ <strong>No Performance Data</strong> - No system regenerations recorded yet. Regenerate the system to collect metrics.
+  </div>
+<% else %>
+  <div class="content-section">
+    <% if @target_percentage >= 90 %>
+      <div class="card fade-in" style="border-left: 4px solid #2ed573;">
+        ✅ <strong>Výkon: výborný</strong> — <%= @target_percentage %> % úloh dokončeno do 30 s
       </div>
     <% else %>
-      <% if @target_percentage >= 90 %>
-        <div class="alert-box alert-success">
-          ✅ <strong>Performance: Excellent</strong> - <%= @target_percentage %>% of jobs complete within 30s target
-        </div>
-      <% else %>
-        <div class="alert-box alert-warning">
-          ⚠️ <strong>Performance: Below Target</strong> - Only <%= @target_percentage %>% of jobs within 30s (target: >90%)
-        </div>
-      <% end %>
-
-      <div class="stats-grid">
-        <div class="stat-card <%= @target_percentage >= 90 ? 'success' : 'warning' %>">
-          <div class="stat-label">Within Target</div>
-          <div class="stat-value"><%= @target_percentage %>%</div>
-          <div class="stat-detail"><%= @within_target_count %>/<%= @job_history.size %> jobs &lt;30s</div>
-        </div>
-
-        <div class="stat-card">
-          <div class="stat-label">Average Time</div>
-          <div class="stat-value"><%= @avg_total_time %>s</div>
-          <div class="stat-detail">Overall execution</div>
-        </div>
-
-        <div class="stat-card success">
-          <div class="stat-label">Fastest</div>
-          <div class="stat-value"><%= @min_time %>s</div>
-          <div class="stat-detail">Best performance</div>
-        </div>
-
-        <div class="stat-card warning">
-          <div class="stat-label">Slowest</div>
-          <div class="stat-value"><%= @max_time %>s</div>
-          <div class="stat-detail">Worst performance</div>
-        </div>
-      </div>
-
-      <div class="history-table">
-        <h3>📋 Recent Job Executions (Last <%= @job_history.size %>)</h3>
-        <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
-          <thead>
-            <tr style="border-bottom: 2px solid #ddd;">
-              <th style="text-align: left; padding: 12px;">Timestamp</th>
-              <th style="text-align: center; padding: 12px;">Planets</th>
-              <th style="text-align: center; padding: 12px;">Moons</th>
-              <th style="text-align: right; padding: 12px;">Generator</th>
-              <th style="text-align: right; padding: 12px;">Visualizer</th>
-              <th style="text-align: right; padding: 12px;">Total</th>
-              <th style="text-align: center; padding: 12px;">Target</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% @job_history.reverse.each do |job| %>
-              <tr style="border-bottom: 1px solid #eee;">
-                <td style="padding: 10px;"><%= job[:timestamp].strftime("%Y-%m-%d %H:%M:%S") %></td>
-                <td style="text-align: center; padding: 10px;"><%= job[:num_planets] %></td>
-                <td style="text-align: center; padding: 10px;"><%= job[:max_moons] %></td>
-                <td style="text-align: right; padding: 10px;"><%= job[:generator_duration] %>s</td>
-                <td style="text-align: right; padding: 10px;"><%= job[:visualizer_duration] %>s</td>
-                <td style="text-align: right; padding: 10px; font-weight: bold;"><%= job[:total_duration] %>s</td>
-                <td style="text-align: center; padding: 10px;">
-                  <span style="color: <%= job[:within_target] ? '#11998e' : '#f5576c' %>; font-weight: bold;">
-                    <%= job[:within_target] ? '✓' : '✗' %>
-                  </span>
-                </td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="history-table">
-        <h3>📊 Performance Breakdown</h3>
-        <p><strong>Generator Average:</strong> <%= @avg_generator_time %>s (data generation)</p>
-        <p><strong>Visualizer Average:</strong> <%= @avg_visualizer_time %>s (SVG creation)</p>
-        <p><strong>Total Records:</strong> <%= @job_history.size %> (last 20 executions kept)</p>
-        <p style="margin-top: 20px;"><%= link_to "View as JSON", dashboard_job_performance_path(format: :json), target: "_blank" %></p>
+      <div class="card fade-in" style="border-left: 4px solid #f39c12;">
+        ⚠️ <strong>Výkon: pod cílem</strong> — pouze <%= @target_percentage %> % úloh do 30 s (cíl: &gt;90 %)
       </div>
     <% end %>
   </div>
-</body>
-</html>
+
+  <div class="content-section">
+    <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+      <div class="card stat-card">
+        <div class="stat-label">V cíli (&lt;30 s)</div>
+        <div class="stat-value"><%= @target_percentage %> %</div>
+        <div class="stat-detail"><%= @within_target_count %>/<%= @job_history.size %> úloh</div>
+      </div>
+
+      <div class="card stat-card">
+        <div class="stat-label">Průměrný čas</div>
+        <div class="stat-value"><%= @avg_total_time %> s</div>
+        <div class="stat-detail">Celková doba běhu</div>
+      </div>
+
+      <div class="card stat-card">
+        <div class="stat-label">Nejrychlejší</div>
+        <div class="stat-value"><%= @min_time %> s</div>
+        <div class="stat-detail">Nejlepší běh</div>
+      </div>
+
+      <div class="card stat-card">
+        <div class="stat-label">Nejpomalejší</div>
+        <div class="stat-value"><%= @max_time %> s</div>
+        <div class="stat-detail">Nejhorší běh</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="content-section">
+    <div class="card fade-in">
+      <h3>📋 Poslední běhy úloh (<%= @job_history.size %>)</h3>
+      <table style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+        <thead>
+          <tr style="border-bottom: 2px solid rgba(255,255,255,0.2);">
+            <th style="text-align: left; padding: 12px;">Čas</th>
+            <th style="text-align: center; padding: 12px;">Typ</th>
+            <th style="text-align: center; padding: 12px;">Planety</th>
+            <th style="text-align: right; padding: 12px;">Generátor</th>
+            <th style="text-align: right; padding: 12px;">Vizualizace</th>
+            <th style="text-align: right; padding: 12px;">Celkem</th>
+            <th style="text-align: center; padding: 12px;">Cíl</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @job_history.reverse.each do |job| %>
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+              <td style="padding: 10px;"><%= job[:timestamp].strftime("%d.%m.%Y %H:%M:%S") %></td>
+              <td style="text-align: center; padding: 10px;"><%= job[:job_type] %></td>
+              <td style="text-align: center; padding: 10px;"><%= job[:num_planets] || "—" %></td>
+              <td style="text-align: right; padding: 10px;"><%= job[:generator_duration] ? "#{job[:generator_duration]} s" : "—" %></td>
+              <td style="text-align: right; padding: 10px;"><%= job[:visualizer_duration] ? "#{job[:visualizer_duration]} s" : "—" %></td>
+              <td style="text-align: right; padding: 10px; font-weight: bold;"><%= job[:total_duration] %> s</td>
+              <td style="text-align: center; padding: 10px;">
+                <span style="color: <%= job[:within_target] ? '#2ed573' : '#f5576c' %>; font-weight: bold;">
+                  <%= job[:within_target] ? '✓' : '✗' %>
+                </span>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="content-section">
+    <div class="card fade-in">
+      <h3>📊 Rozklad výkonu</h3>
+      <p><strong>Průměr generátoru:</strong> <%= @avg_generator_time %> s (generování dat)</p>
+      <p><strong>Průměr vizualizace:</strong> <%= @avg_visualizer_time %> s (tvorba SVG)</p>
+      <p><strong>Počet záznamů:</strong> <%= @job_history.size %> (uchovává se posledních 20)</p>
+    </div>
+  </div>
+<% end %>
+
+<nav class="actions" role="navigation">
+  <%= link_to "← Zpět na přehled", dashboard_path, class: "btn btn-secondary" %>
+  <%= link_to "Zobrazit jako JSON", dashboard_job_performance_path(format: :json), class: "btn btn-secondary", target: "_blank" %>
+</nav>
+
+<style>
+  .stat-card .stat-label {
+    font-size: 0.9em;
+    opacity: 0.8;
+    margin-bottom: 0.5rem;
+  }
+
+  .stat-card .stat-value {
+    font-size: 2.2em;
+    font-weight: bold;
+    color: var(--accent);
+    margin-bottom: 0.25rem;
+  }
+
+  .stat-card .stat-detail {
+    font-size: 0.85em;
+    opacity: 0.7;
+  }
+</style>

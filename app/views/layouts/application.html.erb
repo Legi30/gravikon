@@ -23,10 +23,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
 
-    <%# Includes all stylesheet files in app/assets/stylesheets %>
-    <%= stylesheet_link_tag :app %>
-    <%# Include Gravikon CSS design system %>
-    <%= stylesheet_link_tag "gravikon", media: "all" %>
+    <%# application.css is the manifest — it @imports the other stylesheets
+        in cascade order (gravikon base first) %>
+    <%= stylesheet_link_tag "application" %>
   </head>
 
   <body>
@@ -75,8 +74,7 @@
     <script src="<%= asset_path('logger.js') %>"></script>
     <!-- Include keyboard shortcuts JavaScript -->
     <script src="<%= asset_path('keyboard_shortcuts.js') %>"></script>
-    <!-- Load galaxy and system interactive features -->
+    <!-- Galaxy map interactive features -->
     <script src="<%= asset_path('galaxy.js') %>"></script>
-    <script src="<%= asset_path('system.js') %>"></script>
   </body>
 </html>

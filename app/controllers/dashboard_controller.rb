@@ -81,8 +81,11 @@ class DashboardController < ApplicationController
       @min_time = total_times.min.round(3)
       @max_time = total_times.max.round(3)
 
-      @avg_generator_time = (@job_history.map { |m| m[:generator_duration] }.sum / @job_history.size).round(3)
-      @avg_visualizer_time = (@job_history.map { |m| m[:visualizer_duration] }.sum / @job_history.size).round(3)
+      # Not every job type records these (galaxy visualization has no generator)
+      generator_times = @job_history.filter_map { |m| m[:generator_duration] }
+      visualizer_times = @job_history.filter_map { |m| m[:visualizer_duration] }
+      @avg_generator_time = generator_times.any? ? (generator_times.sum / generator_times.size).round(3) : 0
+      @avg_visualizer_time = visualizer_times.any? ? (visualizer_times.sum / visualizer_times.size).round(3) : 0
     else
       @within_target_count = 0
       @target_percentage = 0
