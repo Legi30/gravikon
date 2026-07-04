@@ -39,10 +39,12 @@ class GalaxyControllerTest < ActionDispatch::IntegrationTest
   end
 
   # Test GET index displays galaxy map and system list
+  # (the page has no heading by design — the map itself is the hero)
   test "GET index displays galaxy map" do
     get galaxy_index_path
     assert_response :success
-    assert_select "h1", /Galaxy|Galaxie/i
+    assert_select ".galaxy-hero svg"
+    assert_select "h3", /Seznam soustav/
   end
 
   # Test GET show_system displays specific system

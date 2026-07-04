@@ -244,6 +244,16 @@ class GalaxyVisualizer
               'data-orbital-period': orbital_period,
               style: "cursor: pointer;"
             ) do
+              # Invisible hit area covering marker + labels so hover is one
+              # contiguous generous disc (no flicker in the gaps)
+              svg.circle(
+                cx: 0,
+                cy: 0,
+                r: radius + 26,
+                fill: "transparent",
+                class: "system-hit-area"
+              )
+
               # System glow (outer halo)
               svg.circle(
                 cx: 0,

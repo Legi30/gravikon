@@ -75,16 +75,20 @@
   text-shadow: 0 0 10px rgba(139, 92, 246, 0.6);
 }
 
-/* === System Markers in Galaxy === */
+/* === System Markers in Galaxy ===
+   IMPORTANT: markers are positioned via the SVG transform ATTRIBUTE, which
+   maps to the CSS transform property — so no CSS transform here (it would
+   override the position and teleport the marker on hover) and no
+   `transition: all` (it would smear every per-frame position update).
+   Only `filter` may transition. */
 .system-marker {
   cursor: pointer;
-  transition: all var(--transition-normal);
+  transition: filter var(--transition-normal);
   filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.6));
 }
 
 .system-marker:hover {
   filter: drop-shadow(0 0 15px rgba(251, 191, 36, 1));
-  transform: scale(1.1);
 }
 
 .system-marker:focus {

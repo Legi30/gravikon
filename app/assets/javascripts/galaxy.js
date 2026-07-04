@@ -61,19 +61,30 @@
 
       if (orbiting.length === 0) return;
 
-      function tick() {
+      function positionMarkers() {
         const epochSeconds = Date.now() / 1000;
 
         orbiting.forEach(m => {
+          // A hovered marker is frozen in place so it cannot slide out from
+          // under the cursor (it catches up to real time on mouseleave)
+          if (m.marker.__orbitFrozen) return;
+
           const angle = m.initialAngle + (2 * Math.PI * epochSeconds) / m.orbitalPeriod;
           const x = CENTER_X + m.orbitRadius * Math.cos(angle);
           const y = CENTER_Y + m.orbitRadius * Math.sin(angle);
           m.marker.setAttribute('transform', `translate(${x.toFixed(2)}, ${y.toFixed(2)})`);
         });
+      }
 
+      function tick() {
+        positionMarkers();
         requestAnimationFrame(tick);
       }
 
+      // Position immediately (synchronously) — the SVG is rendered with the
+      // stored positions, and waiting for the first animation frame would
+      // make every marker visibly jump right after load.
+      positionMarkers();
       requestAnimationFrame(tick);
       if (window.Logger) window.Logger.log(`Galaxy orbit animation running for ${orbiting.length} systems`);
     },
@@ -92,14 +103,20 @@
         return;
       }
 
-      // Same behaviour as celestial bodies in the system view (system_map.js):
-      // highlight on hover, tooltip follows the cursor below-right.
+      // Hover: highlight + tooltip like in the system view, PLUS the hovered
+      // marker's orbit freezes so it cannot escape from under the cursor.
+      // mouseenter/mouseleave (not mouseover/mouseout) so transitions between
+      // the group's children never blink the tooltip.
       systemMarkers.forEach(marker => {
         const core = marker.querySelector('.system-core');
         const originalStroke = core ? core.getAttribute('stroke') : null;
         const originalStrokeWidth = core ? core.getAttribute('stroke-width') : null;
+        let lastPointer = null;
 
-        marker.addEventListener('mouseover', (e) => {
+        marker.addEventListener('mouseenter', (e) => {
+          marker.__orbitFrozen = true;
+          lastPointer = { x: e.clientX, y: e.clientY };
+
           if (core) {
             core.setAttribute('stroke', '#ffd700');
             core.setAttribute('stroke-width', '3');
@@ -121,10 +138,23 @@
         });
 
         marker.addEventListener('mousemove', (e) => {
+          lastPointer = { x: e.clientX, y: e.clientY };
           this.positionTooltip(e, tooltip);
         });
 
-        marker.addEventListener('mouseout', () => {
+        marker.addEventListener('mouseleave', (e) => {
+          // The browser re-evaluates hover while OTHER markers animate and can
+          // emit a spurious leave although the pointer is still on this
+          // marker — ignore those, only honour a genuine exit.
+          const px = e.clientX || (lastPointer && lastPointer.x);
+          const py = e.clientY || (lastPointer && lastPointer.y);
+          if (px != null && py != null) {
+            const under = document.elementFromPoint(px, py);
+            if (under && marker.contains(under)) return;
+          }
+
+          marker.__orbitFrozen = false;
+
           if (core) {
             core.setAttribute('stroke', originalStroke);
             core.setAttribute('stroke-width', originalStrokeWidth);

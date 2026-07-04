@@ -163,6 +163,11 @@ class OrbitalAnimator {
         continue;
       }
 
+      // A hovered body is frozen (system_map.js) so it cannot slide out
+      // from under the cursor; it catches up to real time on mouseout.
+      // Its moons keep orbiting the frozen position (currentX/Y unchanged).
+      if (body.element.__orbitFrozen) continue;
+
       // Real-time angle: full revolutions since epoch plus the body's phase
       const currentAngle = body.initialAngle + (2 * Math.PI * epochSeconds) / body.orbitalPeriod;
 

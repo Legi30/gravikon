@@ -1,8 +1,5 @@
 <% content_for :body_class, "galaxy-page" %>
 
-<div class="page-header">
-  <h1>Mapa galaxie</h1>
-</div>
 
 <%# === Galaxy map hero — the map is the landing page === %>
 <% if @galaxy_svg.present? %>
@@ -22,7 +19,7 @@
         <span class="galaxy-stat-label">těles</span>
       </div>
       <div class="galaxy-stat" role="listitem">
-        <span class="galaxy-stat-value">🕳</span>
+        <span class="bh-dot" aria-hidden="true"></span>
         <span class="galaxy-stat-label"><%= @galaxy_data['black_hole']['name'] %></span>
       </div>
     </div>
@@ -132,6 +129,16 @@
   .galaxy-stat-label {
     color: rgba(255, 255, 255, 0.6);
     font-size: 0.9rem;
+  }
+
+  .bh-dot {
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #000 35%, #330066 70%, #8b5cf6 100%);
+    box-shadow: 0 0 8px rgba(139, 92, 246, 0.9);
+    display: inline-block;
+    align-self: center;
   }
 
   .system-card {

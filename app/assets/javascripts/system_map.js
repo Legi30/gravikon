@@ -25,6 +25,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Mouseover: highlight and show tooltip
     body.addEventListener('mouseover', function(event) {
+      // Freeze this body's orbit so it cannot slide out from under the
+      // cursor (orbital_animation.js skips frozen bodies; it catches up
+      // to real time on mouseout)
+      body.__orbitFrozen = true;
+
       // Highlight the body
       body.setAttribute('stroke', '#ffd700');
       body.setAttribute('stroke-width', '3');
@@ -89,7 +94,16 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Mouseout: remove highlight and hide tooltip
-    body.addEventListener('mouseout', function() {
+    body.addEventListener('mouseout', function(event) {
+      // Ignore spurious outs emitted while other bodies animate — only
+      // honour a genuine exit (pointer no longer over this body)
+      if (event.clientX != null) {
+        const under = document.elementFromPoint(event.clientX, event.clientY);
+        if (under === body) return;
+      }
+
+      body.__orbitFrozen = false;
+
       // Restore original stroke
       body.setAttribute('stroke', originalStroke);
       body.setAttribute('stroke-width', originalStrokeWidth);
