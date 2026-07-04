@@ -1,0 +1,190 @@
+<div class="page-header">
+  <nav aria-label="Breadcrumb" style="margin-bottom: 1rem;">
+    <ol style="list-style: none; padding: 0; display: flex; gap: 0.5rem; font-size: 0.9rem; color: rgba(255, 255, 255, 0.7);">
+      <li><%= link_to "Mapa galaxie", galaxy_index_path, style: "color: var(--accent); text-decoration: none;" %></li>
+      <li aria-hidden="true">/</li>
+      <li><%= link_to @system.name, galaxy_system_path(@system), style: "color: var(--accent); text-decoration: none;" %></li>
+      <li aria-hidden="true">/</li>
+      <li aria-current="page">Upravit</li>
+    </ol>
+  </nav>
+  <h1>Upravit soustavu: <%= @system.name %></h1>
+</div>
+
+<div class="content-section">
+  <div class="card fade-in">
+    <p style="color: rgba(255, 255, 255, 0.8); margin-bottom: 1.5rem;">
+      Upravte název a pozici planetární soustavy v galaxii. Změna parametrů planet a měsíců vyžaduje regeneraci soustavy.
+    </p>
+
+    <div class="warning-box" style="background: rgba(243, 156, 18, 0.1); border: 1px solid #f39c12; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
+      <h4 style="margin: 0 0 0.5rem 0; color: #f39c12;">⚠ Důležité informace</h4>
+      <ul style="margin: 0.5rem 0 0 1.5rem; line-height: 1.6; color: rgba(255, 255, 255, 0.9);">
+        <li>Změna pozice může ovlivnit časovou dilataci všech těles v soustavě</li>
+        <li>Ujistěte se, že nová pozice nekoliduje s jinými soustavami</li>
+        <li>Minimální vzdálenost od černé díry je 50 jednotek</li>
+        <li>Minimální vzdálenost mezi soustavami je 40 jednotek</li>
+        <li>Pro změnu počtu planet nebo měsíců použijte funkci "Regenerovat soustavu" na stránce detailu</li>
+      </ul>
+    </div>
+
+    <%= render partial: 'system_form',
+               locals: {
+                 system: @system,
+                 url: galaxy_system_path(@system),
+                 method: :patch,
+                 form_label: "Formulář pro úpravu planetární soustavy",
+                 submit_text: "Uložit změny",
+                 cancel_path: galaxy_system_path(@system)
+               } %>
+  </div>
+</div>
+
+<div class="content-section">
+  <div class="card fade-in">
+    <h3>Současné parametry soustavy</h3>
+    <div class="current-params" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem; padding: 1rem; background: rgba(255, 255, 255, 0.03); border-radius: 6px;">
+      <div class="param-item">
+        <strong style="color: var(--accent); display: block; margin-bottom: 0.25rem;">Název</strong>
+        <span><%= @system.name %></span>
+      </div>
+
+      <div class="param-item">
+        <strong style="color: var(--accent); display: block; margin-bottom: 0.25rem;">Pozice</strong>
+        <span>X: <%= @system.x.round(2) %>, Y: <%= @system.y.round(2) %></span>
+      </div>
+
+      <div class="param-item">
+        <strong style="color: var(--accent); display: block; margin-bottom: 0.25rem;">Vzdálenost od černé díry</strong>
+        <% distance = Math.sqrt((@system.x - 400)**2 + (@system.y - 400)**2) %>
+        <span><%= distance.round(1) %> jednotek</span>
+      </div>
+
+      <% system_data = @system.load_system_data %>
+      <% if system_data %>
+        <div class="param-item">
+          <strong style="color: var(--accent); display: block; margin-bottom: 0.25rem;">Počet planet</strong>
+          <span><%= system_data['bodies'].count { |b| b['type'] == 'planet' } %></span>
+        </div>
+
+        <div class="param-item">
+          <strong style="color: var(--accent); display: block; margin-bottom: 0.25rem;">Počet měsíců</strong>
+          <span><%= system_data['bodies'].count { |b| b['type'] == 'moon' } %></span>
+        </div>
+
+        <% star = system_data['bodies'].find { |b| b['type'] == 'star' } %>
+        <% if star %>
+          <div class="param-item">
+            <strong style="color: var(--accent); display: block; margin-bottom: 0.25rem;">Centrální hvězda</strong>
+            <span><%= star['name'] %></span>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<div class="content-section">
+  <div class="card fade-in">
+    <h3>Náhled pozice v galaxii</h3>
+    <p style="color: rgba(255, 255, 255, 0.7); margin-bottom: 1rem;">
+      Aktuální pozice soustavy na mapě galaxie:
+    </p>
+
+    <div id="position-preview" style="width: 100%; max-width: 400px; height: 400px; margin: 0 auto; background: #000814; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; position: relative;">
+      <svg viewBox="0 0 800 800" style="width: 100%; height: 100%;">
+        <!-- Background -->
+        <rect width="800" height="800" fill="#000814"/>
+
+        <!-- Grid lines for reference -->
+        <% (0..8).each do |i| %>
+          <line x1="<%= i * 100 %>" y1="0" x2="<%= i * 100 %>" y2="800" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+          <line x1="0" y1="<%= i * 100 %>" x2="800" y2="<%= i * 100 %>" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+        <% end %>
+
+        <!-- Recommended zone (100-700) -->
+        <rect x="100" y="100" width="600" height="600" fill="none" stroke="rgba(46, 213, 115, 0.3)" stroke-width="2" stroke-dasharray="10,5"/>
+
+        <!-- Black hole at center -->
+        <circle cx="400" cy="400" r="30" fill="#8b5cf6" opacity="0.3"/>
+        <circle cx="400" cy="400" r="50" fill="none" stroke="#e74c3c" stroke-width="2" stroke-dasharray="5,5" opacity="0.5"/>
+        <text x="400" y="470" text-anchor="middle" fill="#8b5cf6" font-size="12">Černá díra</text>
+        <text x="400" y="485" text-anchor="middle" fill="#e74c3c" font-size="10">(min. vzdálenost)</text>
+
+        <!-- Current system position -->
+        <circle id="system-marker" cx="<%= @system.x %>" cy="<%= @system.y %>" r="15" fill="#fbbf24" stroke="#f59e0b" stroke-width="2"/>
+        <text x="<%= @system.x %>" y="<%= @system.y - 25 %>" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="bold"><%= @system.name %></text>
+
+        <!-- Other systems for reference -->
+        <% System.where.not(id: @system.id).each do |other_system| %>
+          <circle cx="<%= other_system.x %>" cy="<%= other_system.y %>" r="10" fill="rgba(255,255,255,0.3)" stroke="rgba(255,255,255,0.5)" stroke-width="1"/>
+        <% end %>
+      </svg>
+    </div>
+
+    <div style="margin-top: 1rem; font-size: 0.9rem; color: rgba(255, 255, 255, 0.7); text-align: center;">
+      <p><span style="color: #2ed573;">█</span> Zelený čtverec = Doporučená zóna (100-700)</p>
+      <p><span style="color: #e74c3c;">○</span> Červený kruh = Minimální vzdálenost od černé díry</p>
+      <p><span style="color: #fbbf24;">●</span> Žlutá = Současná pozice vaší soustavy</p>
+    </div>
+  </div>
+</div>
+
+<nav class="actions" role="navigation" aria-label="Akce se soustavou">
+  <%= link_to "Zobrazit detail", galaxy_system_path(@system), class: "btn btn-primary", "aria-label" => "Zobrazit detail soustavy" %>
+  <%= link_to "Zpět na galaxii", galaxy_index_path, class: "btn btn-secondary", "aria-label" => "Návrat na mapu galaxie" %>
+</nav>
+
+<style>
+  .warning-box {
+    animation: slideIn 0.4s ease-out;
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .param-item {
+    padding: 0.5rem;
+  }
+
+  #position-preview {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Update position preview when coordinates change
+    const xField = document.getElementById('system_x');
+    const yField = document.getElementById('system_y');
+    const systemMarker = document.getElementById('system-marker');
+
+    function updatePreview() {
+      const x = parseFloat(xField.value);
+      const y = parseFloat(yField.value);
+
+      if (!isNaN(x) && !isNaN(y)) {
+        systemMarker.setAttribute('cx', x);
+        systemMarker.setAttribute('cy', y);
+
+        // Update text position
+        const textElement = systemMarker.nextElementSibling;
+        if (textElement && textElement.tagName === 'text') {
+          textElement.setAttribute('x', x);
+          textElement.setAttribute('y', y - 25);
+        }
+      }
+    }
+
+    xField.addEventListener('input', updatePreview);
+    yField.addEventListener('input', updatePreview);
+  });
+</script>

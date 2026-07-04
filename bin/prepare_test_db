@@ -1,0 +1,38 @@
+#!/usr/bin/env ruby
+# Script to prepare test database for test execution
+# Run this script if you get "Migrations are pending" error
+
+require "fileutils"
+
+puts "Preparing test database..."
+
+# Option 1: Load schema (recommended - faster)
+puts "\nOption 1: Loading schema into test database..."
+system("RAILS_ENV=test bin/rails db:schema:load")
+
+if $?.success?
+  puts "✅ Test database prepared successfully via schema load"
+  exit 0
+end
+
+# Option 2: Run migrations (if schema load fails)
+puts "\nOption 1 failed. Trying Option 2: Running migrations..."
+system("RAILS_ENV=test bin/rails db:migrate")
+
+if $?.success?
+  puts "✅ Test database prepared successfully via migrations"
+  exit 0
+end
+
+# Option 3: Full reset (if both fail)
+puts "\nOption 2 failed. Trying Option 3: Full database reset..."
+system("RAILS_ENV=test bin/rails db:drop db:create db:schema:load")
+
+if $?.success?
+  puts "✅ Test database prepared successfully via full reset"
+  exit 0
+end
+
+puts "❌ Failed to prepare test database"
+puts "   Please run manually: RAILS_ENV=test bin/rails db:test:prepare"
+exit 1

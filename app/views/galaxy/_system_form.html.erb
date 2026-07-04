@@ -1,0 +1,260 @@
+<%= form_with model: system, url: url, method: method, id: "system-form", "aria-label" => form_label do |f| %>
+  <div class="form-group">
+    <%= f.label :name, "Název soustavy:", for: "system_name" %>
+    <%= f.text_field :name, placeholder: "např. Sluneční soustava", id: "system_name", class: "form-control", "aria-describedby": "name-error name-help", "aria-required": "true", required: true %>
+    <small id="name-help" style="color: var(--text); opacity: 0.8;">Jedinečný název pro identifikaci soustavy</small>
+    <div id="name-error" class="error-message" style="display: none;" role="alert" aria-live="polite"></div>
+  </div>
+
+  <div class="form-group">
+    <%= f.label :x, "Pozice X (0-800, doporučeno 100-700):", for: "system_x" %>
+    <%= f.number_field :x, min: 0, max: 800, step: 0.1, id: "system_x", class: "form-control", "aria-describedby": "x-error x-help", "aria-required": "true", required: true %>
+    <small id="x-help" style="color: var(--text); opacity: 0.8;">Horizontální pozice v galaxii (střed: 400)</small>
+    <div id="x-error" class="error-message" style="display: none;" role="alert" aria-live="polite"></div>
+    <% if system.x.present? && (system.x < 100 || system.x > 700) %>
+      <div class="warning-message" style="color: #f39c12; margin-top: 0.5rem;" role="alert">
+        ⚠ Varování: Soustava je mimo doporučený rozsah (100-700)
+      </div>
+    <% end %>
+  </div>
+
+  <div class="form-group">
+    <%= f.label :y, "Pozice Y (0-800, doporučeno 100-700):", for: "system_y" %>
+    <%= f.number_field :y, min: 0, max: 800, step: 0.1, id: "system_y", class: "form-control", "aria-describedby": "y-error y-help", "aria-required": "true", required: true %>
+    <small id="y-help" style="color: var(--text); opacity: 0.8;">Vertikální pozice v galaxii (střed: 400)</small>
+    <div id="y-error" class="error-message" style="display: none;" role="alert" aria-live="polite"></div>
+    <% if system.y.present? && (system.y < 100 || system.y > 700) %>
+      <div class="warning-message" style="color: #f39c12; margin-top: 0.5rem;" role="alert">
+        ⚠ Varování: Soustava je mimo doporučený rozsah (100-700)
+      </div>
+    <% end %>
+  </div>
+
+  <div class="position-validation-display" id="position-validation" style="display: none; margin-top: 1rem; padding: 1rem; border-radius: 6px;" role="status" aria-live="polite">
+    <!-- JavaScript will populate this with validation messages -->
+  </div>
+
+  <div class="form-group">
+    <%= f.label :num_planets, "Počet planet (1-10):", for: "system_num_planets" %>
+    <%= f.number_field :num_planets, min: 1, max: 10, value: (system.new_record? ? 5 : nil), id: "system_num_planets", class: "form-control", "aria-describedby": "planets-error planets-help", "aria-required": "true", required: true %>
+    <small id="planets-help" style="color: var(--text); opacity: 0.8;">Počet planet v nové soustavě</small>
+    <div id="planets-error" class="error-message" style="display: none;" role="alert" aria-live="polite"></div>
+  </div>
+
+  <div class="form-group">
+    <%= f.label :max_moons_per_planet, "Maximální počet měsíců na planetu (0-5):", for: "system_max_moons" %>
+    <%= f.number_field :max_moons_per_planet, min: 0, max: 5, value: (system.new_record? ? 2 : nil), id: "system_max_moons", class: "form-control", "aria-describedby": "moons-error moons-help", "aria-required": "true", required: true %>
+    <small id="moons-help" style="color: var(--text); opacity: 0.8;">Maximální počet měsíců pro každou planetu</small>
+    <div id="moons-error" class="error-message" style="display: none;" role="alert" aria-live="polite"></div>
+  </div>
+
+  <div class="actions">
+    <%= f.submit submit_text, class: "btn btn-primary", id: "submit-button", "aria-label": submit_text %>
+    <%= link_to "Zrušit", cancel_path, class: "btn btn-secondary" %>
+  </div>
+<% end %>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('system-form');
+    const nameField = document.getElementById('system_name');
+    const xField = document.getElementById('system_x');
+    const yField = document.getElementById('system_y');
+    const numPlanetsField = document.getElementById('system_num_planets');
+    const maxMoonsField = document.getElementById('system_max_moons');
+    const submitButton = document.getElementById('submit-button');
+    const positionValidation = document.getElementById('position-validation');
+
+    const nameError = document.getElementById('name-error');
+    const xError = document.getElementById('x-error');
+    const yError = document.getElementById('y-error');
+    const planetsError = document.getElementById('planets-error');
+    const moonsError = document.getElementById('moons-error');
+
+    // Constants for validation
+    const GALAXY_CENTER = [400, 400];
+    const MIN_DISTANCE_FROM_BLACK_HOLE = 50;
+    const MIN_DISTANCE_BETWEEN_SYSTEMS = 40;
+    const CANVAS_SIZE = 800;
+
+    function showError(element, message) {
+      element.textContent = message;
+      element.style.display = 'block';
+      element.parentElement.querySelector('.form-control')?.classList.add('error');
+    }
+
+    function hideError(element) {
+      element.textContent = '';
+      element.style.display = 'none';
+      element.parentElement.querySelector('.form-control')?.classList.remove('error');
+    }
+
+    function validateName() {
+      const name = nameField.value.trim();
+      if (name.length === 0) {
+        showError(nameError, 'Název musí být vyplněn');
+        return false;
+      }
+      if (name.length < 3) {
+        showError(nameError, 'Název musí mít alespoň 3 znaky');
+        return false;
+      }
+      if (name.length > 100) {
+        showError(nameError, 'Název může mít maximálně 100 znaků');
+        return false;
+      }
+      hideError(nameError);
+      return true;
+    }
+
+    function validateCoordinate(field, errorElement, coordinateName) {
+      const value = parseFloat(field.value);
+      if (isNaN(value)) {
+        showError(errorElement, `${coordinateName} musí být číslo`);
+        return false;
+      }
+      if (value < 0 || value > CANVAS_SIZE) {
+        showError(errorElement, `${coordinateName} musí být v rozsahu 0-${CANVAS_SIZE}`);
+        return false;
+      }
+      hideError(errorElement);
+      return true;
+    }
+
+    function validatePosition() {
+      const x = parseFloat(xField.value);
+      const y = parseFloat(yField.value);
+
+      if (isNaN(x) || isNaN(y)) {
+        return true; // Skip if coordinates not fully entered yet
+      }
+
+      // Check distance from black hole
+      const distanceFromCenter = Math.sqrt(
+        Math.pow(x - GALAXY_CENTER[0], 2) + Math.pow(y - GALAXY_CENTER[1], 2)
+      );
+
+      positionValidation.style.display = 'block';
+
+      if (distanceFromCenter < MIN_DISTANCE_FROM_BLACK_HOLE) {
+        positionValidation.style.background = 'rgba(231, 76, 60, 0.1)';
+        positionValidation.style.border = '1px solid #e74c3c';
+        positionValidation.style.color = '#e74c3c';
+        positionValidation.innerHTML = `❌ <strong>Chyba:</strong> Soustava je příliš blízko černé díře (vzdálenost: ${distanceFromCenter.toFixed(1)}, minimum: ${MIN_DISTANCE_FROM_BLACK_HOLE})`;
+        return false;
+      }
+
+      // Check recommended range
+      if (x < 100 || x > 700 || y < 100 || y > 700) {
+        positionValidation.style.background = 'rgba(243, 156, 18, 0.1)';
+        positionValidation.style.border = '1px solid #f39c12';
+        positionValidation.style.color = '#f39c12';
+        positionValidation.innerHTML = '⚠ <strong>Varování:</strong> Pozice je mimo doporučený rozsah (100-700). Soustava může být příliš blízko okraje.';
+        return true; // Warning, not error
+      }
+
+      // Valid position
+      positionValidation.style.background = 'rgba(46, 213, 115, 0.1)';
+      positionValidation.style.border = '1px solid #2ed573';
+      positionValidation.style.color = '#2ed573';
+      positionValidation.innerHTML = `✓ <strong>Platná pozice</strong> (vzdálenost od černé díry: ${distanceFromCenter.toFixed(1)})`;
+      return true;
+    }
+
+    function validateNumeric(field, errorElement, label, min, max) {
+      const value = parseInt(field.value, 10);
+      if (isNaN(value)) {
+        showError(errorElement, `${label} musí být číslo`);
+        return false;
+      }
+      if (value < min || value > max) {
+        showError(errorElement, `${label} musí být v rozsahu ${min}-${max}`);
+        return false;
+      }
+      hideError(errorElement);
+      return true;
+    }
+
+    function validateForm() {
+      const nameValid = validateName();
+      const xValid = validateCoordinate(xField, xError, 'X souřadnice');
+      const yValid = validateCoordinate(yField, yError, 'Y souřadnice');
+      const positionValid = validatePosition();
+      const planetsValid = validateNumeric(numPlanetsField, planetsError, 'Počet planet', 1, 10);
+      const moonsValid = validateNumeric(maxMoonsField, moonsError, 'Počet měsíců', 0, 5);
+
+      const isValid = nameValid && xValid && yValid && positionValid && planetsValid && moonsValid;
+      submitButton.disabled = !isValid;
+      return isValid;
+    }
+
+    // Attach event listeners
+    nameField.addEventListener('input', validateForm);
+    xField.addEventListener('input', validateForm);
+    yField.addEventListener('input', validateForm);
+    numPlanetsField.addEventListener('input', validateForm);
+    maxMoonsField.addEventListener('input', validateForm);
+
+    // Validate on form submission
+    form.addEventListener('submit', function(e) {
+      if (!validateForm()) {
+        e.preventDefault();
+        alert('Prosím opravte chyby ve formuláři před odesláním.');
+      }
+    });
+
+    // Initial validation
+    validateForm();
+  });
+</script>
+
+<style>
+  .form-control.error {
+    border-color: #e74c3c;
+    background: rgba(231, 76, 60, 0.05);
+  }
+
+  .error-message {
+    color: #e74c3c;
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+  }
+
+  .warning-message {
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+  }
+
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+
+  .form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text);
+    font-size: 1rem;
+    transition: all 0.3s ease;
+  }
+
+  .form-control:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  small {
+    display: block;
+    margin-top: 0.5rem;
+  }
+</style>

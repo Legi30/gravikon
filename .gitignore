@@ -34,3 +34,15 @@
 /config/master.key
 .workspace/
 .claude/TASK.md
+
+# Code-factory pipeline artifacts
+/.code_factory/
+
+# Generated galaxy/system runtime data (rebuild with: rails galaxy:rebuild)
+/data/galaxy_data.json
+/data/systems/
+/data/backup/
+/data/backup_test/
+/data/.migration_complete
+/public/galaxy.svg
+/public/systems/

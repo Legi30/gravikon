@@ -1,0 +1,137 @@
+<div class="help-section" style="background-color: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; border-left: 4px solid #0d6efd;">
+  <h3 style="margin-top: 0; color: #0d6efd;">
+    <span style="font-size: 1.5rem;">ℹ️</span> Nápověda: Galaktický systém
+  </h3>
+
+  <div class="help-content" style="line-height: 1.6;">
+    <h4>📍 Co je mapa galaxie?</h4>
+    <p>
+      Mapa galaxie zobrazuje <strong>více slunečních soustav</strong>, které obíhají kolem centrální
+      <strong>supermasivní černé díry</strong> (Sagittarius Omega). Každá sluneční soustava obsahuje
+      hvězdu, planety a měsíce s realistickými fyzikálními parametry.
+    </p>
+
+    <h4>🌟 Správa slunečních soustav</h4>
+
+    <details style="margin-bottom: 1rem;">
+      <summary style="cursor: pointer; font-weight: bold; color: #0d6efd;">
+        ➕ Vytvoření nové soustavy
+      </summary>
+      <div style="padding-left: 1.5rem; margin-top: 0.5rem;">
+        <ol>
+          <li><strong>Název:</strong> 3-50 znaků, alfanumerické znaky, mezery a pomlčky povoleny</li>
+          <li><strong>Pozice v galaxii:</strong> X a Y souřadnice (0-800). Střed galaxie je na (400, 400)</li>
+          <li><strong>Generování:</strong>
+            <ul>
+              <li><strong>Náhodné:</strong> Zadej počet planet (1-10) a max. měsíců na planetu (0-5)</li>
+              <li><strong>Vlastní tělesa:</strong> Definuj konkrétní parametry (hmotnost, poloměr, hustota)</li>
+            </ul>
+          </li>
+        </ol>
+        <p><em>Tip: Systém automaticky validuje, aby soustavy nekolidovaly a nevystoupily z plátna.</em></p>
+      </div>
+    </details>
+
+    <details style="margin-bottom: 1rem;">
+      <summary style="cursor: pointer; font-weight: bold; color: #0d6efd;">
+        ✏️ Úprava a regenerace
+      </summary>
+      <div style="padding-left: 1.5rem; margin-top: 0.5rem;">
+        <ul>
+          <li><strong>Změna pozice:</strong> Přesuň soustavu na mapě (validace kolizí)</li>
+          <li><strong>Změna názvu:</strong> Přejmenuj soustavu (unikátní názvy)</li>
+          <li><strong>Regenerace:</strong> Změň počet planet/měsíců a vygeneruj novou konfiguraci</li>
+        </ul>
+        <p><em>Pozor: Regenerace přemaže současná tělesa v soustavě!</em></p>
+      </div>
+    </details>
+
+    <details style="margin-bottom: 1rem;">
+      <summary style="cursor: pointer; font-weight: bold; color: #0d6efd;">
+        🗑️ Smazání soustavy
+      </summary>
+      <div style="padding-left: 1.5rem; margin-top: 0.5rem;">
+        <p>
+          Smazání soustavy odstraní:
+        </p>
+        <ul>
+          <li>Databázový záznam soustavy</li>
+          <li>JSON data soustavy (data/systems/&lt;id&gt;.json)</li>
+          <li>SVG vizualizaci (public/systems/&lt;id&gt;.svg)</li>
+        </ul>
+        <p><strong style="color: #dc3545;">Varování:</strong> Schůzky spojené s touto soustavou zůstanou, ale mohou mít neplatné reference.</p>
+      </div>
+    </details>
+
+    <h4>🤝 Mezisoustavové schůzky</h4>
+    <p>
+      Můžeš plánovat schůzky mezi tělesy z <strong>různých slunečních soustav</strong>. Aplikace automaticky:
+    </p>
+    <ul>
+      <li><strong>Transformuje souřadnice</strong> z lokálních (v rámci soustavy) do galaktických</li>
+      <li><strong>Vypočítá vzdálenosti</strong> mezi tělesy napříč soustavami</li>
+      <li><strong>Zohledňuje relativistické efekty</strong> na větší vzdálenosti</li>
+    </ul>
+    <p>
+      <a href="/meetings/new_inter_system" class="btn btn-sm btn-outline-primary">
+        Vytvořit mezisoustavovou schůzku →
+      </a>
+    </p>
+
+    <h4>🔬 Fyzikální parametry</h4>
+
+    <details style="margin-bottom: 1rem;">
+      <summary style="cursor: pointer; font-weight: bold; color: #0d6efd;">
+        ⚖️ Validační rozsahy pro vlastní tělesa
+      </summary>
+      <div style="padding-left: 1.5rem; margin-top: 0.5rem;">
+        <ul>
+          <li><strong>Hmotnost:</strong> 1×10²⁰ až 1×10⁴⁰ kg (od měsíce po masivní hvězdu)</li>
+          <li><strong>Poloměr:</strong> 1×10⁵ až 1×10⁹ metrů (100 km až 1 milion km)</li>
+          <li><strong>Hustota:</strong> 500 až 20,000 kg/m³ (od plynného obra po kovovou planetu)</li>
+          <li><strong>Pozice X, Y:</strong> 0 až 800 (v rámci plátna soustavy)</li>
+        </ul>
+        <p><em>Aplikace zajišťuje realistické fyzikální parametry a zabraňuje kolizím těles.</em></p>
+      </div>
+    </details>
+
+    <details style="margin-bottom: 1rem;">
+      <summary style="cursor: pointer; font-weight: bold; color: #0d6efd;">
+        🌀 Černá díra a relativistické efekty
+      </summary>
+      <div style="padding-left: 1.5rem; margin-top: 0.5rem;">
+        <p>
+          Centrální černá díra <strong>Sagittarius Omega</strong> má hmotnost ~4.1 milionu slunečních hmotností
+          (podobně jako Sagittarius A* v naší galaxii).
+        </p>
+        <ul>
+          <li><strong>Schwarzschildův poloměr:</strong> Vypočítán pro danou hmotnost</li>
+          <li><strong>Dilatace času:</strong> Na horizontu událostí klesá k 0 (čas se zastavuje)</li>
+          <li><strong>Orbitální validace:</strong> Soustavy musí být minimálně 50 jednotek od černé díry</li>
+          <li><strong>Kolizní prevence:</strong> Soustavy musí být minimálně 40 jednotek od sebe</li>
+        </ul>
+      </div>
+    </details>
+
+    <h4>💾 Cache a výkon</h4>
+    <p style="font-size: 0.9rem; color: #6c757d;">
+      Pro optimální výkon aplikace cachuje data galaxie, jednotlivých soustav a SVG vizualizací.
+      Cache se automaticky invaliduje při změnách soustav nebo schůzek.
+    </p>
+
+    <h4>🔒 Bezpečnostní omezení</h4>
+    <ul style="font-size: 0.9rem; color: #6c757d;">
+      <li>Vytvoření soustavy: max. 5 za hodinu z jedné IP adresy</li>
+      <li>Regenerace soustavy: max. 10 za hodinu</li>
+      <li>Validace vstupů: zabránění path traversal útokům, SQL injection apod.</li>
+      <li>Jedinečné názvy: napříč celou galaxií, zabránění kolizím</li>
+    </ul>
+
+    <hr style="margin: 1.5rem 0; border-color: #dee2e6;">
+
+    <p style="text-align: center; font-size: 0.85rem; color: #6c757d; margin-bottom: 0;">
+      <strong>Potřebuješ pomoc?</strong> Všechny operace jsou logovány pro debugging.
+      Zkontroluj Rails logy v případě neočekávaného chování.
+    </p>
+  </div>
+</div>

@@ -1,0 +1,630 @@
+/* ============================================
+   GALAXY - Multi-System Galaxy Styles
+   ============================================
+
+   Styles for galaxy map, system management, and multi-system UI
+   Builds on the space theme from gravikon.css
+*/
+
+/* === Galaxy Map Container === */
+.galaxy-map-container {
+  background: linear-gradient(135deg,
+    var(--background) 0%,
+    #0d1b2a 50%,
+    var(--background) 100%
+  );
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-lg), 0 0 40px rgba(123, 104, 238, 0.2);
+  border: 2px solid rgba(255, 215, 0, 0.3);
+  margin: var(--spacing-lg) 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Starfield background effect */
+.galaxy-map-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image:
+    radial-gradient(2px 2px at 20% 30%, white, transparent),
+    radial-gradient(2px 2px at 60% 70%, white, transparent),
+    radial-gradient(1px 1px at 50% 50%, white, transparent),
+    radial-gradient(1px 1px at 80% 10%, white, transparent),
+    radial-gradient(2px 2px at 90% 60%, white, transparent),
+    radial-gradient(1px 1px at 30% 80%, white, transparent);
+  background-size: 200% 200%;
+  opacity: 0.3;
+  pointer-events: none;
+  animation: starfield-twinkle 10s ease-in-out infinite;
+}
+
+@keyframes starfield-twinkle {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.galaxy-map-container svg {
+  width: 100%;
+  height: auto;
+  max-width: 900px;
+  display: block;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+/* === Black Hole Styles === */
+.galaxy-map-container circle[class*="black-hole"],
+.galaxy-map-container #black-hole circle {
+  filter: drop-shadow(0 0 20px rgba(139, 92, 246, 0.8));
+  transition: all var(--transition-normal);
+}
+
+.galaxy-map-container #black-hole text {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 700;
+  text-shadow: 0 0 10px rgba(139, 92, 246, 0.6);
+}
+
+/* === System Markers in Galaxy === */
+.system-marker {
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.6));
+}
+
+.system-marker:hover {
+  filter: drop-shadow(0 0 15px rgba(251, 191, 36, 1));
+  transform: scale(1.1);
+}
+
+.system-marker:focus {
+  outline: 3px solid var(--accent);
+  outline-offset: 5px;
+}
+
+/* Active/selected system */
+.system-marker.active {
+  filter: drop-shadow(0 0 20px rgba(255, 215, 0, 1));
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 20px rgba(255, 215, 0, 1));
+  }
+  50% {
+    filter: drop-shadow(0 0 30px rgba(255, 215, 0, 1)) drop-shadow(0 0 40px rgba(255, 215, 0, 0.5));
+  }
+}
+
+/* Orbital paths in galaxy */
+.galaxy-map-container #orbital-paths circle {
+  stroke-dasharray: 5, 5;
+  animation: orbit-dash 30s linear infinite;
+}
+
+@keyframes orbit-dash {
+  to {
+    stroke-dashoffset: -1000;
+  }
+}
+
+/* === System List/Grid === */
+.systems-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--spacing-md);
+  margin: var(--spacing-lg) 0;
+}
+
+.system-card {
+  background: linear-gradient(135deg,
+    rgba(26, 30, 58, 0.9) 0%,
+    rgba(21, 29, 53, 0.9) 100%
+  );
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  border: 2px solid rgba(251, 191, 36, 0.3);
+  box-shadow: var(--shadow-md);
+  transition: all var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+}
+
+.system-card::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg,
+    transparent 0%,
+    rgba(251, 191, 36, 0.1) 50%,
+    transparent 100%
+  );
+  border-radius: var(--radius-lg);
+  opacity: 0;
+  transition: opacity var(--transition-normal);
+  pointer-events: none;
+}
+
+.system-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg), 0 0 30px rgba(251, 191, 36, 0.3);
+  border-color: var(--accent);
+}
+
+.system-card:hover::before {
+  opacity: 1;
+}
+
+.system-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 2px solid rgba(255, 215, 0, 0.2);
+}
+
+.system-card-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.3rem;
+  color: var(--accent);
+  margin: 0;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+
+.system-id-badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  color: rgba(224, 224, 224, 0.7);
+  font-family: 'Courier New', monospace;
+}
+
+.system-card-body {
+  margin-bottom: var(--spacing-md);
+}
+
+.system-metadata {
+  display: grid;
+  gap: var(--spacing-xs);
+  font-size: 0.9rem;
+}
+
+.system-meta-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  color: rgba(224, 224, 224, 0.9);
+}
+
+.system-meta-icon {
+  color: var(--primary);
+  font-size: 1rem;
+  min-width: 20px;
+}
+
+.system-meta-label {
+  color: rgba(224, 224, 224, 0.7);
+  font-weight: 600;
+}
+
+.system-meta-value {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.system-card-actions {
+  display: flex;
+  gap: var(--spacing-xs);
+  flex-wrap: wrap;
+}
+
+.system-card-actions .btn {
+  flex: 1;
+  min-width: 100px;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+}
+
+/* === Position Picker === */
+.position-picker-container {
+  background: rgba(10, 14, 39, 0.5);
+  border: 2px solid rgba(255, 215, 0, 0.3);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  margin: var(--spacing-md) 0;
+}
+
+.position-picker-label {
+  display: block;
+  margin-bottom: var(--spacing-sm);
+  color: var(--accent);
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.position-picker {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  aspect-ratio: 1;
+  margin: 0 auto;
+  background: linear-gradient(135deg,
+    rgba(10, 14, 39, 0.9) 0%,
+    rgba(13, 27, 42, 0.9) 100%
+  );
+  border: 2px solid rgba(255, 215, 0, 0.4);
+  border-radius: var(--radius-md);
+  cursor: crosshair;
+  overflow: hidden;
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.5);
+}
+
+.position-picker::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  height: 40px;
+  background: radial-gradient(circle,
+    rgba(139, 92, 246, 0.6) 0%,
+    rgba(139, 92, 246, 0.3) 50%,
+    transparent 100%
+  );
+  border-radius: 50%;
+  pointer-events: none;
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+}
+
+.position-picker:hover::after {
+  content: '+';
+  position: absolute;
+  color: var(--accent);
+  font-size: 2rem;
+  font-weight: bold;
+  pointer-events: none;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+  transform: translate(-50%, -50%);
+}
+
+.position-marker {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background: var(--accent);
+  border: 2px solid white;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
+  pointer-events: none;
+  animation: marker-pulse 2s ease-in-out infinite;
+}
+
+@keyframes marker-pulse {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(255, 215, 0, 1), 0 0 35px rgba(255, 215, 0, 0.5);
+  }
+}
+
+.existing-system-marker {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: rgba(251, 191, 36, 0.5);
+  border: 1px solid rgba(251, 191, 36, 0.8);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.position-validation {
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.position-validation.valid {
+  background: rgba(76, 175, 80, 0.1);
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  color: var(--success);
+}
+
+.position-validation.invalid {
+  background: rgba(244, 67, 54, 0.1);
+  border: 1px solid rgba(244, 67, 54, 0.3);
+  color: var(--danger);
+}
+
+.position-coordinates {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-sm);
+}
+
+.position-coordinates .form-group {
+  flex: 1;
+}
+
+/* === System Form Styles === */
+.system-form-section {
+  background: rgba(26, 30, 58, 0.3);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.system-form-section-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.1rem;
+  color: var(--accent);
+  margin-bottom: var(--spacing-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.form-help-text {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  color: rgba(224, 224, 224, 0.6);
+  font-style: italic;
+}
+
+.form-inline-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--spacing-sm);
+}
+
+/* Custom body builder */
+.custom-bodies-container {
+  margin-top: var(--spacing-md);
+}
+
+.custom-body-item {
+  background: rgba(10, 14, 39, 0.5);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+}
+
+.custom-body-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-sm);
+}
+
+.custom-body-title {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.custom-body-remove {
+  background: transparent;
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-size: 0.85rem;
+}
+
+.custom-body-remove:hover {
+  background: var(--danger);
+  color: white;
+}
+
+.add-custom-body-btn {
+  width: 100%;
+  margin-top: var(--spacing-sm);
+}
+
+/* === Galaxy Header === */
+.galaxy-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.galaxy-stats {
+  display: flex;
+  gap: var(--spacing-lg);
+  flex-wrap: wrap;
+}
+
+.galaxy-stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.galaxy-stat-label {
+  font-size: 0.85rem;
+  color: rgba(224, 224, 224, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.galaxy-stat-value {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.5rem;
+  color: var(--accent);
+  font-weight: 700;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+
+/* === System View Mode Toggle === */
+.view-mode-toggle {
+  display: flex;
+  gap: var(--spacing-xs);
+  background: rgba(26, 30, 58, 0.5);
+  padding: 0.25rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+.view-mode-btn {
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.view-mode-btn.active {
+  background: linear-gradient(135deg, var(--accent) 0%, #ffed4e 100%);
+  color: var(--background);
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+}
+
+.view-mode-btn:hover:not(.active) {
+  background: rgba(255, 215, 0, 0.1);
+  color: var(--accent);
+}
+
+/* === Responsive Design === */
+@media (max-width: 1024px) {
+  .systems-grid {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .galaxy-map-container {
+    padding: var(--spacing-md);
+  }
+
+  .systems-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .galaxy-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .galaxy-stats {
+    justify-content: space-around;
+  }
+
+  .system-card-actions {
+    flex-direction: column;
+  }
+
+  .system-card-actions .btn {
+    width: 100%;
+  }
+
+  .position-picker {
+    max-width: 100%;
+  }
+
+  .form-inline-group {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .galaxy-stat-value {
+    font-size: 1.2rem;
+  }
+
+  .system-card {
+    padding: var(--spacing-md);
+  }
+
+  .system-card-title {
+    font-size: 1.1rem;
+  }
+}
+
+/* === Loading States === */
+.galaxy-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl);
+  gap: var(--spacing-md);
+}
+
+.galaxy-spinner {
+  width: 60px;
+  height: 60px;
+  border: 4px solid rgba(255, 215, 0, 0.2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* === Empty State === */
+.galaxy-empty-state {
+  text-align: center;
+  padding: var(--spacing-xl);
+  background: rgba(26, 30, 58, 0.3);
+  border: 2px dashed rgba(255, 215, 0, 0.3);
+  border-radius: var(--radius-lg);
+  margin: var(--spacing-lg) 0;
+}
+
+.galaxy-empty-icon {
+  font-size: 4rem;
+  margin-bottom: var(--spacing-md);
+  opacity: 0.5;
+}
+
+.galaxy-empty-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.5rem;
+  color: var(--accent);
+  margin-bottom: var(--spacing-sm);
+}
+
+.galaxy-empty-description {
+  color: rgba(224, 224, 224, 0.7);
+  margin-bottom: var(--spacing-md);
+}
