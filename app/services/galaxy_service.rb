@@ -185,11 +185,15 @@ class GalaxyService
     end
 
     # Clear galaxy-related caches
+    # Solid Cache (production store) does not support delete_matched and raises
+    # NotImplementedError (a ScriptError, so `rescue => e` won't catch it) —
+    # all cache clearing must delete exact keys.
     def clear_galaxy_cache
       Rails.cache.delete("galaxy_data_#{CACHE_VERSION}")
-      Rails.cache.delete_matched("galaxy_*")
-      # Also clear legacy cache key
+      Rails.cache.delete("galaxy_svg_timestamp")
+      # Also clear legacy cache keys (pre-versioning and v1)
       Rails.cache.delete("galaxy_data")
+      Rails.cache.delete("galaxy_data_v1")
       Rails.logger.info("Galaxy cache cleared")
     rescue => e
       Rails.logger.error("Failed to clear galaxy cache: #{e.message}")
@@ -199,7 +203,8 @@ class GalaxyService
     # @param system_id [String, Integer] System ID
     def clear_system_cache(system_id)
       Rails.cache.delete("system_data_#{system_id}_#{CACHE_VERSION}")
-      Rails.cache.delete_matched("system_#{system_id}_*")
+      Rails.cache.delete("system_#{system_id}_meeting_stats_#{CACHE_VERSION}")
+      Rails.cache.delete("system_#{system_id}_svg_timestamp")
       # Also clear legacy cache key
       Rails.cache.delete("system_data_#{system_id}")
       Rails.logger.info("System cache cleared for #{system_id}")
@@ -208,8 +213,14 @@ class GalaxyService
     end
 
     # Clear all system-related caches
+    # Enumerates DB systems (orphaned entries expire via their TTL); meeting
+    # stats are keyed by DB id while data/SVG keys use the file id, so both
+    # id kinds are cleared per system.
     def clear_all_system_caches
-      Rails.cache.delete_matched("system_*")
+      System.find_each do |system|
+        clear_system_cache(system.system_id)
+        invalidate_system_meeting_stats(system.id)
+      end
       Rails.cache.delete("used_celestial_names")
       Rails.logger.info("All system caches cleared")
     rescue => e

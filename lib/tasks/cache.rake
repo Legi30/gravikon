@@ -6,25 +6,14 @@ namespace :cache do
     puts "Clearing all system-related caches..."
 
     begin
-      # Clear galaxy cache
-      Rails.cache.delete("galaxy_data_#{GalaxyService::CACHE_VERSION}")
-      Rails.cache.delete_matched("galaxy_*")
-      Rails.cache.delete("galaxy_data") # Legacy key
+      # Clear galaxy cache (data, SVG timestamp and legacy key)
+      GalaxyService.clear_galaxy_cache
       puts "  ✓ Galaxy cache cleared"
 
-      # Clear all system data caches
-      Rails.cache.delete_matched("system_data_*")
-      Rails.cache.delete_matched("system_*_meeting_stats*")
-      Rails.cache.delete_matched("system_*_svg_timestamp")
+      # Clear per-system caches (data, meeting stats, SVG timestamps)
+      # and the used names cache
+      GalaxyService.clear_all_system_caches
       puts "  ✓ System data caches cleared"
-
-      # Clear used names cache
-      Rails.cache.delete("used_celestial_names")
-      puts "  ✓ Used celestial names cache cleared"
-
-      # Clear SVG timestamps
-      Rails.cache.delete("galaxy_svg_timestamp")
-      puts "  ✓ SVG timestamp caches cleared"
 
       # Clear legacy system_data cache
       Rails.cache.delete("system_data")
@@ -93,8 +82,13 @@ namespace :cache do
     puts "Clearing all meeting statistics caches..."
 
     begin
-      Rails.cache.delete_matched("system_*_meeting_stats*")
-      Rails.cache.delete_matched("dashboard_stats*")
+      # Solid Cache doesn't support delete_matched — enumerate exact keys.
+      # Meeting stats are cached under both id kinds (DB id and file id).
+      System.find_each do |system|
+        GalaxyService.invalidate_system_meeting_stats(system.id)
+        GalaxyService.invalidate_system_meeting_stats(system.system_id)
+      end
+      Rails.cache.delete("dashboard_stats_v2_#{Meeting.maximum(:updated_at)&.to_i || 0}")
       puts "  ✓ Meeting statistics caches cleared"
 
       puts "\n✓ All meeting statistics caches cleared successfully!"

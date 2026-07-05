@@ -12,7 +12,8 @@ Council stage: legacy
 
 **Backend:** Ruby 3.3 (rvm), Rails 8.0.2, SQLite3, Puma, Solid Cache/Queue/Cable defaults
 **Frontend:** Server-rendered ERB, vanilla JavaScript (NO Turbo/Stimulus — deliberately), SVG visualizations, Propshaft
-**Deployment:** Docker & Kamal, Thruster
+**Deployment:** plain Puma+systemd behind Caddy on the personal server "talos" (see
+Production below). The stock Rails 8 Dockerfile/Kamal config exist but are unused.
 **Dev tools:** Rubocop (Rails Omakase, kept at 0 offenses), Brakeman (0 warnings; 2 reviewed ignores in config/brakeman.ignore), mocha for tests
 
 ## Build & Run
@@ -185,8 +186,27 @@ the star (planet spacing shrinks with planet count so 1-10 planets all work).
   per IP); note its MemoryStore counters are per-process.
 - No authentication (single-user educational tool).
 
+## Production (talos)
+
+- Server: `talos` = 46.224.219.9 (Hetzner, Ubuntu 24.04; also runs Quasar). SSH
+  aliases `talos` (david) / `talos-root` (root) from ~/.ssh/config.
+- URL: https://gravikon.duckdns.org — Caddy vhost (auto Let's Encrypt) reverse-proxies
+  to Puma on localhost:3002; vhost block in `/etc/caddy/Caddyfile`.
+- App: `/var/www/gravikon` (git clone of GitHub main), rbenv Ruby 3.4.5,
+  `bundle config deployment true`, systemd unit `gravikon-web.service`
+  (EnvironmentFile `/var/www/gravikon/.env.production`: RAILS_MASTER_KEY, PORT=3002,
+  SOLID_QUEUE_IN_PUMA=true). Solid Queue runs inside Puma.
+- Deploy update: push to GitHub → on server `git pull`, `bundle install`,
+  `bin/rails db:prepare assets:precompile`, `systemctl restart gravikon-web`.
+- Nightly demo reset: david's crontab runs `demo:reset` at 3:00 (logs to
+  `log/demo_reset.log`) — production data is wiped nightly by design.
+
 ## Conventions
 
+- `Rails.cache`: production uses Solid Cache, which does NOT support
+  `delete_matched` — it raises NotImplementedError (a ScriptError, so `rescue => e`
+  won't catch it) and only blows up in production. Always delete exact cache keys
+  (see `GalaxyService.clear_*` / `Meeting#clear_dashboard_cache`).
 - Czech for user-facing strings/flash/comments in views; English for code and commits.
 - Frozen string literals; Rubocop Rails Omakase — keep `rubocop` at 0 offenses.
 - Times as HH:MM strings; JSON in text columns (see Meeting model helpers).

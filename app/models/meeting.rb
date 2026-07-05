@@ -298,10 +298,11 @@ class Meeting < ApplicationRecord
 
   # Clear dashboard statistics cache when meetings change
   def clear_dashboard_cache
-    # Clear all dashboard_stats cache keys
-    # The cache key includes updated_at timestamp, so it will auto-refresh
-    # But we also clear old keys to prevent cache bloat
-    Rails.cache.delete_matched("dashboard_stats_v2_*")
+    # Solid Cache doesn't support delete_matched. Deleting the key for the
+    # current Meeting.maximum(:updated_at) covers the stale-reuse case
+    # (destroying the newest meeting reverts the maximum to an older,
+    # possibly cached value); other keys expire via their 1-hour TTL.
+    Rails.cache.delete("dashboard_stats_v2_#{Meeting.maximum(:updated_at)&.to_i || 0}")
   rescue => e
     Rails.logger.error("Failed to clear dashboard cache: #{e.message}")
     # Don't fail the transaction if cache clearing fails
