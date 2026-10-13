@@ -11,9 +11,7 @@
           id: "#{id_prefix}_#{index}",
           aria: { required: index < 2 ? "true" : "false" } %>
       <span><%= body['name'] %></span>
-      <small class="participant-type" aria-hidden="true">
-        <%= body['type'] == 'star' ? '⭐' : body['type'] == 'planet' ? '🪐' : '🌙' %>
-      </small>
+      <small class="participant-type"><%= { "star" => "hvězda", "planet" => "planeta", "moon" => "měsíc" }[body['type']] %></small>
     </label>
   <% end %>
 </div>

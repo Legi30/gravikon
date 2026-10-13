@@ -93,8 +93,133 @@ class OrbitalAnimator {
       }
     });
 
+    // System page: the system seen at an angle, like the galaxy map
+    const svg = celestialBodies[0].closest('svg');
+    if (svg && svg.closest('[data-tilt]') && window.GalaxyInteractions) this.setupTilt(svg);
+
     if (window.Logger) window.Logger.log(`Initialized real-time orbital animation for ${this.bodies.length} bodies`);
     return true;
+  }
+
+  // Tilted view: positions are still computed flat (and from the clock),
+  // then projected with the galaxy map's perspective. Orbit rings become
+  // projected paths, body sizes follow depth, and planets/moons on the far
+  // side of the star move to a layer drawn before it.
+  setupTilt(svg) {
+    const CENTER = 400; // system-local centre (PhysicsConstants::SYSTEM_LOCAL_CENTER)
+    const svgNS = 'http://www.w3.org/2000/svg';
+    this.project = window.GalaxyInteractions.perspective(CENTER, CENTER);
+
+    this.bodies.forEach(body => {
+      if (!body.orbitPath) return;
+      const circle = body.orbitPath;
+      const path = document.createElementNS(svgNS, 'path');
+      ['stroke', 'stroke-dasharray', 'class', 'data-body-name', 'data-parent-name'].forEach(name => {
+        if (circle.hasAttribute(name)) path.setAttribute(name, circle.getAttribute(name));
+      });
+      path.setAttribute('fill', 'none');
+      body.orbitRing = {
+        r: parseFloat(circle.getAttribute('r')),
+        cx: parseFloat(circle.getAttribute('cx')),
+        cy: parseFloat(circle.getAttribute('cy')),
+        key: null
+      };
+      circle.replaceWith(path);
+      body.orbitPath = path;
+    });
+
+    const firstStar = svg.querySelector('.celestial-body[data-type="star"]');
+    if (firstStar) {
+      this.backLayer = document.createElementNS(svgNS, 'g');
+      this.backLayer.setAttribute('class', 'bodies-back');
+      firstStar.before(this.backLayer);
+      this.frontLayer = document.createElementNS(svgNS, 'g');
+      this.frontLayer.setAttribute('class', 'bodies-front');
+      svg.appendChild(this.frontLayer);
+    }
+
+    // Crop to the projected system (outermost planet orbit + room for labels)
+    const outermost = Math.max(300, ...this.bodies.filter(b => b.type === 'planet').map(b => b.orbitRadius));
+    const extent = outermost + 40;
+    const outline = [];
+    for (let i = 0; i < 72; i++) {
+      const a = (i / 72) * 2 * Math.PI;
+      outline.push(this.project(CENTER + extent * Math.cos(a), CENTER + extent * Math.sin(a)));
+    }
+    const minX = Math.min(...outline.map(p => p.x));
+    const maxX = Math.max(...outline.map(p => p.x));
+    const minY = Math.min(...outline.map(p => p.y)) - 20;
+    const maxY = Math.max(...outline.map(p => p.y));
+    svg.setAttribute('viewBox', `${minX.toFixed(0)} ${minY.toFixed(0)} ${(maxX - minX).toFixed(0)} ${(maxY - minY).toFixed(0)}`);
+    svg.removeAttribute('width');
+    svg.removeAttribute('height');
+    svg.closest('[data-tilt]').classList.add('is-tilted');
+
+    // Bodies that never move (a single star) are placed once
+    this.bodies.forEach(body => this.placeBody(body, body.originalX, body.originalY));
+    this.updateRings();
+  }
+
+  // Puts a body (and its label) on screen; flat coordinates in
+  placeBody(body, x, y) {
+    if (!this.project) {
+      body.element.setAttribute('cx', x.toFixed(2));
+      body.element.setAttribute('cy', y.toFixed(2));
+      if (body.textElement) {
+        body.textElement.setAttribute('x', (x + body.radius + 5).toFixed(2));
+        body.textElement.setAttribute('y', (y - body.radius - 5).toFixed(2));
+      }
+      return;
+    }
+
+    const p = this.project(x, y);
+    const r = body.radius * p.s;
+    body.element.setAttribute('cx', p.x.toFixed(2));
+    body.element.setAttribute('cy', p.y.toFixed(2));
+    body.element.setAttribute('r', r.toFixed(2));
+    if (body.textElement) {
+      body.textElement.setAttribute('x', (p.x + r + 5).toFixed(2));
+      body.textElement.setAttribute('y', (p.y - r - 5).toFixed(2));
+    }
+
+    if (this.backLayer && body.type !== 'star') {
+      const far = y < 400;
+      if (body.far !== far) {
+        body.far = far;
+        const layer = far ? this.backLayer : this.frontLayer;
+        layer.appendChild(body.element);
+        if (body.textElement) layer.appendChild(body.textElement);
+      }
+    }
+  }
+
+  // Projected orbit rings; a moon's ring is redrawn when its planet moves
+  updateRings() {
+    for (let i = 0; i < this.bodies.length; i++) {
+      const body = this.bodies[i];
+      const ring = body.orbitRing;
+      if (!ring) continue;
+
+      let cx = ring.cx;
+      let cy = ring.cy;
+      const parent = body.type === 'moon' && body.parentName ? this.bodyLookup[body.parentName] : null;
+      if (parent) {
+        cx = parent.currentX;
+        cy = parent.currentY;
+      }
+      const key = `${cx.toFixed(1)},${cy.toFixed(1)}`;
+      if (key === ring.key) continue;
+      ring.key = key;
+
+      const steps = body.type === 'moon' ? 32 : 96;
+      let d = '';
+      for (let k = 0; k <= steps; k++) {
+        const a = (k / steps) * 2 * Math.PI;
+        const p = this.project(cx + ring.r * Math.cos(a), cy + ring.r * Math.sin(a));
+        d += `${k ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+      }
+      body.orbitPath.setAttribute('d', d + 'Z');
+    }
   }
 
   start() {
@@ -196,27 +321,22 @@ class OrbitalAnimator {
     // Apply all DOM updates in a single batch
     for (let i = 0; i < updates.length; i++) {
       const { body, newX, newY } = updates[i];
-
-      // Update SVG element position (setAttribute is faster than style for SVG)
-      body.element.setAttribute('cx', newX.toFixed(2));
-      body.element.setAttribute('cy', newY.toFixed(2));
-
-      // Update text label if exists (using cached reference)
-      if (body.textElement) {
-        body.textElement.setAttribute('x', (newX + body.radius + 5).toFixed(2));
-        body.textElement.setAttribute('y', (newY - body.radius - 5).toFixed(2));
-      }
+      this.placeBody(body, newX, newY);
     }
 
-    // Update orbit paths for moons (their orbit circles follow parent planets)
-    for (let i = 0; i < this.bodies.length; i++) {
-      const body = this.bodies[i];
+    // Update orbit paths for moons (their orbit rings follow parent planets)
+    if (this.project) {
+      this.updateRings();
+    } else {
+      for (let i = 0; i < this.bodies.length; i++) {
+        const body = this.bodies[i];
 
-      if (body.type === 'moon' && body.orbitPath && body.parentName) {
-        const parentBody = this.bodyLookup[body.parentName];
-        if (parentBody) {
-          body.orbitPath.setAttribute('cx', parentBody.currentX.toFixed(2));
-          body.orbitPath.setAttribute('cy', parentBody.currentY.toFixed(2));
+        if (body.type === 'moon' && body.orbitPath && body.parentName) {
+          const parentBody = this.bodyLookup[body.parentName];
+          if (parentBody) {
+            body.orbitPath.setAttribute('cx', parentBody.currentX.toFixed(2));
+            body.orbitPath.setAttribute('cy', parentBody.currentY.toFixed(2));
+          }
         }
       }
     }

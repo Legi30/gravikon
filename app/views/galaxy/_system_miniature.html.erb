@@ -1,0 +1,24 @@
+<%# Static miniature of a system for the Soustavy list: star(s) in the
+    middle, one faint ring per planet (inner → outer) with the planet at its
+    real angle around the system centre (between the two stars of a binary). %>
+<%
+  stars = profile[:stars]
+  center_x = stars.any? ? stars.sum { |star| star[:x] } / stars.size : 400
+  center_y = stars.any? ? stars.sum { |star| star[:y] } / stars.size : 400
+  planets = profile[:planets].sort_by { |planet| Math.hypot(planet[:x] - center_x, planet[:y] - center_y) }
+  step = planets.size > 1 ? 22.0 / (planets.size - 1) : 0
+%>
+<svg class="system-miniature" viewBox="-40 -40 80 80" aria-hidden="true">
+  <% planets.each_with_index do |planet, index| %>
+    <% ring = 12 + index * step %>
+    <% angle = Math.atan2(planet[:y] - center_y, planet[:x] - center_x) %>
+    <circle r="<%= ring.round(2) %>" class="miniature-ring" />
+    <circle cx="<%= (ring * Math.cos(angle)).round(2) %>" cy="<%= (ring * Math.sin(angle)).round(2) %>" r="<%= planet[:moons].any? ? 2.4 : 1.9 %>" class="miniature-planet" />
+  <% end %>
+  <% if stars.size >= 2 %>
+    <circle cx="-4" cy="0" r="4" class="miniature-star" />
+    <circle cx="4" cy="0" r="3.3" class="miniature-star" />
+  <% else %>
+    <circle r="5.5" class="miniature-star" />
+  <% end %>
+</svg>

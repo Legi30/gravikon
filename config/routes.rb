@@ -23,8 +23,9 @@ Rails.application.routes.draw do
   # Explicit routes mapped to controller actions with _system suffix
   # Route names match existing view expectations (e.g., new_galaxy_system_path)
   scope "/galaxy" do
+    get "/systems", to: "galaxy#systems", as: :galaxy_systems # "Soustavy" list
     get "/systems/new", to: "galaxy#new", as: :new_galaxy_system
-    post "/systems", to: "galaxy#create", as: :galaxy_systems
+    post "/systems", to: "galaxy#create"
     get "/systems/:id", to: "galaxy#show_system", as: :galaxy_system
     get "/systems/:id/edit", to: "galaxy#edit_system", as: :edit_galaxy_system
     patch "/systems/:id", to: "galaxy#update_system"

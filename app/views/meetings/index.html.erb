@@ -8,7 +8,7 @@
   <div class="meetings-header-actions">
     <%= link_to "Naplánovat schůzku", new_meeting_path, class: "btn btn-primary", "aria-label" => "Naplánovat novou schůzku - klávesová zkratka N", title: "Naplánovat novou schůzku (klávesová zkratka: N)" %>
     <% if @systems.present? && @systems.count >= 2 %>
-      <%= link_to "Mezisystémová schůzka", new_inter_system_meetings_path, class: "btn btn-accent", "aria-label" => "Naplánovat schůzku mezi soustavami" %>
+      <%= link_to "Mezi soustavami", new_inter_system_meetings_path, class: "btn btn-secondary", "aria-label" => "Naplánovat schůzku mezi soustavami" %>
     <% end %>
   </div>
 </div>

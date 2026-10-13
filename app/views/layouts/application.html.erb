@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="description" content="Gravitační schůzkovač s podporou relativistických efektů v planetární soustavě">
+    <meta name="description" content="Gravikon plánuje schůzky mezi hvězdnými soustavami kolem černé díry a počítá, jak dlouho je kdo prožije a jak dlouho k sobě letí jejich slova.">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
 
@@ -37,25 +37,27 @@
       <div class="nav-container">
         <div class="nav-brand">
           <%= link_to root_path, class: "brand-link", "aria-label" => "Gravikon - Domovská stránka" do %>
-            <span class="brand-icon" aria-hidden="true">🌌</span>
+            <%# The galaxy's black hole in miniature: shadow, lensed arc, disc crossing in front %>
+            <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+              <ellipse cx="16" cy="16.5" rx="14" ry="4.3" fill="none" stroke="#f0a040" stroke-width="1.6" opacity="0.5"/>
+              <path d="M6.6 16.5 A9.4 9.4 0 0 1 25.4 16.5" fill="none" stroke="#ffc46b" stroke-width="1.8" opacity="0.85"/>
+              <circle cx="16" cy="16.5" r="7.4" fill="#000" stroke="#ffe7bf" stroke-width="0.8"/>
+              <path d="M2 16.5 A14 4.3 0 0 0 30 16.5" fill="none" stroke="#ffd27a" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
             <span class="brand-text">Gravikon</span>
           <% end %>
         </div>
         <div class="nav-links">
           <%= link_to galaxy_index_path, class: "nav-link #{'active' if current_page?(galaxy_index_path) || current_page?(root_path)}", "aria-label" => "Galaxie - klávesová zkratka G", title: "Galaxie (klávesová zkratka: G)" do %>
-            <span class="nav-icon" aria-hidden="true">🌌</span>
             <span>Galaxie</span>
           <% end %>
+          <%= link_to galaxy_systems_path, class: "nav-link #{'active' if current_page?(galaxy_systems_path)}", "aria-label" => "Soustavy" do %>
+            <span>Soustavy</span>
+          <% end %>
           <%= link_to meetings_path, class: "nav-link #{'active' if current_page?(meetings_path)}", "aria-label" => "Schůzky - klávesová zkratka S", title: "Schůzky (klávesová zkratka: S)" do %>
-            <span class="nav-icon" aria-hidden="true">📅</span>
             <span>Schůzky</span>
           <% end %>
-          <%= link_to dashboard_path, class: "nav-link #{'active' if current_page?(dashboard_path)}", "aria-label" => "Přehled - klávesová zkratka D", title: "Přehled (klávesová zkratka: D)" do %>
-            <span class="nav-icon" aria-hidden="true">📊</span>
-            <span>Přehled</span>
-          <% end %>
           <%= link_to about_path, class: "nav-link #{'active' if current_page?(about_path)}", "aria-label" => "O aplikaci - klávesová zkratka O", title: "O aplikaci (klávesová zkratka: O)" do %>
-            <span class="nav-icon" aria-hidden="true">🔭</span>
             <span>O aplikaci</span>
           <% end %>
         </div>

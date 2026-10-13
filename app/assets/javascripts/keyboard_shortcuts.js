@@ -4,7 +4,6 @@
 class KeyboardShortcuts {
   constructor() {
     this.shortcuts = {
-      'd': { action: () => this.navigate('/dashboard'), description: 'Otevřít Přehled' },
       's': { action: () => this.navigate('/meetings'), description: 'Otevřít seznam Schůzek' },
       'g': { action: () => this.navigate('/galaxy'), description: 'Otevřít mapu Galaxie' },
       'n': { action: () => this.navigate('/meetings/new'), description: 'Nová schůzka' },

@@ -49,6 +49,15 @@ class GalaxyVisualizerTest < ActiveSupport::TestCase
     assert_equal "false", marker("vis_single")["data-binary"]
   end
 
+  test "miniature bodies carry their orbit for the tilted landing map" do
+    planets = marker("vis_single").css(".mini-planet")
+    assert planets.all? { |planet| planet["data-ring"].to_f.positive? && planet["data-period"].to_f.positive? }
+    assert planets.all? { |planet| planet["data-angle"] }
+
+    stars = marker("vis_binary").css(".mini-binary circle")
+    assert_equal [ 0.0, Math::PI.round(4) ], stars.map { |star| star["data-angle"].to_f }
+  end
+
   private
 
   def marker(id)

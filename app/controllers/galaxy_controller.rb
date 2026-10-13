@@ -21,6 +21,14 @@ class GalaxyController < ApplicationController
       [ system["id"], calculator.calculate_black_hole_dilation(system["x"].to_f, system["y"].to_f).round(6) ]
     end
 
+    # System profiles for the slide-in panel (formerly the Přehled page) and
+    # the time chart in the story below the map. Built through `helpers`
+    # because the data helpers use view helpers (system colours, km formatting).
+    @profiles = helpers.galaxy_system_profiles
+    @galaxy_time_chart = helpers.galaxy_time_chart_data
+    @meetings_count = Meeting.count
+    @black_hole = helpers.black_hole_profile(@galaxy_data, @profiles)
+
     # Generate galaxy SVG if it doesn't exist or is outdated
     generate_galaxy_svg_if_needed
 
@@ -33,18 +41,26 @@ class GalaxyController < ApplicationController
     end
   end
 
+  # GET /galaxy/systems
+  # "Soustavy": every system with its key facts, nearest to the black hole
+  # first, plus the way to add another one
+  def systems
+    @galaxy_data = load_galaxy_data
+    @profiles = helpers.galaxy_system_profiles.sort_by { |profile| profile[:distance] }
+  end
+
   # GET /galaxy/systems/:id
   # Display specific system's details and visualization
   def show_system
     unless @system
-      redirect_to galaxy_index_path, alert: "Systém nebyl nalezen."
+      redirect_to galaxy_index_path, alert: "Soustava nebyla nalezena."
       return
     end
 
     @system_data = @system.load_system_data
 
     unless @system_data
-      redirect_to galaxy_index_path, alert: "Data systému nebyla nalezena."
+      redirect_to galaxy_index_path, alert: "Data soustavy se nepodařilo načíst."
       return
     end
 
@@ -55,10 +71,9 @@ class GalaxyController < ApplicationController
     svg_path = GalaxyService.system_svg_path(@system.system_id)
     @system_svg = svg_path && File.exist?(svg_path) ? File.read(svg_path) : nil
 
-    # Load all meetings for filtering in view
-    @meetings = Meeting.all
-
     @bodies = @system_data["bodies"] || []
+    # Same profile as the landing panel (inhabitants, relations, meetings)
+    @profile = helpers.galaxy_system_profiles.find { |profile| profile[:system].id == @system.id }
 
     respond_to do |format|
       format.html
@@ -133,7 +148,7 @@ class GalaxyController < ApplicationController
         log_security_event("System creation started (async): #{name} (ID: #{system_id}) at (#{x}, #{y})")
 
         # Redirect immediately with status message
-        redirect_to galaxy_index_path, notice: "Systém #{name} se vytváří na pozadí. Zobrazí se za chvíli na mapě galaxie."
+        redirect_to galaxy_index_path, notice: "Soustava #{name} právě vzniká. Za chvíli ji uvidíte na mapě galaxie."
       rescue => e
         @system.destroy
         Rails.logger.error("Failed to enqueue system generation job: #{e.message}\n#{e.backtrace.join("\n")}")
@@ -153,7 +168,7 @@ class GalaxyController < ApplicationController
   # Show form for editing an existing system
   def edit_system
     unless @system
-      redirect_to galaxy_index_path, alert: "Systém nebyl nalezen."
+      redirect_to galaxy_index_path, alert: "Soustava nebyla nalezena."
       return
     end
 
@@ -165,7 +180,7 @@ class GalaxyController < ApplicationController
   # Handle system updates
   def update_system
     unless @system
-      redirect_to galaxy_index_path, alert: "Systém nebyl nalezen."
+      redirect_to galaxy_index_path, alert: "Soustava nebyla nalezena."
       return
     end
 
@@ -218,7 +233,7 @@ class GalaxyController < ApplicationController
       GalaxyService.update_svg_timestamp(:system, system_id: system_id)
       GalaxyService.update_svg_timestamp(:galaxy)
 
-      redirect_to galaxy_system_path(@system), notice: "Systém #{@system.name} byl aktualizován."
+      redirect_to galaxy_system_path(@system), notice: "Soustava #{@system.name} je upravená."
     else
       Rails.logger.error("System update failed - database save errors: #{@system.errors.full_messages.join(', ')} | System: #{@system.name} (ID: #{@system.system_id})")
       @system_data = @system.load_system_data
@@ -232,7 +247,7 @@ class GalaxyController < ApplicationController
   # Delete a system
   def destroy_system
     unless @system
-      redirect_to galaxy_index_path, alert: "Systém nebyl nalezen."
+      redirect_to galaxy_index_path, alert: "Soustava nebyla nalezena."
       return
     end
 
@@ -256,10 +271,10 @@ class GalaxyController < ApplicationController
       # Security: Log system deletion
       log_security_event("System deleted: #{system_name} (ID: #{system_id})")
 
-      redirect_to galaxy_index_path, notice: "Systém #{system_name} byl smazán."
+      redirect_to galaxy_index_path, notice: "Soustava #{system_name} byla smazána."
     rescue => e
       Rails.logger.error("Failed to delete system: #{e.message}\n#{e.backtrace.join("\n")}")
-      redirect_to galaxy_index_path, alert: "Chyba při mazání systému: #{e.message}"
+      redirect_to galaxy_index_path, alert: "Soustavu se nepodařilo smazat: #{e.message}"
     end
   end
 
@@ -267,7 +282,7 @@ class GalaxyController < ApplicationController
   # Regenerate system with new parameters (triggers background job)
   def regenerate_system
     unless @system
-      redirect_to galaxy_index_path, alert: "Systém nebyl nalezen."
+      redirect_to galaxy_index_path, alert: "Soustava nebyla nalezena."
       return
     end
 
@@ -288,10 +303,10 @@ class GalaxyController < ApplicationController
 
       Rails.logger.info("System regeneration job enqueued for #{@system.name} (ID: #{@system.system_id})")
 
-      redirect_to galaxy_system_path(@system), notice: "Systém #{@system.name} se regeneruje na pozadí. Obnovte stránku za chvíli."
+      redirect_to galaxy_system_path(@system), notice: "Soustava #{@system.name} se přegenerovává. Za chvíli obnovte stránku."
     rescue => e
       Rails.logger.error("Failed to enqueue regeneration job: #{e.message}\n#{e.backtrace.join("\n")}")
-      redirect_to galaxy_system_path(@system), alert: "Chyba při spuštění regenerace systému: #{e.message}"
+      redirect_to galaxy_system_path(@system), alert: "Přegenerování soustavy se nepodařilo spustit: #{e.message}"
     end
   end
 

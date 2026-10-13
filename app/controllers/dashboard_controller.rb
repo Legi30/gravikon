@@ -1,13 +1,11 @@
 # frozen_string_literal: true
 
 class DashboardController < ApplicationController
-  # The dashboard introduces the star systems (one profile at a time) and
-  # keeps the galaxy-wide time chart; meetings only appear inside the profile
-  # of the systems they connect. Built through `helpers` because the data
-  # helpers use view helpers (system colours, km formatting).
+  # The system profiles moved into the landing page's slide-in panel and the
+  # time chart into its story; old links (and bookmarks with a
+  # #soustava-<id> hash, which browsers carry over) land there.
   def index
-    @profiles = helpers.galaxy_system_profiles
-    @galaxy_time_chart = helpers.galaxy_time_chart_data
+    redirect_to root_path
   end
 
   def cache_stats

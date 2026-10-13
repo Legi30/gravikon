@@ -28,7 +28,7 @@ rails server                # http://localhost:3000
 ## Commands
 
 ```yaml
-test_cmd: rails test              # 266 runs, 0 failures — safe: tests write only to tmp/test_gravikon/
+test_cmd: rails test              # 274 runs, 0 failures — safe: tests write only to tmp/test_gravikon/
 lint_cmd: rubocop
 security_scan_cmd: brakeman -q -i config/brakeman.ignore
 server_cmd: rails server
@@ -131,7 +131,52 @@ ticks fastest. Pure JS in galaxy.js (initSpaceClock) reading the markers'
 orbit data attributes — no server state, wall-clock-derived like the orbits,
 so it is identical for all visitors. Fewer than 4 systems → "–" digits.
 
-**Landing (2026-10-13).** One headline above the map ("Čím blíž černé díře,
+**Landing redesign (2026-10-13, phase 1 of the visual update).** The landing
+is ONE page: tilted galaxy hero → slide-in system profile → scroll story.
+- *Perspective:* galaxy.js `perspective()` + `tiltScene()` re-project the
+  server SVG (only inside `.galaxy-hero`; the new-system picker stays flat):
+  orbits become projected paths, the black hole is redrawn by
+  `drawBlackHole` (see "Black hole" below), systems behind
+  the hole move to `#systems-back` (inserted before `#black-hole`), labels
+  flip to the side away from the hole, viewBox is cropped to the plane. The
+  black hole's name label is hidden there (it kept colliding with system
+  labels) and becomes an SVG `<title>` on hover.
+  Mini-planets/binary stars are moved by JS from `data-ring/-angle/-period`
+  (GalaxyVisualizer) — `.js-orbits` switches their CSS spin off; an old SVG
+  without those attributes keeps the CSS spin. Still a pure wall-clock function.
+- *Panel:* clicking a marker (or Enter on it, markers are focusable) calls
+  `openPanel(fileId)`; clicking the already selected marker closes it: `.galaxy-stage.has-selection` animates the grid
+  columns, the profile (`galaxy/_system_profile`, all rendered hidden, keyed
+  by `data-file-id`) slides in part by part; hash `#soustava-<db id>`; Esc /
+  × closes. ≤900px the panel drops under the map. No box: text on the sky.
+- *Hero copy:* NO headline above the map (David removed "Čím blíž černé
+  díře…"); under the map only the hint and the "Co je Gravikon?" scroll cue
+  (`#pribeh` has `scroll-margin-top` so the sticky nav doesn't cover it).
+- *Story* (`#pribeh`): 4 short parts + footer link to O aplikaci/Soustavy;
+  numbers from `DashboardHelper#galaxy_story_facts` (slowest/fastest system,
+  longest signal). Includes the "Čas napříč galaxií" chart
+  (`galaxy_time_chart.js`, frameless). The last part ends with a paragraph
+  that weaves in the meeting links (count of planned meetings, `@meetings_count`)
+  — no separate CTA buttons. No decorative side line (removed on request).
+- *Signals:* `initSignals` — DECORATIVE, drawn as connections, NOT
+  projectiles (the first version with bright streaks read as "rockets
+  shooting at each other"): a message spins a thin thread behind a soft dot
+  and the receiver ripples, then it fades; a call is a faint flowing dotted
+  arc with both ends breathing. 25 % between two planets of one system. Not
+  tied to meetings (David's call). Off under reduced motion.
+- The old system-card list and stats strip are gone.
+
+**Soustavy page** (`GET /galaxy/systems` → `GalaxyController#systems`, nav tab
+🪐 between Galaxie and Schůzky, no keyboard shortcut). One row per system on
+the sky (no cards), ordered by distance from the black hole: static miniature
+(`galaxy/_system_miniature`, planets at their real angles), star(s), km,
+planets/moons, minutes per your hour bar, links Prohlédnout / Na mapě
+(`/#soustava-<id>`) / Upravit (non-core only); last row = "Přidat soustavu".
+The create POST shares the path (its route has no `as:` any more).
+- Deploy note: the SVG only gains the new data attributes when regenerated
+  (`rails galaxy:rebuild`, or the nightly demo:reset).
+
+**Landing (2026-10-13, before the redesign).** One headline above the map ("Čím blíž černé díře,
 tím pomaleji plyne čas.") + the "Co je Gravikon?" link. Per-system clocks
 under the stars were tried and REMOVED by David's call, don't bring them
 back. The hover tooltip shows "Za vaši 1 hodinu uběhne zde": dilations are
@@ -194,8 +239,8 @@ another body (meeting participant, dashboard inhabitant, intro "Dvojhvězda X
 a Y…"). Views read `stars` (plural) everywhere: dashboard profile `stars:`,
 landing card, show/edit pages.
 
-**Meetings index.** Body class `meetings-page`; one `.meetings-board` surface
-(filter bar + table), quiet column heads (overrides the global gold `th`
+**Meetings index.** Body class `meetings-page`; `.meetings-board` (filter bar
++ table, no longer a boxed surface), quiet column heads (overrides the global gold `th`
 band), a left stripe per row in the system colour; inter-system rows get ONE
 shared rainbow stripe (`--inter-rainbow`, a `::before`, same for all such rows).
 Topic + participants share one column; the whole row toggles the
@@ -208,9 +253,11 @@ and `_relativistic_info`). Under 760px each row stacks into a card. Row CSS
 is the last block of meetings.css; the older `.meeting-topic`/`.meeting-actions`
 rules there belong to an unused card layout, hence the `meeting-row-*` names.
 
-**Dashboard (Přehled) = the star systems, not meeting stats.** A pill
-switcher shows ONE system profile at a time (all panels server-rendered,
-inline JS toggles them and keeps `#soustava-<id>` in the URL hash). Profile =
+**System profiles (formerly the Přehled/dashboard page).** Přehled was
+removed in the landing redesign: `/dashboard` redirects to `/` (a
+`#soustava-<id>` hash survives the redirect and opens that profile), the nav
+item and the D shortcut are gone. The profile content now lives in the
+landing panel (`galaxy/_system_profile.html.erb`, CSS in galaxy.css). Profile =
 generated intro (`DashboardHelper#system_intro`, built from live data because
 the nightly demo reset regenerates bodies), facts (distance in km, minutes per
 your hour, planet/moon counts with `cs_count` Czech plurals), "Kdo tu žije"
@@ -223,18 +270,19 @@ hand-written `SYSTEM_STORIES` for the 4 core systems, playing on their real
 place in the galaxy; other systems get a stable pick from `SYSTEM_STORY_POOL`).
 Moon bars are as thick as planet bars. No coloured top stripe on profile
 panels or landing cards (David: no top stripes anywhere). Data: `DashboardHelper#galaxy_system_profiles`;
-the controller calls `helpers.` because the data helpers use view helpers.
-Below: the "Čas napříč galaxií" chart (`galaxy_time_chart_data`, colours from
+`GalaxyController#index` calls `helpers.` because the data helpers use view helpers.
+The "Čas napříč galaxií" chart (now in the landing story; `galaxy_time_chart_data`, colours from
 `system_color`, HTML-escaped `data-chart` attribute; the "Zobrazit jako
 tabulku" table was removed on request). Numbers on this page
 use a Czech decimal comma. The old meeting-stat strip, recent-meetings
 timeline, highlights, their helpers and the `dashboard_stats_*` cache (and
 `Meeting#clear_dashboard_cache`) were removed. The cache/job performance
-pages still exist at their URLs but are not linked.
+pages still exist at their URLs but are not linked. The About page keeps
+only a short "Příběh" that links to the landing story (`/#pribeh`).
 
 **About page copy.** Section icons are default-emoji-presentation glyphs
 (📖 🧮 🔧 🧭 🧩 ⌨️) so they all render as colour emoji (🛠/🜛 rendered
-monochrome); nav icon is 🔭. No long dashes in the copy (colons/commas), no
+monochrome). The nav has no icons any more (see Header). No long dashes in the copy (colons/commas), no
 "rescaled constants" note, no closing call-to-action box, no "shortcuts don't
 work in form fields" note.
 
@@ -254,14 +302,104 @@ gravity pulls it at most ~10 min below that. Stored body dilations come from
 generation, so data made under the old constants needs a regenerate
 (`demo:reset`).
 
-**System page.** Planets/moons are painted with light tints of the system
-colour via CSS variables on `.system-svg` (`--tone-0..2`, `--tone-moon`;
-`PlanetarySystem::Body#tone` emits `data-tone`); orbit rings in the system
+**Design language ("the sky", 2026-10-13, David loved the Soustavy page and
+asked for everything in that style).** Every page sits on the same night sky
+(starfield is on `body` in gravikon.css). NO boxes: `.card` is frameless,
+tables have no frame (quiet sentence-case heads, hairlines), fieldsets are
+plain, `.svg-container` has no frame. Headings white (system-specific ones in
+`--system-tint`), gold only for links and the ONE primary action. Buttons:
+`.btn-primary/-accent/-success` = solid gold pill, `.btn-secondary` =
+outline, `.btn-danger` = red outline; no uppercase anywhere (labels, buttons,
+th). Quiet actions are underlined Oxanium text links (`.profile-link`,
+`.link-button` for button_to). Lists of things = rows like Soustavy
+(`.systems-row`, miniature + name + facts + links), reused by the meeting
+"where?" step (`.systems-row--pick`).
+
+**Black hole (tilted map).** galaxy.js `drawBlackHole` replaces the flat
+server drawing (kept hidden for the picker): pure black shadow, thin photon
+ring, accretion disc in the galaxy plane (Doppler gradient, brighter left,
+fading outward via an elliptical mask, slow CSS `bh-streak` swirls), the far
+side lensed as a thin arc over the top of the shadow, and a copy of the disc's
+NEAR half clipped to the shadow circle so it crosses in front without a seam
+(an unclipped copy doubled the brightness → visible step at the midline).
+The black hole is CLICKABLE: it opens its own panel profile
+(`galaxy/_black_hole_profile`, file id `black-hole`, hash `#cerna-dira`,
+data `DashboardHelper#black_hole_profile`: mass, Schwarzschild horizon, time
+at the 50-unit limit, systems nearest first); a second click closes it. Only
+`.bh-hit` (a circle over the shadow) takes the pointer — everything else in
+`.bh-scene` is `pointer-events: none`, otherwise the big glow swallowed clicks
+on systems passing behind the hole.
+
+**Signals engine.** `GalaxyInteractions.runSignals(svg, pickPair)` draws the
+thread/call visuals; pickPair returns `{from, to, color, scale}` (from/to are
+functions → current point). Galaxy map (`initSignals`) and the system page
+(inline script picks two non-star `.celestial-body`s, colour = system tint)
+both use it. A message's packet is placed by ARC LENGTH along the bezier
+(`pointAtFraction`), because the thread is drawn by distance (dasharray with
+pathLength=1); placing it by the bezier parameter made the dot run ahead of /
+lag behind its thread. CSS classes `.signal-thread*` (NOT `.signal-line`, which is an
+old relativistic-detail class in gravikon.css).
+
+**System page tilt.** `data-tilt` on `.system-svg` makes orbital_animation.js
+`setupTilt` project the system with the galaxy map's perspective
+(`GalaxyInteractions.perspective`): positions are still computed flat from
+the clock and projected in `placeBody`, orbit rings become projected paths
+(`updateRings`, moons' rings follow their planet), radii scale with depth,
+planets/moons on the far side move to `g.bodies-back` (before the star),
+viewBox cropped. The hover tooltip shows minutes per your hour = the body's
+own factor × `data-black-hole-dilation` (server-side), mass and km.
+
+**System page.** Same language as the landing profile: "Všechny soustavy"
+back link, title in the system tint, `system_intro` + facts, the live orbit
+map as a frameless hero (its own background rect hidden, edges masked), then
+"Kdo tu žije" rows (`.body-row`: name, mass via `DashboardHelper#format_mass`
+"6,69 × 10²⁷ kg", radius via `format_radius_km`, minutes-per-your-hour bar)
+next to relations + meetings; regeneration (non-core) at the bottom. Data =
+`@profile` (from `galaxy_system_profiles`). Planets/moons are painted with
+light tints of the system colour via CSS variables on `.system-svg`
+(`--tone-0..2`, `--tone-moon`; `PlanetarySystem::Body#tone` emits
+`data-tone`; the rules now live in systems.css); orbit rings in the system
 colour. The pause button and its note were removed (animation just runs).
+
+**Meeting forms.** Body class `meeting-form-page`. New meeting step 1 (2+
+systems) = Soustavy-style rows + a "Mezi soustavami" row. Forms: start/end/
+topic on one row (`.meeting-fields`), participants as chips
+(`.participant-tile`) coloured by `--system-color`, filled when checked via
+`:has(input:checked)`; inter-system groups are headed by the system dot +
+name. The old info box on the inter-system page was replaced by the lead
+paragraph. All field ids/names/JS hooks unchanged.
+
+**System forms (new/edit).** `.system-form-layout`: form left, sticky
+position map right; the long help list was condensed into the lead + legend.
+Position feedback in km (units rule).
+
+**Header (2026-10-13).** A quiet blurred bar over the sky (no gradient, no
+gold rule): an inline-SVG mini black hole (`.brand-mark`, same golden look as
+the map) + the gold "Gravikon" wordmark; plain text links (no emoji icons, no
+boxed tabs); the current page gets a small glowing gold dot under its link
+(`.nav-link.active::after`). The favicon matches: public/icon.svg is the same
+golden tilted black hole (on the dark rounded square); icon.png (512 px) is
+rendered from it with Inkscape and favicon.ico is a real multi-size ICO
+(16/32/48, via PIL), not a renamed PNG as before.
+
+**Meeting detail row** (`meetings/_relativistic_info`, opens under a meeting):
+no inner boxes, two columns, "Kolik ze schůzky kdo prožije" (bar per
+participant in its system colour, system name in the tooltip) and "Jak dlouho
+k sobě letí slova" (bar fades between the two system colours). Large meetings
+are condensed: across systems the pairs are grouped per system pair (average
+delay + count, "uvnitř X" for same-system pairs) once there are more than 12
+pairs; inside one system only the 12 longest are listed. Czech decimal comma
+everywhere (`format_minutes`, `format_delay_display`; the index row uses
+`format_delay_display` too, `Meeting#formatted_delay` is only kept for its tests).
+
+**Meeting form validation** (meeting_form.js): errors only show for fields the
+visitor has touched or after a submit attempt (which is blocked and scrolls to
+the first error); the submit button is never disabled.
 
 **Mobile nav.** The nav bleeds to the edges with a negative margin that must
 match the body padding; the ≤768px block keeps them in step (otherwise every
-page scrolled sideways by 16px).
+page scrolled sideways by 16px). ≤768px the tabs are ONE row under the brand
+(horizontal scroll as a fallback).
 
 **System lookup:** galaxy map markers navigate with the FILE id (UUID) while
 view links use the DB id — `GalaxyController#find_system_record` accepts both.
@@ -270,9 +408,9 @@ Keep it that way for any new system routes.
 **About page:** `/o-aplikaci` (`PagesController#about`) webifies the original
 assignment (Gravikon.pdf — served copy at `public/Gravikon.pdf`, source in the
 repo root is git-ignored): the Xentor story, the physics formulas (CSS-rendered,
-no MathJax) and the extension checklist. Linked from the nav (🔭 O aplikaci, shortcut O) and from the galaxy landing
+no MathJax) and the extension checklist. Linked from the nav (O aplikaci, shortcut O) and from the galaxy landing
 map intro link. The keyboard-shortcut table lives on this page (the Nápověda
-nav tab + modal were removed). Favicon: black-hole icon (public/icon.svg,
+nav tab + modal were removed). Favicon: golden black-hole icon (public/icon.svg,
 rasterized icon.png/favicon.ico).
 
 **Jobs:** `GenerateSystemJob`, `RegenerateSystemJob`, `GenerateGalaxyVisualizationJob`
@@ -297,7 +435,7 @@ the star (planet spacing shrinks with planet count so 1-10 planets all work).
 
 ## Testing
 
-- `rails test`: 266 runs / 0 failures / 0 errors / 9 documented skips. Parallelized;
+- `rails test`: 274 runs / 0 failures / 0 errors / 9 documented skips. Parallelized;
   each worker gets isolated data roots (test_helper `parallelize_setup`).
 - Helpers in test_helper: `write_system_data(system_or_id, bodies)`,
   `default_test_bodies(names)`.
@@ -340,6 +478,8 @@ the star (planet spacing shrinks with planet count so 1-10 planets all work).
   won't catch it) and only blows up in production. Always delete exact cache keys
   (see `GalaxyService.clear_*` / `Meeting#clear_dashboard_cache`).
 - Czech for user-facing strings/flash/comments in views; English for code and commits.
+- User-facing wording says "soustava" (never "systém") for a star system,
+  including flash messages and model validation errors.
 - Frozen string literals; Rubocop Rails Omakase — keep `rubocop` at 0 offenses.
 - Times as HH:MM strings; JSON in text columns (see Meeting model helpers).
 - JavaScript in `app/assets/javascripts/` (Propshaft, no bundler); vanilla JS only.

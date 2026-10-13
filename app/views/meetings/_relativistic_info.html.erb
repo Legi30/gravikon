@@ -18,97 +18,84 @@
     { p1: p1, p2: p2, delay: calculator.calculate_signal_delay(distance) }
   end
   max_delay = pair_delays.map { |pair| pair[:delay] }.max
+
+  # Big meetings would list every pair (19 participants = 171 rows): across
+  # systems the pairs are grouped per system pair (average delay), inside one
+  # system only the longest connections are shown
+  max_pair_rows = 12
+  systems_by_id = participant_info.values.filter_map { |info| [ info[:system_id], info[:system] ] if info[:system] }.to_h
+  grouped = systems_by_id.size > 1 && pair_delays.size > max_pair_rows
+  if grouped
+    delay_rows = pair_delays.group_by { |pair| [ participant_info[pair[:p1]][:system_id], participant_info[pair[:p2]][:system_id] ].sort }
+                            .map do |(from_id, to_id), pairs|
+      { from_id: from_id, to_id: to_id, count: pairs.size, delay: pairs.sum { |pair| pair[:delay] } / pairs.size,
+        label: from_id == to_id ? "uvnitř #{systems_by_id[from_id]&.name}" : "#{systems_by_id[from_id]&.name} ↔ #{systems_by_id[to_id]&.name}" }
+    end.sort_by { |row| -row[:delay] }
+  else
+    delay_rows = pair_delays.sort_by { |pair| -pair[:delay] }.first(max_pair_rows).map do |pair|
+      { from_id: participant_info[pair[:p1]][:system_id], to_id: participant_info[pair[:p2]][:system_id],
+        delay: pair[:delay], label: "#{pair[:p1]} ↔ #{pair[:p2]}" }
+    end
+  end
+  hidden_pairs = grouped ? 0 : pair_delays.size - delay_rows.size
+  max_row_delay = delay_rows.map { |row| row[:delay] }.max
 %>
+<%# Two side-by-side lists straight on the row's background (no inner boxes):
+    how long each participant lives through the meeting, and how long words
+    fly between each pair. Bars wear the participants' system colours. %>
 <tr class="relativistic-details" id="relativistic-<%= dom_id(meeting) %>" style="display: none;">
   <td colspan="<%= show_system_column ? 6 : 5 %>">
-    <div class="relativistic-info-container">
-      <h4>Relativistické efekty<% if is_inter_system %> - Mezisystémová schůzka<% end %></h4>
-
-      <!-- Time Dilation -->
-      <div class="relativistic-section">
-        <h5>⏱ Časová dilatace</h5>
-        <p class="explanation">
-          Gravitace způsobuje, že čas běží různě rychle na různých tělesech.
-          Plánovaných <strong><%= base_duration.round %> min</strong> trvá pro každého účastníka jinak dlouho:
+    <div class="relativistic-info-container rel-panel">
+      <section class="rel-part">
+        <h4>Kolik ze schůzky kdo prožije</h4>
+        <p class="rel-lead">
+          Naplánovaných <strong><%= base_duration.round %> min</strong> uběhne každému jinak rychle, podle toho,
+          jak silná gravitace ho drží<% if is_inter_system %> (vlastní těleso i černá díra)<% end %>.
         </p>
 
-        <div class="rel-grid rel-grid-dilation">
-          <span class="rel-head">Účastník</span>
-          <span class="rel-head"></span>
-          <span class="rel-head rel-num">Lokální čas</span>
-          <span class="rel-head rel-num">Dilatace</span>
-
+        <ul class="rel-list">
           <% participants.each do |participant_name| %>
-            <%
-              info = participant_info[participant_name]
-              dilation = info[:dilation]
-              local_duration = base_duration * dilation
-            %>
-            <span class="rel-name">
-              <%= participant_name %>
-              <% if is_inter_system && info[:system] %>
-                <small class="rel-system">(<%= info[:system].name %>)</small>
-              <% end %>
-            </span>
-            <span class="rel-bar-track">
-              <span class="rel-bar rel-bar-dilation" style="width: <%= (dilation * 100).clamp(0, 100).round(1) %>%; background: <%= system_color(info[:system_id]) %>;"></span>
-            </span>
-            <span class="rel-num rel-value"><%= local_duration.round(2) %> min</span>
-            <span class="rel-num rel-factor"><%= dilation.round(4) %>×</span>
+            <% info = participant_info[participant_name] %>
+            <% dilation = info[:dilation] %>
+            <li class="rel-row" style="--rel-color: <%= system_color(info[:system_id]) %>;">
+              <%# The dot's colour is the participant's system (named in the tooltip) %>
+              <span class="rel-name" title="<%= info[:system]&.name %>">
+                <span class="rel-dot" aria-hidden="true"></span><%= participant_name %>
+              </span>
+              <span class="rel-bar-track"><span class="rel-bar" style="width: <%= (dilation * 100).clamp(0, 100).round(1) %>%;"></span></span>
+              <span class="rel-value"><%= format_minutes(base_duration * dilation) %> min</span>
+            </li>
           <% end %>
-        </div>
+        </ul>
+      </section>
 
-        <% if is_inter_system %>
-          <p class="rel-footnote">
-            Dilatační faktor kombinuje lokální gravitaci hvězdy a gravitaci centrální černé díry
-            (výsledná dilatace = lokální × galaxiová).
-          </p>
-        <% end %>
-      </div>
-
-      <!-- Signal Delay -->
-      <div class="relativistic-section">
-        <h5>📡 Zpoždění signálu</h5>
-        <p class="explanation">
-          Světlo má konečnou rychlost, signál mezi účastníky proto dorazí se zpožděním<% if is_inter_system %> — mezi soustavami výrazně větším<% end %>:
+      <section class="rel-part">
+        <h4>Jak dlouho k sobě letí slova</h4>
+        <p class="rel-lead">
+          Signál letí rychlostí světla<% if is_inter_system %>, mezi soustavami desítky sekund<% end %>.
+          Průměrně <strong><%= meeting.avg_delay ? format_delay_display(meeting.avg_delay) : "?" %></strong> na jednu větu.
         </p>
 
         <% if pair_delays.any? %>
-          <div class="rel-grid rel-grid-delay">
-            <span class="rel-head">Spojení</span>
-            <span class="rel-head"></span>
-            <span class="rel-head rel-num">Zpoždění</span>
-
-            <% pair_delays.each do |pair| %>
-              <span class="rel-name">
-                <%= pair[:p1] %> ↔ <%= pair[:p2] %>
-                <% if is_inter_system && participant_info[pair[:p1]][:system_id] != participant_info[pair[:p2]][:system_id] %>
-                  <small class="rel-system" title="Mezisystémové spojení">🌌</small>
-                <% end %>
-              </span>
-              <span class="rel-bar-track">
-                <span class="rel-bar rel-bar-delay" style="width: <%= max_delay&.positive? ? (pair[:delay] / max_delay * 100).round(1) : 0 %>%;"></span>
-              </span>
-              <span class="rel-num rel-value"><%= pair[:delay].round(2) %> s</span>
+          <% if grouped %>
+            <p class="rel-hint">Spojení po soustavách, průměrné zpoždění:</p>
+          <% end %>
+          <ul class="rel-list rel-list--pairs<%= " rel-list--grouped" if grouped %>">
+            <% delay_rows.each do |row| %>
+              <li class="rel-row" style="--rel-color: <%= system_color(row[:from_id]) %>; --rel-color-to: <%= system_color(row[:to_id]) %>;">
+                <span class="rel-name" title="<%= row[:label] %>"><%= row[:label] %><% if row[:count] %> <small class="rel-system"><%= cs_count(row[:count], "spojení", "spojení", "spojení") %></small><% end %></span>
+                <span class="rel-bar-track"><span class="rel-bar rel-bar--pair" style="width: <%= max_row_delay&.positive? ? (row[:delay] / max_row_delay * 100).round(1) : 0 %>%;"></span></span>
+                <span class="rel-value"><%= format_delay_display(row[:delay]) %></span>
+              </li>
             <% end %>
-          </div>
-
-          <p class="rel-summary">
-            Průměrné zpoždění: <strong><%= meeting.avg_delay ? "#{meeting.avg_delay.round(2)} s" : "?" %></strong>
-          </p>
+          </ul>
+          <% if hidden_pairs.positive? %>
+            <p class="rel-footnote">Nejdelší spojení, dalších <%= hidden_pairs %> je kratších.</p>
+          <% end %>
         <% else %>
-          <p class="rel-footnote">Zpoždění nelze spočítat — chybí data účastníků.</p>
+          <p class="rel-footnote">Zpoždění nelze spočítat, chybí data účastníků.</p>
         <% end %>
-      </div>
-
-      <!-- Explanation Footer -->
-      <div class="relativistic-footer">
-        <small>
-          <strong>💡 Vysvětlení:</strong>
-          Časová dilatace je efekt obecné relativity — čas běží pomaleji blíže masivním objektům.
-          Zpoždění signálu je způsobeno konečnou rychlostí světla.
-        </small>
-      </div>
+      </section>
     </div>
   </td>
 </tr>

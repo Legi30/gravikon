@@ -18,6 +18,7 @@ class PagesControllerTest < ActionDispatch::IntegrationTest
   test "galaxy landing page links to the about page" do
     get galaxy_index_path
     assert_response :success
-    assert_select ".galaxy-intro a[href=?]", about_path
+    assert_select ".galaxy-intro a[href=?]", "#pribeh"
+    assert_select ".story-foot a[href=?]", about_path
   end
 end

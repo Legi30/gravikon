@@ -1,0 +1,54 @@
+<%# The black hole's profile in the landing panel. Opened by clicking the
+    black hole on the tilted map (galaxy.js, file id "black-hole"). %>
+<section class="system-profile black-hole-profile" id="profile-black-hole"
+         data-file-id="black-hole" data-hash="cerna-dira"
+         aria-labelledby="profile-name-black-hole"
+         style="--system-color: #f0a040; --system-tint: #ffd9a0;" hidden>
+  <header class="profile-head">
+    <h2 class="profile-name" id="profile-name-black-hole"><span class="system-dot black-hole-dot" aria-hidden="true"></span><%= black_hole[:name] %></h2>
+    <p class="profile-intro">
+      <%= black_hole[:name] %> tu byla dřív než první hvězda kolem ní a bude tu i po té poslední.
+      Nesvítí a nic nevyzařuje, a přesto řídí celou galaxii: drží soustavy na jejich drahách
+      a každé z nich odměřuje, jak rychle jí poběží čas. Xentořané jí proto přezdívají Hodinářka.
+    </p>
+    <dl class="profile-facts">
+      <div>
+        <dt>hmotnost</dt>
+        <dd><%= format_mass(black_hole[:mass]) %></dd>
+      </div>
+      <div>
+        <dt>horizont událostí</dt>
+        <dd><%= format_distance_km(black_hole[:horizon]) %></dd>
+      </div>
+      <div>
+        <dt>soustav kolem ní</dt>
+        <dd><%= black_hole[:systems].size %></dd>
+      </div>
+    </dl>
+  </header>
+
+  <div class="profile-block">
+    <h3>Jak zpomaluje čas</h3>
+    <p class="profile-story">
+      Za horizontem událostí se čas zastaví úplně a nic, ani světlo, se odtud nevrátí. Proto se k ní
+      žádná soustava nesmí přiblížit na méně než <%= format_distance_km(black_hole[:limit]) %>:
+      i tam by za vaši hodinu uběhlo jen <%= format_minutes(black_hole[:limit_rate] * 60) %> min.
+    </p>
+    <% if black_hole[:systems].any? %>
+      <p class="profile-hint">Kolik minut uběhne v každé soustavě, zatímco vám uběhne hodina, od nejbližší po nejvzdálenější:</p>
+      <ul class="inhabitant-list">
+        <% black_hole[:systems].each do |profile| %>
+          <li class="inhabitant inhabitant--planet" style="--system-color: <%= system_color(profile[:system].id) %>;">
+            <span class="inhabitant-name"><%= profile[:system].name %> <small><%= format_distance_km(profile[:distance]) %></small></span>
+            <span class="inhabitant-track"><span class="inhabitant-bar" style="width: <%= (profile[:rate] * 100).clamp(0, 100).round(1) %>%;"></span></span>
+            <span class="inhabitant-value"><%= format_minutes(profile[:rate] * 60) %> min</span>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  </div>
+
+  <footer class="profile-foot">
+    <%= link_to "Jak to spočítáme", about_path, class: "profile-link profile-link--quiet" %>
+  </footer>
+</section>

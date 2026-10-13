@@ -38,14 +38,15 @@ class GalaxyControllerTest < ActionDispatch::IntegrationTest
     Rails.cache.clear
   end
 
-  # Test GET index displays galaxy map and system list
-  # (the page has no heading by design — the map itself is the hero)
+  # Test GET index displays galaxy map, the system panel and the story
+  # (the map itself is the hero; the old system list is gone)
   test "GET index displays galaxy map" do
     get galaxy_index_path
     assert_response :success
     assert_select ".galaxy-hero svg"
     assert_select "#space-clock .space-clock-digit", 4
-    assert_select "h3", /Seznam soustav/
+    assert_select "#system-panel"
+    assert_select "#pribeh h2", /Hodina není všude hodina/
   end
 
   test "GET index passes per-system black-hole dilation to the map tooltips" do

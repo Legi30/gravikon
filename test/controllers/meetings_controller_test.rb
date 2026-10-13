@@ -69,7 +69,9 @@ class MeetingsControllerTest < ActionDispatch::IntegrationTest
 
     get new_meeting_url
     assert_response :success
-    assert_select "h3", /Vyberte soustavu/
+    assert_select ".systems-list-head p", /Vyberte soustavu/
+    assert_select ".systems-row--pick a[href=?]", new_meeting_path(system_id: System.find_by(name: "Alpha").id)
+    assert_select ".systems-row--inter a[href=?]", new_inter_system_meetings_path
   end
 
   test "GET new with system_id parameter loads bodies from that system only" do
@@ -240,7 +242,9 @@ class MeetingsControllerTest < ActionDispatch::IntegrationTest
     end
     # The detail row spans every column of the meeting row
     assert_select "tr#relativistic-meeting_#{meeting.id} td[colspan='6']"
-    assert_select "tr#relativistic-meeting_#{meeting.id} .rel-bar-dilation", 3
+    # One lived-time bar per participant, one delay bar per pair (3 pairs of 3)
+    assert_select "tr#relativistic-meeting_#{meeting.id} .rel-list:not(.rel-list--pairs) .rel-bar", 3
+    assert_select "tr#relativistic-meeting_#{meeting.id} .rel-list--pairs .rel-bar", 3
   end
 
   test "POST create with single-system participants sets is_inter_system=false" do

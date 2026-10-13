@@ -67,7 +67,7 @@
       </span>
     <% end %>
   </td>
-  <td class="meeting-delay"><%= meeting.avg_delay ? meeting.formatted_delay : "?" %></td>
+  <td class="meeting-delay"><%= meeting.avg_delay ? format_delay_display(meeting.avg_delay) : "?" %></td>
   <td class="meeting-row-actions">
     <%= link_to "✏️", edit_meeting_path(meeting), class: "icon-btn", title: "Upravit", "aria-label" => "Upravit schůzku" %>
     <%= form_with url: meeting_path(meeting), method: :delete, html: { onsubmit: "return confirm('Opravdu smazat tuto schůzku?');" } do %>

@@ -288,8 +288,10 @@ class GalaxyVisualizer
               star_fill = System.tint(color, 0.75)
               if binary
                 svg.g(class: "mini-orbit mini-binary", style: "animation-duration: 8s;") do
-                  svg.circle(cx: MARKER_BINARY_OFFSET, cy: 0, r: 4.8, fill: star_fill, class: "system-core")
-                  svg.circle(cx: -MARKER_BINARY_OFFSET, cy: 0, r: 4, fill: System.tint(color, 0.6), class: "system-star")
+                  svg.circle(cx: MARKER_BINARY_OFFSET, cy: 0, r: 4.8, fill: star_fill, class: "system-core",
+                             'data-ring': MARKER_BINARY_OFFSET, 'data-angle': 0, 'data-period': 8)
+                  svg.circle(cx: -MARKER_BINARY_OFFSET, cy: 0, r: 4, fill: System.tint(color, 0.6), class: "system-star",
+                             'data-ring': MARKER_BINARY_OFFSET, 'data-angle': Math::PI.round(4), 'data-period': 8)
                 end
               else
                 svg.circle(cx: 0, cy: 0, r: 7, fill: star_fill, class: "system-core")
@@ -299,11 +301,14 @@ class GalaxyVisualizer
               planets.each_with_index do |planet, i|
                 ring = MARKER_FIRST_ORBIT + i * MARKER_ORBIT_STEP
                 period = (14 * (ring / MARKER_FIRST_ORBIT)**1.5).round(1)
-                svg.g(transform: "rotate(#{(planet[:angle] * 180 / Math::PI).round(1)})") do
+                # data-ring/-angle/-period let the landing map drive the
+                # planet itself (tilted plane) instead of the CSS spin
+                svg.g(class: "mini-spin", transform: "rotate(#{(planet[:angle] * 180 / Math::PI).round(1)})") do
                   svg.g(class: "mini-orbit", style: "animation-duration: #{period}s;") do
                     svg.circle(
                       cx: ring.round(2), cy: 0, r: planet_marker_radius(planet),
-                      fill: System.tint(color, i.even? ? 0.35 : 0.5), class: "mini-planet"
+                      fill: System.tint(color, i.even? ? 0.35 : 0.5), class: "mini-planet",
+                      'data-ring': ring.round(2), 'data-angle': planet[:angle].round(4), 'data-period': period
                     )
                   end
                 end

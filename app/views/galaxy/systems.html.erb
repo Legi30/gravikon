@@ -1,0 +1,70 @@
+<% content_for :body_class, "galaxy-page systems-list-page" %>
+
+<%# "Soustavy": one row per system straight on the sky (no cards), nearest to
+    the black hole first; each row has a small static miniature of the system
+    (planets at their real angles), its key facts and links. %>
+<div class="systems-list">
+  <header class="systems-list-head">
+    <h1>Soustavy</h1>
+    <p>
+      <% if @profiles.any? %>
+        Kolem černé díry <%= @galaxy_data.dig("black_hole", "name") || "v jádru galaxie" %> obíhá
+        <%= cs_count(@profiles.size, "soustava", "soustavy", "soustav") %>. Seřadili jsme je od té nejbližší:
+        čím blíž černé díře, tím pomaleji tam plyne čas.
+      <% else %>
+        V galaxii zatím nejsou žádné soustavy.
+      <% end %>
+    </p>
+  </header>
+
+  <ol class="systems-rows">
+    <% @profiles.each do |profile| %>
+      <% system = profile[:system] %>
+      <% star_names = profile[:stars].map { |star| star[:name] } %>
+      <li class="systems-row" style="--system-color: <%= system_color(system.id) %>; --system-tint: <%= system_tint(system.id) %>;">
+        <%= render "system_miniature", profile: profile %>
+
+        <div class="systems-row-main">
+          <h2><%= link_to system.name, galaxy_system_path(system) %></h2>
+          <p class="systems-row-sub">
+            <% if star_names.size >= 2 %>
+              Dvojhvězda <%= star_names.first(2).join(" a ") %>
+            <% elsif star_names.any? %>
+              Hvězda <%= star_names.first %>
+            <% end %>
+          </p>
+          <p class="systems-row-facts">
+            <span><strong><%= format_distance_km(profile[:distance]) %></strong> od černé díry</span>
+            <span><strong><%= cs_count(profile[:planets].size, "planeta", "planety", "planet") %></strong>, <%= cs_count(profile[:moon_count], "měsíc", "měsíce", "měsíců") %></span>
+          </p>
+        </div>
+
+        <div class="systems-row-time">
+          <span class="systems-row-time-value"><%= format_minutes(profile[:rate] * 60) %> min</span>
+          <span class="inhabitant-track"><span class="inhabitant-bar" style="width: <%= (profile[:rate] * 100).clamp(0, 100).round(1) %>%;"></span></span>
+          <span class="systems-row-time-label">za vaši hodinu</span>
+        </div>
+
+        <p class="systems-row-links">
+          <%= link_to "Prohlédnout", galaxy_system_path(system), class: "profile-link" %>
+          <%= link_to "Na mapě", root_path(anchor: "soustava-#{system.id}"), class: "profile-link profile-link--quiet" %>
+          <%= link_to "Upravit", edit_galaxy_system_path(system), class: "profile-link profile-link--quiet" unless system.core? %>
+        </p>
+      </li>
+    <% end %>
+
+    <li class="systems-row systems-row--add">
+      <svg class="system-miniature" viewBox="-40 -40 80 80" aria-hidden="true">
+        <circle r="30" class="miniature-ring miniature-ring--add" />
+        <circle r="18" class="miniature-ring miniature-ring--add" />
+        <path d="M-6 0H6M0 -6V6" class="miniature-plus" />
+      </svg>
+      <div class="systems-row-main">
+        <h2><%= link_to "Přidat soustavu", new_galaxy_system_path %></h2>
+        <p class="systems-row-sub">
+          Vyberte místo v galaxii a Gravikon pro novou soustavu vygeneruje hvězdu, planety i měsíce.
+        </p>
+      </div>
+    </li>
+  </ol>
+</div>

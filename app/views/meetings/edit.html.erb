@@ -1,5 +1,14 @@
-<div class="page-header">
-  <h1>Upravit schůzku<% if @meeting.is_inter_system %> 🌌<% end %></h1>
+<% content_for :body_class, "meeting-form-page" %>
+
+<div class="page-header meeting-form-head">
+  <h1>Upravit schůzku</h1>
+  <% if @meeting.is_inter_system %>
+    <p class="meeting-form-where">mezi soustavami</p>
+  <% elsif @system.present? %>
+    <p class="meeting-form-where" style="--system-color: <%= system_color(@system.id) %>; --system-tint: <%= system_tint(@system.id) %>;">
+      <span class="system-dot" aria-hidden="true"></span>v soustavě <strong><%= @system.name %></strong>
+    </p>
+  <% end %>
 </div>
 
 <div class="content-section">
@@ -10,22 +19,24 @@
         <%= form.hidden_field :system_id, value: @meeting.system_id %>
       <% end %>
 
+      <div class="meeting-fields">
       <div class="form-group">
-        <%= form.label :start_time, "Začátek:", for: "meeting_start_time" %>
+        <%= form.label :start_time, "Začátek", for: "meeting_start_time" %>
         <%= form.text_field :start_time, value: @meeting.start_time, placeholder: "12:00", id: "meeting_start_time", aria: { describedby: "start-time-error", required: "true" } %>
         <div id="start-time-error" class="error-message" style="display: none;" role="alert" aria-live="polite"></div>
       </div>
 
       <div class="form-group">
-        <%= form.label :end_time, "Konec:", for: "meeting_end_time" %>
+        <%= form.label :end_time, "Konec", for: "meeting_end_time" %>
         <%= form.text_field :end_time, value: @meeting.end_time, placeholder: "13:30", id: "meeting_end_time", aria: { describedby: "end-time-error duration-display", required: "true" } %>
         <div id="end-time-error" class="error-message" style="display: none;" role="alert" aria-live="polite"></div>
         <div id="duration-display" class="success-message" style="display: none;" role="status" aria-live="polite"></div>
       </div>
 
       <div class="form-group">
-        <%= form.label :topic, "Téma:", for: "meeting_topic" %>
+        <%= form.label :topic, "Téma (nepovinné)", for: "meeting_topic" %>
         <%= form.text_field :topic, value: @meeting.topic, placeholder: "Diskuse o gravitaci...", id: "meeting_topic" %>
+      </div>
       </div>
 
       <div class="form-group">
@@ -34,8 +45,8 @@
               systems_with_bodies: @systems_with_bodies,
               selected_names: @meeting.participants_array %>
         <% else %>
-          <fieldset>
-            <legend>Účastníci (vyberte alespoň 2):</legend>
+          <fieldset<% if @system.present? %> style="--system-color: <%= system_color(@system.id) %>; --system-tint: <%= system_tint(@system.id) %>;"<% end %>>
+            <legend>Kdo se sejde? <small>Vyberte alespoň dva.</small></legend>
             <%= render "participant_grid",
                 bodies: @bodies,
                 selected_names: @meeting.participants_array,
@@ -45,7 +56,7 @@
       </div>
 
       <div class="actions">
-        <%= form.submit "Uložit změny", class: "btn btn-success", id: (@meeting.is_inter_system ? "submit-btn" : nil) %>
+        <%= form.submit "Uložit změny", class: "btn btn-primary", id: (@meeting.is_inter_system ? "submit-btn" : nil) %>
         <%= link_to "Zrušit", meetings_path, class: "btn btn-secondary" %>
       </div>
     <% end %>

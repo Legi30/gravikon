@@ -1,6 +1,11 @@
-<div class="page-header">
-  <h1>🌌 Nová mezisystémová schůzka</h1>
-  <p style="color: rgba(255, 255, 255, 0.8); margin-top: 0.5rem;">Vytvořte schůzku s účastníky z různých planetárních soustav</p>
+<% content_for :body_class, "meeting-form-page" %>
+
+<div class="page-header meeting-form-head">
+  <h1>Schůzka mezi soustavami</h1>
+  <p>
+    Svolejte účastníky z různých soustav. Čím blíž černé díře kdo žije, tím kratší mu schůzka připadá,
+    a slova mezi soustavami letí desítky sekund. Gravikon spočítá obojí.
+  </p>
 </div>
 
 <% if @systems.blank? || @systems.count < 2 %>
@@ -22,22 +27,24 @@
     <%= form_with url: meetings_path, method: :post, scope: :meeting, id: "inter-system-meeting-form", aria: { label: "Formulář pro plánování mezisystémové schůzky" } do |f| %>
       <%= f.hidden_field :is_inter_system, value: true %>
 
+      <div class="meeting-fields">
       <div class="form-group">
-        <%= f.label :start_time, "Začátek (např. 12:00):", for: "meeting_start_time" %>
+        <%= f.label :start_time, "Začátek", for: "meeting_start_time" %>
         <%= f.text_field :start_time, value: params.dig(:meeting, :start_time), placeholder: "12:00", id: "meeting_start_time", aria: { describedby: "start-time-error", required: "true" } %>
         <div id="start-time-error" class="error-message" style="display: none;" role="alert" aria-live="polite"></div>
       </div>
 
       <div class="form-group">
-        <%= f.label :end_time, "Konec (např. 13:30):", for: "meeting_end_time" %>
+        <%= f.label :end_time, "Konec", for: "meeting_end_time" %>
         <%= f.text_field :end_time, value: params.dig(:meeting, :end_time), placeholder: "13:30", id: "meeting_end_time", aria: { describedby: "end-time-error duration-display", required: "true" } %>
         <div id="end-time-error" class="error-message" style="display: none;" role="alert" aria-live="polite"></div>
         <div id="duration-display" class="success-message" style="display: none;" role="status" aria-live="polite"></div>
       </div>
 
       <div class="form-group">
-        <%= f.label :topic, "Téma (volitelné):", for: "meeting_topic" %>
+        <%= f.label :topic, "Téma (nepovinné)", for: "meeting_topic" %>
         <%= f.text_field :topic, value: params.dig(:meeting, :topic), placeholder: "Mezigalaktická diskuse...", id: "meeting_topic" %>
+      </div>
       </div>
 
       <div class="form-group">
@@ -47,26 +54,10 @@
       </div>
 
       <div class="actions">
-        <%= f.submit "Naplánovat mezisystémovou schůzku", class: "btn btn-accent", id: "submit-btn" %>
+        <%= f.submit "Naplánovat schůzku", class: "btn btn-primary", id: "submit-btn" %>
         <%= link_to "Zrušit", meetings_path, class: "btn btn-secondary" %>
       </div>
     <% end %>
-  </div>
-</div>
-
-<!-- Info Card -->
-<div class="content-section">
-  <div class="card fade-in" style="background: rgba(102, 126, 234, 0.05); border-left: 4px solid #667eea;">
-    <h3>💡 O mezisystémových schůzkách</h3>
-    <p style="line-height: 1.6;">
-      Mezisystémové schůzky zahrnují účastníky z různých planetárních soustav orbítujících kolem centrální černé díry galaxie.
-      Tyto schůzky vykazují výrazně větší relativistické efekty:
-    </p>
-    <ul style="margin: 0.5rem 0 0 1.5rem; line-height: 1.8;">
-      <li><strong>Časová dilatace:</strong> Kombinuje lokální gravitaci hvězd s gravitací černé díry</li>
-      <li><strong>Zpoždění signálu:</strong> Výrazně větší kvůli vzdálenostem mezi soustavami (statisíce km)</li>
-      <li><strong>Složitější výpočty:</strong> Vyžaduje transformaci souřadnic z lokálních systémů do galaxiových souřadnic</li>
-    </ul>
   </div>
 </div>
 

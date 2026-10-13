@@ -180,6 +180,61 @@ module DashboardHelper
     { systems: systems, curve: curve }
   end
 
+  # Numbers the landing story quotes, from the same profiles as the panel:
+  # the slowest and the fastest system, and the pair whose signal flies longest
+  #
+  # @return [Hash, nil] nil with fewer than two systems
+  def galaxy_story_facts(profiles)
+    return nil if profiles.size < 2
+
+    from, relation = profiles.flat_map { |profile| profile[:relations].map { |rel| [ profile, rel ] } }
+                             .max_by { |_, rel| rel[:signal_delay] }
+    {
+      slowest: profiles.min_by { |profile| profile[:rate] },
+      fastest: profiles.max_by { |profile| profile[:rate] },
+      far_from: from[:system],
+      far_to: relation[:system],
+      far_delay: relation[:signal_delay]
+    }
+  end
+
+  # The black hole's own panel on the landing page: its mass and horizon, how
+  # slowly time runs at the closest distance a system may have, and every
+  # system around it, nearest first (same physics as the system profiles)
+  #
+  # @return [Hash]
+  def black_hole_profile(galaxy_data, profiles)
+    black_hole = galaxy_data["black_hole"] || {}
+    mass = (black_hole["mass"] || PhysicsConstants::BLACK_HOLE_MASS).to_f
+    limit = GalaxyService::MIN_DISTANCE_FROM_BLACK_HOLE
+    calculator = RelativisticCalculator.new(galaxy_data: galaxy_data)
+
+    {
+      name: black_hole["name"] || "Černá díra",
+      mass: mass,
+      horizon: PhysicsConstants.schwarzschild_radius(mass) / PhysicsConstants::UNIT_METERS,
+      limit: limit,
+      limit_rate: calculator.calculate_black_hole_dilation(PhysicsConstants::GALAXY_CENTER_X + limit, PhysicsConstants::GALAXY_CENTER_Y),
+      systems: profiles.sort_by { |profile| profile[:distance] }
+    }
+  end
+
+  # Mass as "6,69 × 10<sup>27</sup> kg" (generated masses span 1e20-1e40)
+  def format_mass(kg)
+    return "–" unless kg.to_f.positive?
+
+    exponent = Math.log10(kg.to_f).floor
+    mantissa = number_with_precision(kg.to_f / 10**exponent, precision: 2, separator: ",")
+    safe_join([ "#{mantissa} × 10", content_tag(:sup, exponent), " kg" ])
+  end
+
+  # Body radius (stored in metres) in km with a space as thousands separator
+  def format_radius_km(meters)
+    return "–" unless meters.to_f.positive?
+
+    "#{number_with_delimiter((meters.to_f / 1000).round, delimiter: " ")} km"
+  end
+
   # Signal delay for display, Czech decimal comma (matches format_minutes)
   def format_delay_display(seconds)
     return "0 s" if seconds.nil? || seconds.zero?

@@ -7,16 +7,17 @@
 <% prefill_y = system.y.presence || suggested_position&.dig(:y) %>
 <%= form_with model: system, url: url, method: method, id: "system-form", "aria-label" => form_label do |f| %>
   <div class="form-group">
-    <%= f.label :name, "Název soustavy:", for: "system_name" %>
+    <%= f.label :name, "Název", for: "system_name" %>
     <%= f.text_field :name, placeholder: "např. Sluneční soustava", id: "system_name", class: "form-control", "aria-describedby": "name-error name-help", "aria-required": "true", required: true %>
-    <small id="name-help" style="color: var(--text); opacity: 0.8;">Jedinečný název pro identifikaci soustavy</small>
+    <small id="name-help" class="form-hint">3 až 50 znaků, v galaxii jedinečný</small>
     <div id="name-error" class="error-message" style="display: none;" role="alert" aria-live="polite"></div>
   </div>
 
+  <div class="form-row">
   <div class="form-group">
-    <%= f.label :x, "Pozice X (0-800, doporučeno 100-700):", for: "system_x" %>
+    <%= f.label :x, "Pozice X", for: "system_x" %>
     <%= f.number_field :x, value: prefill_x, min: 0, max: 800, step: 0.1, id: "system_x", class: "form-control", "aria-describedby": "x-error x-help", "aria-required": "true", required: true %>
-    <small id="x-help" style="color: var(--text); opacity: 0.8;">Horizontální pozice v galaxii (střed: 400)</small>
+    <small id="x-help" class="form-hint">0–800, černá díra je na 400</small>
     <div id="x-error" class="error-message" style="display: none;" role="alert" aria-live="polite"></div>
     <% if system.x.present? && (system.x < 100 || system.x > 700) %>
       <div class="warning-message" style="color: #f39c12; margin-top: 0.5rem;" role="alert">
@@ -26,15 +27,17 @@
   </div>
 
   <div class="form-group">
-    <%= f.label :y, "Pozice Y (0-800, doporučeno 100-700):", for: "system_y" %>
+    <%= f.label :y, "Pozice Y", for: "system_y" %>
     <%= f.number_field :y, value: prefill_y, min: 0, max: 800, step: 0.1, id: "system_y", class: "form-control", "aria-describedby": "y-error y-help", "aria-required": "true", required: true %>
-    <small id="y-help" style="color: var(--text); opacity: 0.8;">Vertikální pozice v galaxii (střed: 400)</small>
+    <small id="y-help" class="form-hint">0–800, černá díra je na 400</small>
     <div id="y-error" class="error-message" style="display: none;" role="alert" aria-live="polite"></div>
     <% if system.y.present? && (system.y < 100 || system.y > 700) %>
       <div class="warning-message" style="color: #f39c12; margin-top: 0.5rem;" role="alert">
         ⚠ Varování: Soustava je mimo doporučený rozsah (100-700)
       </div>
     <% end %>
+  </div>
+
   </div>
 
   <div class="position-validation-display" id="position-validation" style="display: none; margin-top: 1rem; padding: 1rem; border-radius: 6px;" role="status" aria-live="polite">
@@ -45,18 +48,19 @@
     <%# Generation parameters only make sense when creating — editing an
         existing system changes name/position; planet counts are changed
         via the regenerate action on the detail page %>
+    <div class="form-row">
     <div class="form-group">
-      <%= f.label :num_planets, "Počet planet (1-10):", for: "system_num_planets" %>
-      <%= f.number_field :num_planets, min: 1, max: 10, value: 5, id: "system_num_planets", class: "form-control", "aria-describedby": "planets-error planets-help", "aria-required": "true", required: true %>
-      <small id="planets-help" style="color: var(--text); opacity: 0.8;">Počet planet v nové soustavě</small>
+      <%= f.label :num_planets, "Počet planet (1–10)", for: "system_num_planets" %>
+      <%= f.number_field :num_planets, min: 1, max: 10, value: 5, id: "system_num_planets", class: "form-control", "aria-describedby": "planets-error", "aria-required": "true", required: true %>
+
       <div id="planets-error" class="error-message" style="display: none;" role="alert" aria-live="polite"></div>
     </div>
 
     <div class="form-group">
-      <%= f.label :max_moons_per_planet, "Maximální počet měsíců na planetu (0-5):", for: "system_max_moons" %>
-      <%= f.number_field :max_moons_per_planet, min: 0, max: 5, value: 2, id: "system_max_moons", class: "form-control", "aria-describedby": "moons-error moons-help", "aria-required": "true", required: true %>
-      <small id="moons-help" style="color: var(--text); opacity: 0.8;">Maximální počet měsíců pro každou planetu</small>
+      <%= f.label :max_moons_per_planet, "Nejvýš měsíců na planetu (0–5)", for: "system_max_moons" %>
+      <%= f.number_field :max_moons_per_planet, min: 0, max: 5, value: 2, id: "system_max_moons", class: "form-control", "aria-describedby": "moons-error", "aria-required": "true", required: true %>
       <div id="moons-error" class="error-message" style="display: none;" role="alert" aria-live="polite"></div>
+    </div>
     </div>
   <% end %>
 
@@ -143,7 +147,7 @@
         positionValidation.style.background = 'rgba(231, 76, 60, 0.1)';
         positionValidation.style.border = '1px solid #e74c3c';
         positionValidation.style.color = '#e74c3c';
-        positionValidation.innerHTML = `❌ <strong>Chyba:</strong> Soustava je příliš blízko černé díře (vzdálenost: ${distanceFromCenter.toFixed(1)}, minimum: ${MIN_DISTANCE_FROM_BLACK_HOLE})`;
+        positionValidation.innerHTML = `❌ <strong>Chyba:</strong> Soustava je příliš blízko černé díře (vzdálenost: ${Math.round(distanceFromCenter * 1000).toLocaleString('cs-CZ')} km, minimum: ${(MIN_DISTANCE_FROM_BLACK_HOLE * 1000).toLocaleString('cs-CZ')} km)`;
         return false;
       }
 
@@ -160,7 +164,7 @@
       positionValidation.style.background = 'rgba(46, 213, 115, 0.1)';
       positionValidation.style.border = '1px solid #2ed573';
       positionValidation.style.color = '#2ed573';
-      positionValidation.innerHTML = `✓ <strong>Platná pozice</strong> (vzdálenost od černé díry: ${distanceFromCenter.toFixed(1)})`;
+      positionValidation.innerHTML = `✓ <strong>Platná pozice</strong> (od černé díry ${Math.round(distanceFromCenter * 1000).toLocaleString('cs-CZ')} km)`;
       return true;
     }
 

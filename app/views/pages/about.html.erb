@@ -8,14 +8,10 @@
   <section>
     <h3>📖 Příběh</h3>
     <p>
-      Ve vzdálené galaxii, v planetární soustavě <strong>Xentor</strong>, žije technologicky vyspělá
-      civilizace, která ovládla svou sluneční soustavu. Její členové sídlí na mnoha různých planetách
-      a měsících, kde probíhá výzkum, těžba a řízení jejich společnosti. Potřebují se však pravidelně
-      spojovat pomocí meziplanetárních videokonferencí, typicky přes <em>Zoom</em>.
-    </p>
-    <p>
-      Vzhledem ke komplikovaným podmínkám (zakřivení času vlivem gravitace, konečná rychlost signálu)
-      požádali Zemi o pomoc s vytvořením aplikace pro plánování schůzek: <strong>Gravikon</strong>.
+      Xentořané žijí ve hvězdných soustavách kolem černé díry a potřebují se pravidelně scházet.
+      Čas jim ale plyne různě rychle a každá zpráva k ostatním chvíli letí. Proto požádali Zemi
+      o aplikaci pro plánování schůzek: <strong>Gravikon</strong>.
+      <%= link_to "Celý příběh najdete pod mapou galaxie.", root_path(anchor: "pribeh") %>
     </p>
   </section>
 
@@ -97,7 +93,7 @@
         <li>Každá runa se mění jinou rychlostí.</li>
         <li>Pořadí run není náhodné.</li>
         <li>Odpověď nenajdete v číslech, najdete ji na obloze.</li>
-        <li>Když zanikne soustava, hodiny přijdou o číslici.</li>
+        <li>Kdyby daleko od černé díry přibyla nová soustava, hodiny by se změnily.</li>
       </ul>
     </details>
 
@@ -109,7 +105,7 @@
         hodinových ručiček). Zleva jsou soustavy od nejvzdálenější po nejbližší, nejpravější runa se
         proto mění nejrychleji, jako vteřinová ručička. Hodiny tak čtete z <em>konfigurace prostoru</em>,
         která je ale díky oběžným dobám zároveň jednoznačným údajem o čase. Stejné runy uvidí každý
-        návštěvník, kdekoli a po libovolném obnovení stránky. Zanikne-li soustava, její číslice zmizí: „–".
+        návštěvník, kdekoli a po libovolném obnovení stránky. Hodiny sledují čtyři nejvzdálenější soustavy: kdyby dál od černé díry přibyla nová, usadí se na levém místě a ta nejbližší z hodin vypadne.
       </p>
     </details>
   </section>
@@ -121,7 +117,6 @@
       <tbody>
         <tr><td><kbd class="keyboard-key">G</kbd></td><td>Otevřít mapu Galaxie</td></tr>
         <tr><td><kbd class="keyboard-key">S</kbd></td><td>Otevřít seznam Schůzek</td></tr>
-        <tr><td><kbd class="keyboard-key">D</kbd></td><td>Otevřít Přehled</td></tr>
         <tr><td><kbd class="keyboard-key">N</kbd></td><td>Nová schůzka</td></tr>
         <tr><td><kbd class="keyboard-key">O</kbd></td><td>O aplikaci</td></tr>
       </tbody>
@@ -130,27 +125,38 @@
 </div>
 
 <style>
+  /* One readable column on the sky, like the landing story */
+  .page-header,
+  .about-content {
+    max-width: 46rem;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
   .about-subtitle {
-    font-family: 'Oxanium', sans-serif;
-    color: rgba(255, 255, 255, 0.65);
     font-size: 1.1rem;
-    margin-top: -1rem;
-    letter-spacing: 1px;
+    color: rgba(255, 255, 255, 0.6);
   }
 
   .about-content section {
-    margin-bottom: 3rem;
+    margin-bottom: 3.5rem;
+  }
+
+  .about-content h3 {
+    font-size: 1.45rem;
+  }
+
+  .about-content p {
+    line-height: 1.75;
+    color: rgba(224, 224, 224, 0.85);
   }
 
   .formula-display {
     display: flex;
     justify-content: center;
-    padding: 1.5rem;
+    padding: 1.25rem 0;
     margin: 1rem 0;
-    background: rgba(0, 8, 20, 0.6);
-    border: 1px solid rgba(255, 215, 0, 0.2);
-    border-radius: 8px;
-    font-size: 1.5rem;
+    font-size: 1.9rem;
   }
 
   .formula {
@@ -246,14 +252,12 @@
   .riddle-reveal p,
   .riddle-reveal ul {
     margin-top: 0.75rem;
-    padding: 1rem;
-    background: rgba(45, 212, 191, 0.05);
-    border: 1px solid rgba(45, 212, 191, 0.25);
-    border-radius: 8px;
+    padding: 0.25rem 0 0.25rem 1.25rem;
+    border-left: 2px solid rgba(45, 212, 191, 0.5);
   }
 
   .riddle-reveal ul {
-    padding-left: 2.25rem;
+    padding-left: 2.5rem;
     line-height: 1.9;
   }
 

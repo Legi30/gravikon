@@ -1,258 +1,180 @@
-<div class="page-header system-page-header">
-  <div>
-    <nav aria-label="Breadcrumb" style="margin-bottom: 1rem;">
-      <ol style="list-style: none; padding: 0; display: flex; gap: 0.5rem; font-size: 0.9rem; color: rgba(255, 255, 255, 0.7);">
-        <li><%= link_to "Mapa galaxie", galaxy_index_path, style: "color: var(--accent); text-decoration: none;" %></li>
-        <li aria-hidden="true">/</li>
-        <li aria-current="page"><%= @system.name %></li>
-      </ol>
-    </nav>
-    <h1 class="system-title" style="--system-color: <%= system_color(@system.id) %>; --system-tint: <%= system_tint(@system.id) %>;"><span class="system-title-dot" aria-hidden="true"></span><%= @system.name %></h1>
-  </div>
+<% content_for :body_class, "system-page" %>
+<% profile = @profile %>
+<% bodies_by_name = @bodies.index_by { |body| body["name"] } %>
+<% tones = "--system-color: #{system_color(@system.id)}; --system-tint: #{system_tint(@system.id)};" %>
 
-  <nav class="system-header-actions" role="navigation" aria-label="Akce se soustavou">
-    <% unless @system.core? %>
-      <%= link_to "Upravit soustavu", edit_galaxy_system_path(@system), class: "btn btn-primary", "aria-label" => "Upravit parametry soustavy" %>
-      <%= button_to "Smazat", galaxy_system_path(@system), method: :delete, form: { onsubmit: "return confirm('Opravdu chcete smazat soustavu #{j @system.name}? Tato akce je nevratná.');", style: "display: contents;" }, class: "btn btn-danger", "aria-label" => "Smazat soustavu" %>
+<%# The system page in the landing's language: no boxes, the live orbit map as
+    the hero, then the inhabitants (with mass and size), relations and meetings %>
+<div class="system-detail" style="<%= tones %>">
+  <header class="system-detail-head">
+    <p class="system-detail-back"><%= link_to "Všechny soustavy", galaxy_systems_path %></p>
+    <h1 class="system-title"><span class="system-dot" aria-hidden="true"></span><%= @system.name %></h1>
+    <% if profile %>
+      <p class="profile-intro"><%= system_intro(profile) %></p>
+      <dl class="profile-facts">
+        <div>
+          <dt>od černé díry</dt>
+          <dd><%= format_distance_km(profile[:distance]) %></dd>
+        </div>
+        <div>
+          <dt>za vaši hodinu</dt>
+          <dd><%= format_minutes(profile[:rate] * 60) %> min</dd>
+        </div>
+        <div>
+          <dt>obyvatelé</dt>
+          <dd><%= cs_count(profile[:planets].size, "planeta", "planety", "planet") %>, <%= cs_count(profile[:moon_count], "měsíc", "měsíce", "měsíců") %></dd>
+        </div>
+      </dl>
     <% end %>
-    <%= link_to "Zpět na galaxii", galaxy_index_path, class: "btn btn-secondary", "aria-label" => "Návrat na mapu galaxie" %>
-  </nav>
-</div>
 
-<style>
-  .system-page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 1.5rem;
-    flex-wrap: wrap;
-  }
+    <% unless @system.core? %>
+      <nav class="system-detail-actions" aria-label="Akce se soustavou">
+        <%= link_to "Upravit soustavu", edit_galaxy_system_path(@system), class: "profile-link" %>
+        <%= button_to "Smazat", galaxy_system_path(@system), method: :delete, form: { onsubmit: "return confirm('Opravdu chcete smazat soustavu #{j @system.name}? Tato akce je nevratná.');", class: "inline-form" }, class: "link-button link-button--danger", "aria-label" => "Smazat soustavu" %>
+      </nav>
+    <% end %>
+  </header>
 
-  .system-title {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    color: var(--system-tint);
-    text-shadow: none;
-  }
+  <% if @system_svg.present? %>
+    <%# Planets and moons wear light tints of the system colour (as on the galaxy map) %>
+    <%# data-tilt: orbital_animation.js shows the system at an angle (like the galaxy map) %>
+    <div class="svg-container system-svg" data-tilt data-black-hole-dilation="<%= profile ? profile[:rate].round(6) : "" %>" role="img" aria-label="Interaktivní mapa planetární soustavy <%= @system.name %>"
+         style="--tone-0: <%= system_tint(@system.id, 0.2) %>; --tone-1: <%= system_tint(@system.id, 0.4) %>; --tone-2: <%= system_tint(@system.id, 0.55) %>; --tone-moon: <%= system_tint(@system.id, 0.7) %>;">
+      <%= raw @system_svg %>
+    </div>
+    <p class="system-svg-hint">Najeďte na těleso a uvidíte, jak rychle na něm plyne čas.</p>
 
-  .system-title-dot {
-    width: 0.55em;
-    height: 0.55em;
-    border-radius: 50%;
-    flex: none;
-    background: var(--system-tint);
-    box-shadow: 0 0 14px var(--system-color);
-  }
+    <!-- Tooltip for celestial body information -->
+    <div id="tooltip" role="tooltip" aria-live="polite"></div>
+  <% else %>
+    <p class="profile-hint">Vizualizace soustavy se nepodařila načíst. Zkuste obnovit stránku nebo soustavu přegenerovat.</p>
+  <% end %>
 
-  .system-svg .celestial-body[data-type="planet"] {
-    fill: var(--tone-0);
-  }
+  <% if profile %>
+    <div class="system-detail-body">
+      <section class="profile-block system-inhabitants" aria-labelledby="inhabitants-heading">
+        <h2 id="inhabitants-heading">Kdo tu žije</h2>
+        <p class="profile-story"><%= system_story(profile) %></p>
+        <p class="profile-hint">Kolik minut uběhne na každém tělese, zatímco vám uběhne hodina, a jak je těleso těžké a velké:</p>
+        <ul class="body-list">
+          <% rows = profile[:stars].map { |star| [ star, (profile[:stars].size >= 2 ? "dvojhvězda" : "hvězda"), :star ] } %>
+          <% profile[:planets].each do |planet| %>
+            <% rows << [ planet, "planeta", :planet ] %>
+            <% planet[:moons].each { |moon| rows << [ moon, "měsíc", :moon ] } %>
+          <% end %>
+          <% rows.each do |body, label, kind| %>
+            <% raw_body = bodies_by_name[body[:name]] || {} %>
+            <li class="body-row body-row--<%= kind %>">
+              <span class="body-name"><%= body[:name] %> <small><%= label %></small></span>
+              <span class="body-physics">
+                <span><%= format_mass(raw_body["mass"]) %></span>
+                <span>poloměr <%= format_radius_km(raw_body["radius"]) %></span>
+              </span>
+              <span class="inhabitant-track"><span class="inhabitant-bar" style="width: <%= (body[:dilation] * 100).clamp(0, 100).round(1) %>%;"></span></span>
+              <span class="inhabitant-value"><%= format_minutes(body[:dilation] * 60) %> min</span>
+            </li>
+          <% end %>
+        </ul>
+      </section>
 
-  .system-svg .celestial-body[data-type="planet"][data-tone="1"] {
-    fill: var(--tone-1);
-  }
+      <div class="system-detail-side">
+        <section class="profile-block" aria-labelledby="relations-heading">
+          <h2 id="relations-heading">Vztahy s ostatními</h2>
+          <% if profile[:relations].empty? %>
+            <p class="profile-hint">V galaxii zatím není žádná jiná soustava.</p>
+          <% else %>
+            <p class="profile-hint">Jak dlouho k nim letí signál a kolik u nich uběhne, zatímco tady uplyne hodina.</p>
+            <ul class="relation-list">
+              <% profile[:relations].each do |relation| %>
+                <li class="relation" style="--other-color: <%= system_color(relation[:system].id) %>;">
+                  <span class="relation-name"><span class="system-dot system-dot--other" aria-hidden="true"></span><%= link_to relation[:system].name, galaxy_system_path(relation[:system]) %></span>
+                  <span class="relation-facts">
+                    <span>signál <strong><%= format_delay_display(relation[:signal_delay]) %></strong></span>
+                    <% if relation[:minutes_there_per_hour_here] %>
+                      <span>hodina tady = <strong><%= format_minutes(relation[:minutes_there_per_hour_here]) %> min</strong> tam</span>
+                    <% end %>
+                  </span>
+                </li>
+              <% end %>
+            </ul>
+          <% end %>
+        </section>
 
-  .system-svg .celestial-body[data-type="planet"][data-tone="2"] {
-    fill: var(--tone-2);
-  }
-
-  .system-svg .celestial-body[data-type="moon"] {
-    fill: var(--tone-moon);
-  }
-
-  .system-svg .orbit-path {
-    stroke: var(--system-color);
-    stroke-opacity: 0.55;
-  }
-
-  .system-header-actions {
-    display: flex;
-    gap: 0.5rem;
-    margin-top: 1rem;
-  }
-
-  /* Uniform control height regardless of <a> vs <button> rendering */
-  .system-header-actions .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    height: 42px;
-    padding-top: 0;
-    padding-bottom: 0;
-    border: none;
-    font-size: 0.9rem;
-  }
-</style>
-
-<div class="content-section">
-  <div class="card fade-in">
-    <h3>Metadata soustavy</h3>
-    <div class="system-metadata" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-top: 1rem;">
-      <div class="metadata-item">
-        <strong style="color: var(--accent); display: block; margin-bottom: 0.5rem;">Název soustavy</strong>
-        <span><%= @system.name %></span>
+        <section class="profile-block" aria-labelledby="meetings-heading">
+          <h2 id="meetings-heading">Schůzky</h2>
+          <% if profile[:meetings].empty? %>
+            <p class="profile-hint">Tady se zatím nikdo nesešel.</p>
+          <% else %>
+            <ul class="profile-meeting-list">
+              <% profile[:meetings].each do |meeting| %>
+                <li>
+                  <span class="pm-time"><%= "#{meeting.start_time}–#{meeting.end_time}" %></span>
+                  <span class="pm-topic">
+                    <%= link_to (meeting.topic.presence || "(bez tématu)"), edit_meeting_path(meeting) %>
+                    <% if meeting.is_inter_system %><span class="pm-badge">mezi soustavami</span><% end %>
+                  </span>
+                  <span class="pm-stats"><%= meeting.participants_array.join(", ") %></span>
+                </li>
+              <% end %>
+            </ul>
+          <% end %>
+          <p class="system-detail-cta"><%= link_to "Naplánovat tu schůzku", new_meeting_path(system_id: @system.id), class: "profile-link", "aria-label" => "Naplánovat novou schůzku v této soustavě" %></p>
+        </section>
       </div>
+    </div>
+  <% end %>
 
-      <div class="metadata-item">
-        <strong style="color: var(--accent); display: block; margin-bottom: 0.5rem;">Pozice v galaxii</strong>
-        <span>X: <%= @system.x.round(2) %>, Y: <%= @system.y.round(2) %></span>
-      </div>
+  <%# Core systems are permanent: no regeneration (the controller refuses it too) %>
+  <% unless @system.core? %>
+    <section class="profile-block system-regenerate" aria-labelledby="regenerate-heading">
+      <h2 id="regenerate-heading">Přegenerovat soustavu</h2>
+      <%= form_with url: regenerate_galaxy_system_path(@system), method: :post, id: "system-regeneration-form", html: { onsubmit: "return confirm('Opravdu chcete regenerovat tuto soustavu? Všechna současná tělesa budou nahrazena novými.');" }, "aria-label" => "Formulář pro regenerování planetární soustavy" do |f| %>
+        <p class="profile-hint">Na stejném místě v galaxii vznikne nová hvězda s novými planetami a měsíci.</p>
 
-      <div class="metadata-item">
-        <strong style="color: var(--accent); display: block; margin-bottom: 0.5rem;">Počet těles</strong>
-        <span><%= @system_data['bodies'].count %></span>
-      </div>
+        <div class="form-row">
+          <div class="form-group">
+            <%= label_tag :num_planets, "Počet planet (1–10)" %>
+            <%= number_field_tag :num_planets, @system_data['bodies'].count { |b| b['type'] == 'planet' }, min: 1, max: 10, class: "form-control", id: "num-planets-field", "aria-required": "true" %>
+          </div>
 
-      <div class="metadata-item">
-        <strong style="color: var(--accent); display: block; margin-bottom: 0.5rem;">Vzdálenost od černé díry</strong>
-        <% distance = Math.sqrt((@system.x - 400)**2 + (@system.y - 400)**2) %>
-        <span><%= format_distance_km(distance) %></span>
-      </div>
+          <div class="form-group">
+            <%= label_tag :max_moons_per_planet, "Nejvýš měsíců na planetu (0–5)" %>
+            <% current_max_moons = @system_data['bodies'].count { |b| b['type'] == 'moon' } / [@system_data['bodies'].count { |b| b['type'] == 'planet' }, 1].max %>
+            <%= number_field_tag :max_moons_per_planet, [current_max_moons.ceil, 2].max, min: 0, max: 5, class: "form-control", id: "max-moons-field", "aria-required": "true" %>
+          </div>
+        </div>
 
-      <% stars = @system_data['bodies'].select { |b| b['type'] == 'star' } %>
-      <% if stars.any? %>
-        <div class="metadata-item">
-          <strong style="color: var(--accent); display: block; margin-bottom: 0.5rem;"><%= stars.size >= 2 ? "Dvojhvězda" : "Centrální hvězda" %></strong>
-          <span><%= stars.map { |star| star['name'] }.join(" a ") %></span>
+        <div class="actions">
+          <%= submit_tag "Přegenerovat soustavu", class: "btn btn-secondary", id: "regenerate-button", "aria-label": "Regenerovat planetární soustavu s novými parametry" %>
         </div>
       <% end %>
-
-      <div class="metadata-item">
-        <strong style="color: var(--accent); display: block; margin-bottom: 0.5rem;">Vytvořeno</strong>
-        <span><%= @system.created_at.strftime('%d.%m.%Y %H:%M') %></span>
-      </div>
-    </div>
-  </div>
+    </section>
+  <% end %>
 </div>
-
-<div class="content-section">
-  <div class="card fade-in">
-    <h3>Seznam těles v soustavě</h3>
-    <table role="table" aria-label="Seznam nebeských těles v planetární soustavě" style="margin-top: 1rem;">
-      <thead>
-        <tr>
-          <th scope="col">Název</th>
-          <th scope="col">Typ</th>
-          <th scope="col">Hmotnost (kg)</th>
-          <th scope="col">Poloměr (m)</th>
-          <th scope="col">Gravitační dilatace</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% @system_data['bodies'].each do |body| %>
-          <tr>
-            <td><strong><%= body['name'] %></strong></td>
-            <td>
-              <% case body['type']
-                 when 'star' %>⭐ Hvězda
-              <% when 'planet' %>🪐 Planeta
-              <% when 'moon' %>🌙 Měsíc
-              <% else %><%= body['type'] %>
-              <% end %>
-            </td>
-            <td><%= body['mass'] ? sprintf('%.2e', body['mass']) : 'N/A' %></td>
-            <td><%= body['radius'] ? sprintf('%.2e', body['radius']) : 'N/A' %></td>
-            <td><%= body['dilation'] ? (body['dilation'] * 100).round(6) : 0 %>%</td>
-          </tr>
-        <% end %>
-      </tbody>
-    </table>
-  </div>
-</div>
-
-<div class="content-section">
-  <div class="card fade-in">
-    <h3>Schůzky v této soustavě</h3>
-    <% system_meetings = @meetings.select { |m|
-         m.system_id == @system.id ||
-         (m.is_inter_system && m.participant_systems_hash.values.include?(@system.id))
-       } %>
-
-    <% if system_meetings.empty? %>
-      <p style="color: rgba(255, 255, 255, 0.7); margin-top: 1rem;">
-        V této soustavě zatím nebyly naplánovány žádné schůzky.
-      </p>
-      <%= link_to "Naplánovat schůzku", new_meeting_path(system_id: @system.id), class: "btn btn-primary", style: "margin-top: 1rem;" %>
-    <% else %>
-      <table role="table" aria-label="Seznam schůzek v této soustavě" style="margin-top: 1rem;">
-        <thead>
-          <tr>
-            <th scope="col">Čas</th>
-            <th scope="col">Téma</th>
-            <th scope="col">Účastníci</th>
-            <th scope="col">Akce</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% system_meetings.each do |meeting| %>
-            <tr>
-              <td><%= meeting.start_time %> - <%= meeting.end_time %></td>
-              <td><%= meeting.topic.present? ? meeting.topic : '<em>Bez tématu</em>'.html_safe %></td>
-              <td><%= meeting.participants_array.join(', ') %></td>
-              <td>
-                <%= link_to "Upravit", edit_meeting_path(meeting), class: "btn btn-secondary btn-sm" %>
-              </td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-
-      <%= link_to "Naplánovat schůzku", new_meeting_path(system_id: @system.id), class: "btn btn-primary", style: "margin-top: 1.25rem;", "aria-label" => "Naplánovat novou schůzku v této soustavě" %>
-    <% end %>
-  </div>
-</div>
-
-<%# Core systems are permanent: no regeneration (the controller refuses it too) %>
-<% unless @system.core? %>
-<div class="content-section">
-  <div class="card fade-in">
-    <h3>Parametry soustavy</h3>
-    <%= form_with url: regenerate_galaxy_system_path(@system), method: :post, id: "system-regeneration-form", html: { onsubmit: "return confirm('Opravdu chcete regenerovat tuto soustavu? Všechna současná tělesa budou nahrazena novými.');" }, "aria-label" => "Formulář pro regenerování planetární soustavy" do |f| %>
-      <p style="color: rgba(255, 255, 255, 0.8); margin-bottom: 1rem;">
-        Můžete vygenerovat novou konfiguraci soustavy na stejné pozici v galaxii.
-      </p>
-
-      <div class="form-group">
-        <%= label_tag :num_planets, "Počet planet (1-10):" %>
-        <%= number_field_tag :num_planets, @system_data['bodies'].count { |b| b['type'] == 'planet' }, min: 1, max: 10, class: "form-control", id: "num-planets-field", "aria-describedby": "planets-help", "aria-required": "true" %>
-        <small id="planets-help" style="color: var(--text); opacity: 0.8;">Kolik planet obíhá kolem hvězdy</small>
-      </div>
-
-      <div class="form-group">
-        <%= label_tag :max_moons_per_planet, "Maximální počet měsíců (0-5):" %>
-        <% current_max_moons = @system_data['bodies'].count { |b| b['type'] == 'moon' } / [@system_data['bodies'].count { |b| b['type'] == 'planet' }, 1].max %>
-        <%= number_field_tag :max_moons_per_planet, [current_max_moons.ceil, 2].max, min: 0, max: 5, class: "form-control", id: "max-moons-field", "aria-describedby": "moons-help", "aria-required": "true" %>
-        <small id="moons-help" style="color: var(--text); opacity: 0.8;">Maximální počet měsíců pro každou planetu</small>
-      </div>
-
-      <div class="actions">
-        <%= submit_tag "Regenerovat soustavu", class: "btn btn-accent", id: "regenerate-button", "aria-label": "Regenerovat planetární soustavu s novými parametry" %>
-      </div>
-    <% end %>
-  </div>
-</div>
-<% end %>
 
 <% if @system_svg.present? %>
-  <%# Planets and moons wear light tints of the system colour (as on the galaxy map) %>
-  <div class="svg-container fade-in system-svg" role="img" aria-label="Interaktivní mapa planetární soustavy <%= @system.name %>"
-       style="--system-color: <%= system_color(@system.id) %>; --tone-0: <%= system_tint(@system.id, 0.2) %>; --tone-1: <%= system_tint(@system.id, 0.4) %>; --tone-2: <%= system_tint(@system.id, 0.55) %>; --tone-moon: <%= system_tint(@system.id, 0.7) %>;">
-    <%= raw @system_svg %>
-  </div>
-
-  <!-- Tooltip for celestial body information -->
-  <div id="tooltip" role="tooltip" aria-live="polite"></div>
-
-  <!-- Interactive map features: tooltips + orbital animation -->
+  <!-- Interactive map features: tooltips + orbital animation + signals between bodies -->
   <script src="<%= asset_path('system_map.js') %>"></script>
   <script src="<%= asset_path('orbital_animation.js') %>"></script>
-<% else %>
-  <div class="content-section">
-    <div class="card fade-in">
-      <p style="color: rgba(255, 255, 255, 0.7);">Vizualizace soustavy se nepodařila načíst. Zkuste obnovit stránku nebo regenerovat soustavu.</p>
-    </div>
-  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const svg = document.querySelector('.system-svg svg');
+      if (!svg || !window.GalaxyInteractions) return;
+
+      // Planets and moons call each other (decorative, like the galaxy map)
+      const bodies = Array.from(svg.querySelectorAll('.celestial-body')).filter(el => el.getAttribute('data-type') !== 'star');
+      const color = getComputedStyle(document.querySelector('.system-detail')).getPropertyValue('--system-tint').trim() || '#ffffff';
+      const point = (el) => () => ({ x: parseFloat(el.getAttribute('cx')), y: parseFloat(el.getAttribute('cy')) });
+      const pick = (list) => list[Math.floor(Math.random() * list.length)];
+
+      window.GalaxyInteractions.runSignals(svg, function() {
+        if (bodies.length < 2) return null;
+        const a = pick(bodies);
+        const b = pick(bodies.filter(el => el !== a));
+        return { from: point(a), to: point(b), color: color, scale: 1.4 };
+      });
+    });
+  </script>
 <% end %>
 
 <script>
@@ -299,4 +221,3 @@
     validateForm();
   });
 </script>
-

@@ -5,24 +5,21 @@
 <% selected_names = local_assigns.fetch(:selected_names, []) %>
 
 <fieldset>
-  <legend style="font-size: 1.1rem; margin-bottom: 1rem;">Účastníci z různých soustav (vyberte alespoň 2 z různých soustav):</legend>
+  <legend>Kdo se sejde? <small>Vyberte alespoň dva účastníky ze dvou různých soustav.</small></legend>
 
   <div id="participants-error" class="error-message" style="display: none; margin-bottom: 1rem;" role="alert" aria-live="polite"></div>
 
   <% systems_with_bodies.each do |system_id, system_info| %>
-    <div class="system-participant-group" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
-      <h4 style="margin: 0 0 0.75rem 0; color: var(--accent); display: flex; align-items: center; gap: 0.5rem;">
-        🪐 <%= system_info[:system].name %>
-        <small style="color: rgba(255, 255, 255, 0.6); font-weight: normal; font-size: 0.85rem;">
-          (<%= system_info[:bodies].count %> těles)
-        </small>
+    <div class="system-participant-group" style="--system-color: <%= system_color(system_id) %>; --system-tint: <%= system_tint(system_id) %>;">
+      <h4 class="participant-group-name">
+        <span class="system-dot" aria-hidden="true"></span><%= system_info[:system].name %>
       </h4>
 
-      <div class="checkbox-group" role="group" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.5rem;">
+      <div class="checkbox-group participant-grid" role="group">
         <% system_info[:bodies].each_with_index do |body, index| %>
           <% checked = selected_names.include?(body['name']) %>
           <% field_id = "ps_field_#{system_id}_#{index}" %>
-          <label class="checkbox-label" for="participant_<%= system_id %>_<%= index %>" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; background: rgba(255, 255, 255, 0.05); border-radius: 4px; transition: background 0.2s;">
+          <label class="checkbox-label participant-tile" for="participant_<%= system_id %>_<%= index %>">
             <%= check_box_tag "meeting[participants][]", body['name'], checked,
                 id: "participant_#{system_id}_#{index}",
                 class: "participant-checkbox",
@@ -34,16 +31,14 @@
                 aria: { required: "false" } %>
             <%= hidden_field_tag "meeting[participant_systems][#{body['name']}]", system_id, id: field_id, disabled: !checked %>
             <span><%= body['name'] %></span>
-            <small style="color: rgba(255, 255, 255, 0.5); margin-left: auto;">
-              <%= body['type'] == 'star' ? '⭐' : body['type'] == 'planet' ? '🪐' : '🌙' %>
-            </small>
+            <small class="participant-type"><%= { "star" => "hvězda", "planet" => "planeta", "moon" => "měsíc" }[body['type']] %></small>
           </label>
         <% end %>
       </div>
     </div>
   <% end %>
 
-  <div id="selection-summary" style="padding: 1rem; background: rgba(17, 153, 142, 0.1); border-radius: 6px; border-left: 4px solid var(--accent); display: none;">
+  <div id="selection-summary" style="display: none;">
     <strong>Vybraní účastníci:</strong>
     <div id="summary-content" style="margin-top: 0.5rem;"></div>
   </div>
@@ -118,17 +113,6 @@
       cb.addEventListener('change', updateSelectionSummary);
     });
 
-    // Hover effect for labels
-    const labels = form.querySelectorAll('.checkbox-label');
-    labels.forEach(label => {
-      label.addEventListener('mouseenter', function() {
-        this.style.background = 'rgba(255, 255, 255, 0.1)';
-      });
-      label.addEventListener('mouseleave', function() {
-        this.style.background = 'rgba(255, 255, 255, 0.05)';
-      });
-    });
-
     // Form submission validation
     form.addEventListener('submit', function(e) {
       const selected = checkboxes.filter(cb => cb.checked);
@@ -148,13 +132,3 @@
   });
 </script>
 
-<style>
-  .system-participant-group:hover {
-    border-color: rgba(255, 255, 255, 0.2);
-  }
-
-  .checkbox-label input[type="checkbox"]:checked ~ span {
-    color: var(--accent);
-    font-weight: bold;
-  }
-</style>

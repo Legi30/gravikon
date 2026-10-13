@@ -1,34 +1,63 @@
-<div class="page-header">
-  <h1>Nová schůzka<% if @system.present? %> - <%= @system.name %><% end %></h1>
-</div>
+<% content_for :body_class, "meeting-form-page" %>
 
 <% if @systems.present? && @systems.count >= 2 && @system.blank? %>
-  <div class="content-section">
-    <div class="card fade-in">
-      <h3>Vyberte soustavu pro schůzku</h3>
-      <p>Pro vytvoření schůzky v rámci jedné soustavy vyberte soustavu níže. Pro schůzku mezi soustavami použijte mezisystémový režim.</p>
+  <%# Step 1: where does the meeting happen? Same rows as the Soustavy page %>
+  <div class="systems-list">
+    <header class="systems-list-head">
+      <h1>Nová schůzka</h1>
+      <p>Kde se mají účastníci sejít? Vyberte soustavu, nebo je svolejte z několika soustav najednou.</p>
+    </header>
 
-      <div class="systems-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; margin-top: 1.5rem;">
-        <% @systems.each do |system| %>
-          <div class="system-card" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 1.25rem; transition: all 0.3s ease;">
-            <h4 style="margin: 0 0 0.75rem 0; color: var(--accent);"><%= system.name %></h4>
-            <% system_data = system.load_system_data %>
-            <% if system_data %>
-              <p style="font-size: 0.9rem; color: rgba(255, 255, 255, 0.7); margin-bottom: 1rem;">
-                Počet těles: <%= system_data['bodies']&.count || 0 %>
-              </p>
-            <% end %>
-            <%= link_to "Vybrat tuto soustavu", new_meeting_path(system_id: system.id), class: "btn btn-primary btn-sm" %>
+    <ol class="systems-rows">
+      <% galaxy_system_profiles.each do |profile| %>
+        <% system = profile[:system] %>
+        <li class="systems-row systems-row--pick" style="--system-color: <%= system_color(system.id) %>; --system-tint: <%= system_tint(system.id) %>;">
+          <%= render "galaxy/system_miniature", profile: profile %>
+          <div class="systems-row-main">
+            <h2><%= link_to system.name, new_meeting_path(system_id: system.id) %></h2>
+            <p class="systems-row-sub">
+              <%= cs_count(profile[:stars].size + profile[:planets].size + profile[:moon_count], "těleso", "tělesa", "těles") %>,
+              za vaši hodinu tu uběhne <%= format_minutes(profile[:rate] * 60) %> min
+            </p>
           </div>
-        <% end %>
-      </div>
+          <p class="systems-row-links">
+            <%= link_to "Naplánovat tady", new_meeting_path(system_id: system.id), class: "profile-link" %>
+          </p>
+        </li>
+      <% end %>
 
-      <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgba(255, 255, 255, 0.1);">
-        <%= link_to "🌌 Nebo vytvořit mezisystémovou schůzku", new_inter_system_meetings_path, class: "btn btn-accent" %>
-      </div>
-    </div>
+      <li class="systems-row systems-row--pick systems-row--inter">
+        <svg class="system-miniature" viewBox="-40 -40 80 80" aria-hidden="true">
+          <% galaxy_system_profiles.first(6).each_with_index do |profile, index| %>
+            <% angle = index * 2 * Math::PI / [ @systems.count, 6 ].min - Math::PI / 2 %>
+            <line x1="0" y1="0" x2="<%= (24 * Math.cos(angle)).round(2) %>" y2="<%= (24 * Math.sin(angle)).round(2) %>" class="miniature-link" />
+            <circle cx="<%= (24 * Math.cos(angle)).round(2) %>" cy="<%= (24 * Math.sin(angle)).round(2) %>" r="5" style="fill: <%= system_tint(profile[:system].id) %>;" />
+          <% end %>
+          <circle r="3" class="miniature-hub" />
+        </svg>
+        <div class="systems-row-main">
+          <h2><%= link_to "Mezi soustavami", new_inter_system_meetings_path %></h2>
+          <p class="systems-row-sub">Účastníci z různých soustav: každý prožije schůzku jinak dlouho a jejich slova k sobě poletí desítky sekund.</p>
+        </div>
+        <p class="systems-row-links">
+          <%= link_to "Svolat z více soustav", new_inter_system_meetings_path, class: "profile-link" %>
+        </p>
+      </li>
+    </ol>
   </div>
 <% else %>
+
+<div class="page-header meeting-form-head">
+  <h1>Nová schůzka</h1>
+  <% if @system.present? %>
+    <p class="meeting-form-where" style="--system-color: <%= system_color(@system.id) %>; --system-tint: <%= system_tint(@system.id) %>;">
+      <span class="system-dot" aria-hidden="true"></span>v soustavě <strong><%= @system.name %></strong>
+      <% if System.count > 1 %>
+        <%= link_to "jiná soustava", new_meeting_path, class: "meeting-form-switch" %>
+      <% end %>
+    </p>
+  <% end %>
+</div>
 
 <div class="content-section">
   <div class="card fade-in">
@@ -37,27 +66,29 @@
         <%= f.hidden_field :system_id, value: @system.id %>
       <% end %>
 
+      <div class="meeting-fields">
       <div class="form-group">
-        <%= f.label :start_time, "Začátek (např. 12:00):", for: "meeting_start_time" %>
+        <%= f.label :start_time, "Začátek", for: "meeting_start_time" %>
         <%= f.text_field :start_time, value: params.dig(:meeting, :start_time), placeholder: "12:00", id: "meeting_start_time", aria: { describedby: "start-time-error", required: "true" } %>
         <div id="start-time-error" class="error-message" style="display: none;" role="alert" aria-live="polite"></div>
       </div>
 
       <div class="form-group">
-        <%= f.label :end_time, "Konec (např. 13:30):", for: "meeting_end_time" %>
+        <%= f.label :end_time, "Konec", for: "meeting_end_time" %>
         <%= f.text_field :end_time, value: params.dig(:meeting, :end_time), placeholder: "13:30", id: "meeting_end_time", aria: { describedby: "end-time-error duration-display", required: "true" } %>
         <div id="end-time-error" class="error-message" style="display: none;" role="alert" aria-live="polite"></div>
         <div id="duration-display" class="success-message" style="display: none;" role="status" aria-live="polite"></div>
       </div>
 
       <div class="form-group">
-        <%= f.label :topic, "Téma (volitelné):", for: "meeting_topic" %>
+        <%= f.label :topic, "Téma (nepovinné)", for: "meeting_topic" %>
         <%= f.text_field :topic, value: params.dig(:meeting, :topic), placeholder: "Diskuse o gravitaci...", id: "meeting_topic" %>
+      </div>
       </div>
 
       <div class="form-group">
-        <fieldset>
-          <legend>Účastníci (vyberte alespoň 2)<% if @system.present? %> z <%= @system.name %><% end %>:</legend>
+        <fieldset<% if @system.present? %> style="--system-color: <%= system_color(@system.id) %>; --system-tint: <%= system_tint(@system.id) %>;"<% end %>>
+          <legend>Kdo se sejde? <small>Vyberte alespoň dva.</small></legend>
           <%= render "participant_grid",
               bodies: @bodies,
               selected_names: Array(params.dig(:meeting, :participants)),

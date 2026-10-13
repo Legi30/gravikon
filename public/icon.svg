@@ -1,26 +1,33 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- The galaxy's black hole seen at an angle (same look as the map and the
+       header mark): black shadow, thin photon ring, the disc's far side
+       lensed over the top and its near half crossing in front -->
   <defs>
-    <radialGradient id="bh" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#000000"/>
-      <stop offset="45%" stop-color="#0d0020"/>
-      <stop offset="68%" stop-color="#330066"/>
-      <stop offset="85%" stop-color="#8b5cf6"/>
-      <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0"/>
+    <radialGradient id="glow" cx="50%" cy="54%" r="50%">
+      <stop offset="0%" stop-color="#ffb347" stop-opacity="0.45"/>
+      <stop offset="60%" stop-color="#ff8a1a" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#ff7a1a" stop-opacity="0"/>
     </radialGradient>
-    <linearGradient id="disk" x1="0%" y1="50%" x2="100%" y2="50%">
-      <stop offset="0%" stop-color="#fbbf24" stop-opacity="0"/>
-      <stop offset="30%" stop-color="#fbbf24"/>
-      <stop offset="70%" stop-color="#f59e0b"/>
-      <stop offset="100%" stop-color="#f59e0b" stop-opacity="0"/>
+    <linearGradient id="disc" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#fff6e0"/>
+      <stop offset="35%" stop-color="#ffd27a"/>
+      <stop offset="70%" stop-color="#f08a2a"/>
+      <stop offset="100%" stop-color="#b8461a"/>
     </linearGradient>
   </defs>
   <rect width="64" height="64" rx="14" fill="#000814"/>
-  <circle cx="14" cy="12" r="1.1" fill="#ffffff" opacity="0.8"/>
-  <circle cx="52" cy="18" r="0.8" fill="#ffffff" opacity="0.6"/>
-  <circle cx="47" cy="50" r="1" fill="#aaccff" opacity="0.7"/>
-  <circle cx="11" cy="46" r="0.7" fill="#ffffff" opacity="0.5"/>
-  <ellipse cx="32" cy="33" rx="26" ry="7" fill="url(#disk)" opacity="0.75" transform="rotate(-18 32 33)"/>
-  <circle cx="32" cy="32" r="19" fill="url(#bh)"/>
-  <circle cx="32" cy="32" r="11" fill="#000000"/>
-  <circle cx="32" cy="32" r="11.8" fill="none" stroke="#a855f7" stroke-width="1.4" opacity="0.9"/>
+  <circle cx="12" cy="11" r="1" fill="#ffffff" opacity="0.8"/>
+  <circle cx="53" cy="14" r="0.8" fill="#ffffff" opacity="0.6"/>
+  <circle cx="50" cy="53" r="0.9" fill="#aaccff" opacity="0.7"/>
+  <circle cx="10" cy="51" r="0.7" fill="#ffffff" opacity="0.5"/>
+  <circle cx="32" cy="34" r="30" fill="url(#glow)"/>
+  <!-- far half of the disc (behind the hole) -->
+  <path d="M5 34 A27 8.5 0 0 1 59 34" fill="none" stroke="url(#disc)" stroke-width="3.6" opacity="0.6"/>
+  <!-- the far side bent over the top by gravity -->
+  <path d="M17 34 A15 15 0 0 1 47 34" fill="none" stroke="url(#disc)" stroke-width="3.2" opacity="0.9"/>
+  <!-- shadow + photon ring -->
+  <circle cx="32" cy="34" r="12" fill="#000000"/>
+  <circle cx="32" cy="34" r="12.4" fill="none" stroke="#ffe7bf" stroke-width="0.9"/>
+  <!-- near half of the disc, in front of the shadow -->
+  <path d="M5 34 A27 8.5 0 0 0 59 34" fill="none" stroke="url(#disc)" stroke-width="4.6" stroke-linecap="round"/>
 </svg>

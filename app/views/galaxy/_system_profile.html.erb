@@ -1,0 +1,104 @@
+<%# One system's profile in the landing panel (formerly the Přehled page).
+    All profiles are rendered hidden; galaxy.js shows the one whose marker
+    was clicked (matched by FILE id) and keeps #soustava-<db id> in the URL. %>
+<% system = profile[:system] %>
+<section class="system-profile" id="profile-system-<%= system.id %>"
+         data-file-id="<%= system.system_id %>" data-hash="soustava-<%= system.id %>"
+         aria-labelledby="profile-name-<%= system.id %>"
+         style="--system-color: <%= system_color(system.id) %>; --system-tint: <%= system_tint(system.id) %>;" hidden>
+  <header class="profile-head">
+    <h2 class="profile-name" id="profile-name-<%= system.id %>"><span class="system-dot" aria-hidden="true"></span><%= system.name %></h2>
+    <p class="profile-intro"><%= system_intro(profile) %></p>
+    <dl class="profile-facts">
+      <div>
+        <dt>od černé díry</dt>
+        <dd><%= format_distance_km(profile[:distance]) %></dd>
+      </div>
+      <div>
+        <dt>za vaši hodinu</dt>
+        <dd><%= format_minutes(profile[:rate] * 60) %> min</dd>
+      </div>
+      <div>
+        <dt>obyvatelé</dt>
+        <dd><%= cs_count(profile[:planets].size, "planeta", "planety", "planet") %>, <%= cs_count(profile[:moon_count], "měsíc", "měsíce", "měsíců") %></dd>
+      </div>
+    </dl>
+  </header>
+
+  <div class="profile-block">
+    <h3>Kdo tu žije</h3>
+    <p class="profile-story"><%= system_story(profile) %></p>
+    <p class="profile-hint">Kolik minut uběhne na každém tělese, zatímco vám uběhne hodina:</p>
+    <ul class="inhabitant-list">
+      <% profile[:stars].each do |star| %>
+        <li class="inhabitant inhabitant--star">
+          <span class="inhabitant-name"><%= star[:name] %> <small><%= profile[:stars].size >= 2 ? "dvojhvězda" : "hvězda" %></small></span>
+          <span class="inhabitant-track"><span class="inhabitant-bar" style="width: <%= (star[:dilation] * 100).clamp(0, 100).round(1) %>%;"></span></span>
+          <span class="inhabitant-value"><%= format_minutes(star[:dilation] * 60) %> min</span>
+        </li>
+      <% end %>
+      <% profile[:planets].each do |planet| %>
+        <li class="inhabitant inhabitant--planet">
+          <span class="inhabitant-name"><%= planet[:name] %> <small>planeta</small></span>
+          <span class="inhabitant-track"><span class="inhabitant-bar" style="width: <%= (planet[:dilation] * 100).clamp(0, 100).round(1) %>%;"></span></span>
+          <span class="inhabitant-value"><%= format_minutes(planet[:dilation] * 60) %> min</span>
+        </li>
+        <% planet[:moons].each do |moon| %>
+          <li class="inhabitant inhabitant--moon">
+            <span class="inhabitant-name"><%= moon[:name] %> <small>měsíc</small></span>
+            <span class="inhabitant-track"><span class="inhabitant-bar" style="width: <%= (moon[:dilation] * 100).clamp(0, 100).round(1) %>%;"></span></span>
+            <span class="inhabitant-value"><%= format_minutes(moon[:dilation] * 60) %> min</span>
+          </li>
+        <% end %>
+      <% end %>
+    </ul>
+  </div>
+
+  <div class="profile-block">
+    <h3>Vztahy s ostatními</h3>
+    <% if profile[:relations].empty? %>
+      <p class="profile-hint">V galaxii zatím není žádná jiná soustava.</p>
+    <% else %>
+      <p class="profile-hint">Jak dlouho k nim letí signál a kolik u nich uběhne, zatímco tady uplyne hodina.</p>
+      <ul class="relation-list">
+        <% profile[:relations].each do |relation| %>
+          <li class="relation" style="--other-color: <%= system_color(relation[:system].id) %>;">
+            <span class="relation-name"><span class="system-dot system-dot--other" aria-hidden="true"></span><%= relation[:system].name %></span>
+            <span class="relation-facts">
+              <span>signál <strong><%= format_delay_display(relation[:signal_delay]) %></strong></span>
+              <% if relation[:minutes_there_per_hour_here] %>
+                <span>hodina tady = <strong><%= format_minutes(relation[:minutes_there_per_hour_here]) %> min</strong> tam</span>
+              <% end %>
+              <% if relation[:shared_meetings].positive? %>
+                <span><%= cs_count(relation[:shared_meetings], "společná schůzka", "společné schůzky", "společných schůzek") %></span>
+              <% end %>
+            </span>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  </div>
+
+  <% if profile[:meetings].any? %>
+    <div class="profile-block">
+      <h3>Schůzky</h3>
+      <ul class="profile-meeting-list">
+        <% profile[:meetings].each do |meeting| %>
+          <li>
+            <span class="pm-time"><%= "#{meeting.start_time}–#{meeting.end_time}" %></span>
+            <span class="pm-topic">
+              <%= meeting.topic.presence || "(bez tématu)" %>
+              <% if meeting.is_inter_system %><span class="pm-badge">mezi soustavami</span><% end %>
+            </span>
+            <span class="pm-stats">prožito <%= meeting.formatted_duration %>, signál <%= format_delay_display(meeting.avg_delay) %></span>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <footer class="profile-foot">
+    <%= link_to "Prohlédnout soustavu", galaxy_system_path(system), class: "profile-link" %>
+    <%= link_to "Upravit", edit_galaxy_system_path(system), class: "profile-link profile-link--quiet" unless system.core? %>
+  </footer>
+</section>

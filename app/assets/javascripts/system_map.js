@@ -17,6 +17,19 @@ document.addEventListener('DOMContentLoaded', function() {
     return;
   }
 
+  // The black hole's dilation at this system (server-side, from the same
+  // RelativisticCalculator as the page); a body's clock = its own factor × this
+  const svgHost = document.querySelector('.system-svg[data-black-hole-dilation]');
+  const blackHoleDilation = svgHost ? parseFloat(svgHost.getAttribute('data-black-hole-dilation')) : NaN;
+
+  // 6.69e27 → "6,69 × 10<sup>27</sup>" (Czech decimal comma)
+  function scientific(value) {
+    if (!(value > 0)) return '–';
+    const exponent = Math.floor(Math.log10(value));
+    const mantissa = (value / Math.pow(10, exponent)).toFixed(2).replace('.', ',');
+    return `${mantissa} × 10<sup>${exponent}</sup>`;
+  }
+
   // Add event listeners to each body
   celestialBodies.forEach(function(body) {
     // Store original stroke properties
@@ -42,10 +55,13 @@ document.addEventListener('DOMContentLoaded', function() {
       const mass = body.getAttribute('data-mass') || '0';
       const dilation = body.getAttribute('data-dilation') || '1.0';
 
-      // Format values
-      const radiusFormatted = parseFloat(radius).toExponential(2);
-      const massFormatted = parseFloat(mass).toExponential(2);
-      const dilationFormatted = parseFloat(dilation).toFixed(4);
+      // Format values (radius is stored in metres, shown in km)
+      const radiusFormatted = Math.round(parseFloat(radius) / 1000).toLocaleString('cs-CZ');
+      const massFormatted = scientific(parseFloat(mass));
+      const total = parseFloat(dilation) * blackHoleDilation;
+      const minutesRow = total > 0
+        ? `<div class="tooltip-row"><span>Za vaši hodinu tu uběhne</span><span>${(60 * total).toFixed(1).replace('.', ',')} min</span></div>`
+        : '';
 
       // Translate type to Czech
       let typeCzech = type;
@@ -59,9 +75,9 @@ document.addEventListener('DOMContentLoaded', function() {
       tooltip.innerHTML = `
         <div class="tooltip-title">${name}</div>
         <div class="tooltip-row"><span>Typ</span><span>${typeCzech}</span></div>
-        <div class="tooltip-row"><span>Poloměr</span><span>${radiusFormatted} m</span></div>
+        ${minutesRow}
         <div class="tooltip-row"><span>Hmotnost</span><span>${massFormatted} kg</span></div>
-        <div class="tooltip-row"><span>Dilatace času</span><span>${dilationFormatted}×</span></div>
+        <div class="tooltip-row"><span>Poloměr</span><span>${radiusFormatted} km</span></div>
       `;
 
       // Show tooltip

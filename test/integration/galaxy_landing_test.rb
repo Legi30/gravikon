@@ -1,6 +1,8 @@
 require "test_helper"
 
-class DashboardControllerTest < ActionDispatch::IntegrationTest
+# The landing page: tilted galaxy map, slide-in system profiles (formerly
+# the Přehled page) and the story with the galaxy time chart
+class GalaxyLandingTest < ActionDispatch::IntegrationTest
   setup do
     Meeting.delete_all
     System.delete_all
@@ -21,12 +23,17 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should get index" do
-    get dashboard_url
+    get root_url
     assert_response :success
   end
 
-  test "builds one profile per system with planets and their moons" do
+  test "the old Přehled page redirects to the landing page" do
     get dashboard_url
+    assert_redirected_to root_path
+  end
+
+  test "builds one profile per system with planets and their moons" do
+    get root_url
 
     profiles = assigns(:profiles)
     assert_equal [ "Sol System", "Vega System" ], profiles.map { |profile| profile[:system].name }
@@ -47,7 +54,7 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
       { "name" => "Pluven", "type" => "planet", "x" => 520, "y" => 400, "radius" => 2.5e6, "mass" => 2.9e23, "dilation" => 0.9 }
     ])
 
-    get dashboard_url
+    get root_url
 
     vega = assigns(:profiles).last
     assert_equal %w[Vega Rigel], vega[:stars].map { |star| star[:name] }
@@ -60,7 +67,7 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
                     is_inter_system: true, participant_systems: { "Earth" => @system.id, "Vega" => @other.id }.to_json,
                     local_avg_duration: 50, avg_delay: 30)
 
-    get dashboard_url
+    get root_url
 
     relation = assigns(:profiles).first[:relations].first
     assert_equal @other, relation[:system]
@@ -79,35 +86,102 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     foreign = Meeting.create!(start_time: "13:00", end_time: "14:00", participants: '["Vega", "Rigel"]', system: @other,
                               local_avg_duration: 50, avg_delay: 10)
 
-    get dashboard_url
+    get root_url
 
     sol, vega = assigns(:profiles)
     assert_equal [ own, shared ], sol[:meetings]
     assert_equal [ shared, foreign ], vega[:meetings]
   end
 
-  test "renders a switcher with only the first profile visible" do
-    get dashboard_url
+  test "renders every profile hidden in the panel, keyed by file id" do
+    get root_url
 
-    assert_select ".system-pill[role=tab]", 2
-    assert_select ".system-pill[aria-selected=true]", 1
-    assert_select "#profile-system-#{@system.id}:not([hidden])"
-    assert_select "#profile-system-#{@other.id}[hidden]"
+    assert_select "#system-panel .system-profile[hidden]", 3 # two systems + the black hole
+    assert_select "#profile-system-#{@system.id}[data-file-id=?][data-hash=?]", @system.system_id, "soustava-#{@system.id}"
     assert_select "#profile-system-#{@system.id} .profile-intro", /Soustava hvězdy Sol leží/
+    assert_select "#profile-system-#{@system.id} a[href=?]", galaxy_system_path(@system)
+  end
+
+  test "the black hole has its own profile with mass, horizon and the systems around it" do
+    get root_url
+
+    assert_select "#profile-black-hole[data-file-id=?][data-hash=?]", "black-hole", "cerna-dira"
+    assert_select "#profile-black-hole .profile-facts dd", /10/ # mass in scientific notation
+    # Systems listed nearest first: Sol System (283 units) before Vega System (300)
+    assert_select "#profile-black-hole .inhabitant-name", count: 2 do |names|
+      assert_match(/Sol System/, names.first.text)
+      assert_match(/Vega System/, names.last.text)
+    end
+  end
+
+  test "the story quotes the slowest and fastest system and the longest signal" do
+    get root_url
+
+    # Sol System sits closer to the black hole than Vega System
+    assert_select "#pribeh", /Na soustavě Sol System\s+uběhne za vaši hodinu/
+    assert_select "#pribeh", /na soustavě Vega System/
+    assert_select "#pribeh", /Ze soustavy (Sol|Vega) System na soustavu (Sol|Vega) System letí/
+  end
+
+  test "the story ends with the meetings already planned and links to plan more" do
+    Meeting.create!(start_time: "09:00", end_time: "10:00", participants: '["Earth", "Mars"]', system: @system,
+                    local_avg_duration: 50, avg_delay: 10)
+
+    get root_url
+
+    assert_select "#pribeh", /v kalendáři 1 schůzku/
+    assert_select "#pribeh a[href=?]", meetings_path
+    assert_select "#pribeh a[href=?]", new_meeting_path
+  end
+
+  test "Soustavy lists every system nearest to the black hole first, plus adding one" do
+    @system.update!(core: true)
+
+    get galaxy_systems_url
+
+    assert_response :success
+    # Sol System (283 units out) is nearer than Vega System (300)
+    assert_select ".systems-row:not(.systems-row--add) h2", count: 2 do |names|
+      assert_equal [ "Sol System", "Vega System" ], names.map { |name| name.text.strip }
+    end
+    assert_select ".systems-row a[href=?]", root_path(anchor: "soustava-#{@other.id}")
+    assert_select "a[href=?]", edit_galaxy_system_path(@system), count: 0
+    assert_select "a[href=?]", edit_galaxy_system_path(@other)
+    assert_select ".systems-row--add a[href=?]", new_galaxy_system_path
+    assert_select "nav a.nav-link.active[href=?]", galaxy_systems_path
+  end
+
+  test "Soustavy without systems still offers to add one" do
+    System.destroy_all
+
+    get galaxy_systems_url
+
+    assert_response :success
+    assert_select ".systems-list-head", /žádné soustavy/
+    assert_select ".systems-row--add a[href=?]", new_galaxy_system_path
+  end
+
+  test "core systems hide the edit link in their profile" do
+    @system.update!(core: true)
+
+    get root_url
+
+    assert_select "#profile-system-#{@system.id} a[href=?]", edit_galaxy_system_path(@system), count: 0
+    assert_select "#profile-system-#{@other.id} a[href=?]", edit_galaxy_system_path(@other)
   end
 
   test "shows an empty state without systems" do
     System.destroy_all
 
-    get dashboard_url
+    get root_url
 
     assert_response :success
-    assert_select ".system-pill", 0
-    assert_select ".empty-state", /žádné soustavy/
+    assert_select ".system-profile:not(#profile-black-hole)", 0 # the black hole is always there
+    assert_select ".galaxy-hero-hint", /žádné soustavy/
   end
 
   test "should build the galaxy time chart from systems" do
-    get dashboard_url
+    get root_url
 
     assert_response :success
     chart = assigns(:galaxy_time_chart)
@@ -121,7 +195,7 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should not link the developer cache and job pages" do
-    get dashboard_url
+    get root_url
 
     assert_select "a[href=?]", dashboard_cache_stats_path, count: 0
     assert_select "a[href=?]", dashboard_job_performance_path, count: 0
@@ -131,7 +205,7 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     File.delete(@system.data_file_path)
     GalaxyService.clear_system_cache(@system.system_id)
 
-    get dashboard_url
+    get root_url
 
     assert_response :success
     sol = assigns(:profiles).first

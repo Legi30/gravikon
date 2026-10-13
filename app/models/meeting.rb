@@ -196,7 +196,7 @@ class Meeting < ApplicationRecord
 
     system_data = system.load_system_data
     unless system_data
-      errors.add(:system_id, "nemá platná data systému")
+      errors.add(:system_id, "nemá platná data soustavy")
       return
     end
 
@@ -206,7 +206,7 @@ class Meeting < ApplicationRecord
     # Check each participant is in the system
     participants_array.each do |participant|
       unless system_body_names.include?(participant)
-        errors.add(:participants, "obsahuje '#{participant}', který není v systému #{system.name}")
+        errors.add(:participants, "obsahuje '#{participant}', který není v soustavě #{system.name}")
       end
     end
   end
@@ -217,7 +217,7 @@ class Meeting < ApplicationRecord
     return unless is_inter_system
 
     if participant_systems.blank?
-      errors.add(:participant_systems, "musí být vyplněno pro schůzky mezi systémy")
+      errors.add(:participant_systems, "musí být vyplněno pro schůzky mezi soustavami")
       return
     end
 
@@ -276,7 +276,7 @@ class Meeting < ApplicationRecord
 
         participant_system = System.find_by(id: system_id_int)
         unless participant_system
-          errors.add(:participant_systems, "odkazuje na neexistující systém (ID: #{system_id}) pro účastníka '#{participant}'")
+          errors.add(:participant_systems, "odkazuje na neexistující soustavu (ID: #{system_id}) pro účastníka '#{participant}'")
           next
         end
 
@@ -285,7 +285,7 @@ class Meeting < ApplicationRecord
         if system_data
           system_body_names = system_data["bodies"]&.map { |b| b["name"] } || []
           unless system_body_names.include?(participant)
-            errors.add(:participant_systems, "účastník '#{participant}' není v přiřazeném systému #{participant_system.name}")
+            errors.add(:participant_systems, "účastník '#{participant}' není v přiřazené soustavě #{participant_system.name}")
           end
         end
       end

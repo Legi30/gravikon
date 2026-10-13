@@ -66,8 +66,19 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
+  // Errors only speak up for fields the visitor has already been in (or
+  // after a submit attempt); an untouched new form stays quiet
+  const touched = new Set();
+  let submitAttempted = false;
+  const shouldShow = (key) => submitAttempted || touched.has(key);
+
   // Show error message
   function showError(errorElement, message) {
+    const key = errorElement === startTimeError ? 'start' : errorElement === endTimeError ? 'end' : 'participants';
+    if (!shouldShow(key)) {
+      hideError(errorElement);
+      return;
+    }
     if (errorElement) {
       errorElement.textContent = message;
       errorElement.style.display = 'block';
@@ -133,7 +144,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const checkedCount = Array.from(participantCheckboxes).filter(cb => cb.checked).length;
 
     if (checkedCount < 2) {
-      showError(participantsError, 'Vyberte alespoň 2 účastníky');
+      showError(participantsError, 'Vyberte aspoň dva účastníky');
       return false;
     }
 
@@ -165,16 +176,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const endValid = validateEndTime();
     const participantsValid = validateParticipants();
 
-    const isValid = startValid && endValid && participantsValid;
-
-    // Enable/disable submit button
-    submitButton.disabled = !isValid;
-
-    return isValid;
+    return startValid && endValid && participantsValid;
   }
 
   // Add event listeners
   startTimeField.addEventListener('input', function() {
+    touched.add('start');
     validateStartTime();
     validateEndTime(); // Re-validate end time when start changes
     updateDuration();
@@ -182,29 +189,47 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   startTimeField.addEventListener('blur', function() {
+    touched.add('start');
     validateStartTime();
     validateForm();
   });
 
   endTimeField.addEventListener('input', function() {
+    touched.add('end');
     validateEndTime();
     updateDuration();
     validateForm();
   });
 
   endTimeField.addEventListener('blur', function() {
+    touched.add('end');
     validateEndTime();
     validateForm();
   });
 
   participantCheckboxes.forEach(function(checkbox) {
     checkbox.addEventListener('change', function() {
+      touched.add('participants');
       validateParticipants();
       validateForm();
     });
   });
 
-  // Initial validation
+  // Submitting reveals every problem at once and stays on the page if any
+  const form = startTimeField.form;
+  if (form) {
+    form.addEventListener('submit', function(event) {
+      submitAttempted = true;
+      if (!validateForm()) {
+        event.preventDefault();
+        const firstError = form.querySelector('.error-message[style*="block"]');
+        if (firstError) firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+  }
+
+  // Initial pass: shows the duration for prefilled times, no errors yet
+  updateDuration();
   validateForm();
 
   if (window.Logger) window.Logger.log('Meeting form validation initialized');

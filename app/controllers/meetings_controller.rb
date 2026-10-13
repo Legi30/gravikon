@@ -17,7 +17,7 @@ class MeetingsController < ApplicationController
     if @system_id.present?
       @system = System.find_by(id: @system_id)
       unless @system
-        redirect_to meetings_path, alert: "Systém nebyl nalezen."
+        redirect_to meetings_path, alert: "Soustava nebyla nalezena."
         return
       end
       @bodies = extract_bodies_from_system(@system.id)
@@ -42,7 +42,7 @@ class MeetingsController < ApplicationController
     @systems = System.all
 
     if @systems.count < 2
-      redirect_to meetings_path, alert: "Pro vytvoření schůzky mezi systémy musí existovat alespoň 2 systémy."
+      redirect_to meetings_path, alert: "Schůzka mezi soustavami potřebuje aspoň dvě soustavy."
       return
     end
 

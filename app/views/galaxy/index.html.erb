@@ -1,260 +1,143 @@
 <% content_for :body_class, "galaxy-page" %>
 
-<%# === Intro: the one idea a first-time visitor needs, then the map === %>
-<div class="galaxy-intro fade-in">
-  <p class="galaxy-intro-lead">Čím blíž černé díře, tím pomaleji plyne čas.</p>
-  <p class="galaxy-intro-sub"><%= link_to "Co je Gravikon?", about_path, class: "galaxy-intro-link" %></p>
-</div>
+<%# === Hero: the galaxy seen at an angle (galaxy.js projects the flat map onto
+    a tilted plane). Clicking a system slides its profile in from the right. === %>
+<section class="galaxy-stage" id="galaxy-stage" aria-label="Galaxie">
+  <div class="galaxy-stage-map">
+    <% if @galaxy_svg.present? %>
+      <div class="svg-container galaxy-hero" aria-label="Interaktivní mapa galaxie s planetárními soustavami"
+           data-system-dilations="<%= @system_dilations.to_json %>">
+        <%# Xentorský orbitální čas — each rune is the orbital phase of one system
+            (outermost = leftmost digit); digits are filled in by galaxy.js %>
+        <div id="space-clock" class="space-clock"
+             title="Xentorský čas"
+             aria-label="Xentorský čas">
+          <span class="space-clock-runes">
+            <span class="space-clock-digit" data-slot="0">–</span><span class="space-clock-digit" data-slot="1">–</span><span class="space-clock-colon">:</span><span class="space-clock-digit" data-slot="2">–</span><span class="space-clock-digit" data-slot="3">–</span>
+          </span>
+        </div>
 
-<%# === Galaxy map hero — the map is the landing page === %>
-<% if @galaxy_svg.present? %>
-  <div class="svg-container fade-in galaxy-hero" aria-label="Interaktivní mapa galaxie s planetárními soustavami"
-       data-system-dilations="<%= @system_dilations.to_json %>">
-    <%# Xentorský orbitální čas — each rune is the orbital phase of one system
-        (outermost = leftmost digit); digits are filled in by galaxy.js %>
-    <div id="space-clock" class="space-clock"
-         title="Xentorský čas"
-         aria-label="Xentorský čas">
-      <span class="space-clock-runes">
-        <span class="space-clock-digit" data-slot="0">–</span><span class="space-clock-digit" data-slot="1">–</span><span class="space-clock-colon">:</span><span class="space-clock-digit" data-slot="2">–</span><span class="space-clock-digit" data-slot="3">–</span>
-      </span>
-    </div>
-
-    <%= raw @galaxy_svg %>
-  </div>
-  <p class="galaxy-hero-hint">Klikněte na soustavu pro zobrazení detailů nebo najeďte myší pro rychlý náhled. Soustavy obíhají kolem černé díry v reálném čase.</p>
-
-  <% if @systems.present? %>
-    <div class="galaxy-stats-strip fade-in" role="list" aria-label="Statistiky galaxie">
-      <div class="galaxy-stat" role="listitem">
-        <span class="galaxy-stat-value"><%= @systems.count %></span>
-        <span class="galaxy-stat-label"><%= @systems.count == 1 ? "soustava" : (@systems.count < 5 ? "soustavy" : "soustav") %></span>
+        <%= raw @galaxy_svg %>
       </div>
-      <div class="galaxy-stat" role="listitem">
-        <span class="galaxy-stat-value"><%= @systems.sum { |s| s.load_system_data&.dig('bodies')&.count || 0 } %></span>
-        <span class="galaxy-stat-label">těles</span>
-      </div>
-      <div class="galaxy-stat" role="listitem">
-        <span class="bh-dot" aria-hidden="true"></span>
-        <span class="galaxy-stat-label"><%= @galaxy_data['black_hole']['name'] %></span>
-      </div>
-    </div>
-  <% end %>
-<% else %>
-  <div class="content-section">
-    <div class="card fade-in">
-      <p style="color: rgba(255, 255, 255, 0.7);">Mapa galaxie se nepodařila načíst. Zkuste obnovit stránku.</p>
-    </div>
-  </div>
-<% end %>
-
-<%# === System list === %>
-<div class="content-section">
-  <div class="card fade-in">
-    <h3>Seznam soustav</h3>
+      <p class="galaxy-hero-hint">Klikněte na soustavu nebo na černou díru a poznejte je.</p>
+    <% else %>
+      <p class="galaxy-hero-hint">Mapa galaxie se nepodařila načíst. Zkuste obnovit stránku.</p>
+    <% end %>
 
     <% if @systems.empty? %>
-      <div class="empty-state" role="status">
-        <p>V galaxii zatím nebyly vytvořeny žádné planetární soustavy.</p>
-        <p>
-          <%= link_to "Vytvořit první soustavu", new_galaxy_system_path, class: "btn btn-primary", "aria-label" => "Vytvořit první planetární soustavu" %>
-        </p>
-      </div>
-    <% else %>
-      <div class="systems-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
-        <% @systems.each do |system| %>
-          <% system_data = system.load_system_data %>
-          <% body_count = system_data&.dig('bodies')&.count || 0 %>
-          <div class="system-card" style="--system-color: <%= system_color(system.id) %>; --system-tint: <%= system_tint(system.id) %>;">
-            <h4 class="system-card-name">
-              <span class="system-card-dot" aria-hidden="true"></span>
-              <%= link_to system.name, galaxy_system_path(system), style: "color: inherit; text-decoration: none;" %>
-            </h4>
-            <div class="system-info" style="font-size: 0.9rem; line-height: 1.6; color: rgba(255, 255, 255, 0.8);">
-              <div><strong>Pozice:</strong> (<%= system.x.round(1) %>, <%= system.y.round(1) %>)</div>
-              <div><strong>Počet těles:</strong> <%= body_count %></div>
-              <% if system_data %>
-                <% stars = (system_data['bodies'] || []).select { |b| b['type'] == 'star' } %>
-                <% if stars.size >= 2 %>
-                  <div><strong>Dvojhvězda:</strong> <%= stars.map { |star| star['name'] }.join(" a ") %></div>
-                <% elsif stars.any? %>
-                  <div><strong>Hvězda:</strong> <%= stars.first['name'] %></div>
-                <% end %>
-              <% end %>
-            </div>
-            <div class="system-actions" style="margin-top: 1rem; display: flex; gap: 0.5rem;">
-              <%= link_to "Zobrazit", galaxy_system_path(system), class: "btn btn-primary btn-sm" %>
-              <%= link_to "Upravit", edit_galaxy_system_path(system), class: "btn btn-secondary btn-sm" unless system.core? %>
-            </div>
-          </div>
-        <% end %>
-
-        <%# Add-system card %>
-        <%= link_to new_galaxy_system_path, class: "system-card add-system-card", "aria-label" => "Přidat novou planetární soustavu do galaxie" do %>
-          <span class="add-system-plus" aria-hidden="true">+</span>
-          <span class="add-system-text">Přidat soustavu</span>
-        <% end %>
-      </div>
+      <p class="galaxy-hero-hint">
+        V galaxii zatím nejsou žádné soustavy. <%= link_to "Vytvořit první soustavu", new_galaxy_system_path %>
+      </p>
     <% end %>
+
+    <p class="galaxy-intro"><a href="#pribeh" class="galaxy-intro-link">Co je Gravikon?</a></p>
   </div>
-</div>
+
+  <aside class="system-panel" id="system-panel" aria-label="Profil soustavy" hidden>
+    <button type="button" class="system-panel-close" aria-label="Zavřít profil soustavy" title="Zavřít (Esc)">×</button>
+    <%= render "black_hole_profile", black_hole: @black_hole %>
+    <% @profiles.each do |profile| %>
+      <%= render "system_profile", profile: profile %>
+    <% end %>
+  </aside>
+</section>
+
+<%# === Story: why the app exists, told rather than explained === %>
+<% facts = galaxy_story_facts(@profiles) %>
+<article class="galaxy-story" id="pribeh">
+  <section class="story-part">
+    <h2>Civilizace, která se nemůže sejít</h2>
+    <p>
+      Xentořané osídlili hvězdné soustavy, které obíhají kolem černé díry
+      <%= @galaxy_data.dig("black_hole", "name") || "v jádru galaxie" %>. Žijí na desítkách planet a měsíců,
+      těží, bádají, vládnou si a jako každá pořádná civilizace mají spoustu porad.
+    </p>
+    <p>
+      Jenže jejich porady nikdy nezačínají pro všechny ve stejnou chvíli. A nikdy pro všechny
+      nekončí. Zeptali se proto Země, jestli by s tím něco nešlo udělat. Gravikon je odpověď.
+    </p>
+  </section>
+
+  <section class="story-part">
+    <h2>Hodina není všude hodina</h2>
+    <% if facts %>
+      <p>
+        Černá díra zpomaluje čas, a čím blíž k ní, tím víc. Na soustavě <%= facts[:slowest][:system].name %>
+        uběhne za vaši hodinu jen <%= format_minutes(facts[:slowest][:rate] * 60) %> min,
+        na soustavě <%= facts[:fastest][:system].name %> <%= format_minutes(facts[:fastest][:rate] * 60) %> min.
+        Každá planeta k tomu přidá kousek vlastní gravitace.
+      </p>
+    <% else %>
+      <p>Černá díra zpomaluje čas, a čím blíž k ní, tím víc. Každá planeta k tomu přidá kousek vlastní gravitace.</p>
+    <% end %>
+    <p>
+      Nikdo tady přitom nežije pomalu. Každý prožívá svou hodinu jako celou hodinu.
+      Rozdíl se ukáže teprve ve chvíli, kdy se dva potkají.
+    </p>
+
+    <% if @galaxy_time_chart[:systems].any? { |system| system[:bodies].any? } %>
+      <figure class="story-chart">
+        <div class="galaxy-time-chart">
+          <canvas id="galaxyTimeChart" data-chart="<%= @galaxy_time_chart.to_json %>" role="img" aria-label="Bodový graf: rychlost plynutí času na tělesech jednotlivých soustav podle vzdálenosti od černé díry."></canvas>
+        </div>
+        <figcaption>
+          Kolik minut uběhne na každém tělese, zatímco vzdálenému pozorovateli uběhne hodina.
+          Čára je vliv samotné černé díry, tečky jsou tělesa: pod čáru je stahuje ještě jejich vlastní gravitace.
+        </figcaption>
+      </figure>
+    <% end %>
+  </section>
+
+  <section class="story-part">
+    <h2>Každá zpráva je trochu stará</h2>
+    <p>
+      Signál letí rychlostí světla a ta je v téhle galaxii pomalá.
+      <% if facts %>
+        Ze soustavy <%= facts[:far_from].name %> na soustavu <%= facts[:far_to].name %> letí každé slovo
+        <%= format_delay_display(facts[:far_delay]) %>.
+      <% end %>
+      Světélka, která přelétají po mapě nahoře, jsou hovory a zprávy, které si Xentořané právě posílají.
+    </p>
+    <p>
+      Kdo vám odpovídá, odpovídá na to, co jste řekli před chvílí. Xentořané tomu říkají trpělivost.
+    </p>
+  </section>
+
+  <section class="story-part">
+    <h2>Jedna schůzka, mnoho délek</h2>
+    <p>
+      Gravikon naplánuje schůzku mezi kýmkoli v galaxii. Spočítá, jak dlouho ji kdo skutečně prožije
+      a jak dlouho k sobě poletí jejich slova.
+      <% if facts %>
+        Hodinová porada tak na soustavě <%= facts[:slowest][:system].name %> trvá
+        <%= format_minutes(facts[:slowest][:rate] * 60) %> min a na soustavě <%= facts[:fastest][:system].name %>
+        <%= format_minutes(facts[:fastest][:rate] * 60) %> min.
+      <% end %>
+      Shodnout se stačí na tom, kdy začne.
+    </p>
+    <p>
+      <% if @meetings_count.positive? %>
+        Xentořané už mají v kalendáři <%= cs_count(@meetings_count, "schůzku", "schůzky", "schůzek") %>.
+        <%= link_to "Podívejte se, kdo s kým jedná", meetings_path %>, nebo jim
+        <%= link_to "naplánujte další", new_meeting_path %> a uvidíte, jak dlouho ji kdo prožije.
+      <% else %>
+        Xentořané zatím nemají v kalendáři žádnou schůzku.
+        <%= link_to "Naplánujte jim první", new_meeting_path %> a uvidíte, jak dlouho ji kdo prožije.
+      <% end %>
+    </p>
+  </section>
+
+  <footer class="story-foot">
+    <p>
+      Vzorce, původní zadání a hádanku o xentorském čase najdete v části <%= link_to "O aplikaci", about_path %>.
+      Přehled všech soustav a přidání vlastní najdete v části <%= link_to "Soustavy", galaxy_systems_path %>.
+    </p>
+  </footer>
+</article>
 
 <!-- Tooltip for system information (managed by galaxy.js) -->
 <div id="tooltip" role="tooltip" aria-live="polite"></div>
 
-<style>
-  .btn-sm {
-    font-size: 0.85rem;
-    padding: 0.4rem 0.8rem;
-  }
-
-  .galaxy-hero {
-    margin-top: 0.5rem;
-  }
-
-  .galaxy-intro {
-    text-align: center;
-    max-width: 720px;
-    margin: 0.5rem auto 0;
-  }
-
-  .galaxy-intro-lead {
-    font-family: 'Oxanium', sans-serif;
-    font-weight: 700;
-    font-size: 1.6rem;
-    color: var(--accent);
-    text-shadow: 0 0 18px rgba(255, 215, 0, 0.35);
-    margin: 0 0 0.5rem;
-  }
-
-  .galaxy-intro-sub {
-    color: rgba(255, 255, 255, 0.65);
-    font-size: 0.95rem;
-    line-height: 1.6;
-    margin: 0;
-  }
-
-  .galaxy-intro-link {
-    color: var(--accent);
-    text-decoration: none;
-    white-space: nowrap;
-  }
-
-  .galaxy-intro-link:hover {
-    text-decoration: underline;
-  }
-
-  .galaxy-hero-hint {
-    text-align: center;
-    color: rgba(255, 255, 255, 0.55);
-    font-size: 0.9rem;
-    margin: 0.75rem auto 0;
-    max-width: 640px;
-  }
-
-  .galaxy-stats-strip {
-    display: flex;
-    justify-content: center;
-    gap: 2.5rem;
-    margin: 1.25rem auto 0;
-    padding: 0.9rem 1.5rem;
-    max-width: 640px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 10px;
-  }
-
-  .galaxy-stat {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .galaxy-stat-value {
-    font-family: 'Oxanium', sans-serif;
-    font-size: 1.3rem;
-    color: var(--accent);
-    font-weight: 700;
-  }
-
-  .galaxy-stat-label {
-    color: rgba(255, 255, 255, 0.6);
-    font-size: 0.9rem;
-  }
-
-  .bh-dot {
-    width: 15px;
-    height: 15px;
-    border-radius: 50%;
-    background: radial-gradient(circle, #000 35%, #330066 70%, #8b5cf6 100%);
-    box-shadow: 0 0 8px rgba(139, 92, 246, 0.9);
-    display: inline-block;
-    flex: none;
-  }
-
-  .system-card {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    padding: 1.25rem;
-    transition: all 0.3s ease;
-  }
-
-  /* Each system card wears its system colour (same as map, dashboard, meetings) */
-  .system-card:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: var(--system-color, var(--accent));
-    transform: translateY(-2px);
-  }
-
-  .system-card-name {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin: 0 0 0.75rem 0;
-    color: var(--system-tint, var(--accent));
-    font-size: 1.1rem;
-  }
-
-  .system-card-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    flex: none;
-    background: var(--system-tint);
-    box-shadow: 0 0 8px var(--system-color);
-  }
-
-  /* Adding a system stays possible but quiet: the four systems lead */
-  .add-system-card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    min-height: 150px;
-    border: 1px dashed rgba(255, 255, 255, 0.2);
-    background: transparent;
-    text-decoration: none;
-    color: rgba(255, 255, 255, 0.5);
-  }
-
-  .add-system-card:hover {
-    border-color: rgba(255, 255, 255, 0.45);
-    background: rgba(255, 255, 255, 0.03);
-    color: rgba(255, 255, 255, 0.85);
-  }
-
-  .add-system-plus {
-    font-size: 2.5rem;
-    line-height: 1;
-    font-weight: 300;
-  }
-
-  .add-system-text {
-    font-family: 'Oxanium', sans-serif;
-    font-size: 0.95rem;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-  }
-</style>
+<!-- Chart.js Library (vendored locally) + the story's time chart -->
+<script src="<%= asset_path('vendor/chart.umd.min.js') %>"></script>
+<script src="<%= asset_path('galaxy_time_chart.js') %>"></script>

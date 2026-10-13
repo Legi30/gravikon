@@ -368,7 +368,7 @@ class MeetingTest < ActiveSupport::TestCase
     )
 
     assert_not meeting.valid?
-    assert_includes meeting.errors[:participant_systems], "musí být vyplněno pro schůzky mezi systémy"
+    assert_includes meeting.errors[:participant_systems], "musí být vyplněno pro schůzky mezi soustavami"
   end
 
   test "rejects invalid participant_systems JSON format" do
@@ -420,7 +420,7 @@ class MeetingTest < ActiveSupport::TestCase
     )
 
     assert_not meeting.valid?
-    assert meeting.errors[:participant_systems].any? { |msg| msg.include?("neexistující systém") }
+    assert meeting.errors[:participant_systems].any? { |msg| msg.include?("neexistující soustavu") }
   end
 
   test "accepts valid inter-system meeting with participant_systems mapping" do

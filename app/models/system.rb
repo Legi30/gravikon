@@ -181,7 +181,7 @@ class System < ApplicationRecord
     end
   rescue => e
     Rails.logger.error("System validation error: #{e.message}")
-    errors.add(:base, "Chyba při validaci pozice systému: #{e.message}")
+    errors.add(:base, "Pozici soustavy se nepodařilo ověřit: #{e.message}")
   end
 
   # Load galaxy data for validation (with fallback to default)

@@ -634,29 +634,8 @@
 }
 
 /* === Immersive galaxy page ===================================================
-   The landing page background continues the map SVG's deep-space look
-   (same #000814 base + starfield), and the hero SVG gets a soft radial
-   vignette so its edges dissolve into the page instead of ending in a box. */
-body.galaxy-page {
-  background: #000814;
-  background-image:
-    radial-gradient(1px 1px at 25px 8px, rgba(255, 255, 255, 0.8), transparent),
-    radial-gradient(1px 1px at 120px 60px, rgba(255, 255, 255, 0.45), transparent),
-    radial-gradient(1.5px 1.5px at 210px 140px, rgba(255, 255, 255, 0.7), transparent),
-    radial-gradient(1px 1px at 80px 190px, rgba(255, 255, 255, 0.35), transparent),
-    radial-gradient(2px 2px at 300px 90px, rgba(170, 204, 255, 0.6), transparent),
-    radial-gradient(1px 1px at 260px 230px, rgba(255, 255, 255, 0.5), transparent),
-    radial-gradient(1px 1px at 160px 290px, rgba(255, 255, 255, 0.4), transparent);
-  background-size:
-    340px 340px,
-    340px 340px,
-    340px 340px,
-    340px 340px,
-    520px 520px,
-    520px 520px,
-    520px 520px;
-}
-
+   The night-sky background is global now (gravikon.css body); the hero SVG
+   gets a soft radial vignette so its edges dissolve into the page. */
 body.galaxy-page .galaxy-hero {
   background: transparent;
   border: none;
@@ -803,4 +782,873 @@ body.galaxy-page .galaxy-hero svg {
   .galaxy-hero:not(.explored) .system-glow {
     animation: none;
   }
+}
+
+/* === Landing: tilted galaxy + slide-in system profile =======================
+   The map is the galaxy seen at an angle (galaxy.js tiltScene/perspective).
+   Clicking a system opens its column: the map narrows to the left and the
+   profile slides in on the right, straight on the sky (no box). Under 900px
+   the profile drops below the map. */
+body.galaxy-page main.container {
+  max-width: 1500px;
+}
+
+.galaxy-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0fr);
+  align-items: center;
+  min-height: calc(100svh - 9rem);
+  transition: grid-template-columns 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.galaxy-stage.has-selection {
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+}
+
+.galaxy-stage-map {
+  min-width: 0;
+}
+
+.galaxy-intro {
+  text-align: center;
+  margin: 0.75rem 0 0;
+}
+
+.galaxy-intro-link {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.95rem;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.galaxy-intro-link:hover,
+.galaxy-intro-link:focus-visible {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.galaxy-hero-hint {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.9rem;
+  margin: 0.25rem 0 0;
+}
+
+.galaxy-stage.has-selection .galaxy-hero-hint {
+  visibility: hidden;
+}
+
+/* Tilted map: wide and short; the edge fade follows the new shape */
+body.galaxy-page .galaxy-hero {
+  margin: 0;
+}
+
+.galaxy-hero.galaxy-tilted svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: none;
+  max-height: calc(100svh - 12rem);
+  -webkit-mask-image: radial-gradient(ellipse 60% 62% at 50% 50%, black 70%, transparent 100%);
+  mask-image: radial-gradient(ellipse 60% 62% at 50% 50%, black 70%, transparent 100%);
+}
+
+.galaxy-tilted .system-marker.js-orbits .mini-orbit {
+  animation: none;
+}
+
+.galaxy-tilted .system-marker {
+  transition: opacity 0.4s ease;
+}
+
+.galaxy-stage.has-selection .system-marker:not(.is-selected) {
+  opacity: 0.5;
+}
+
+.galaxy-stage.has-selection .system-marker:not(.is-selected):hover {
+  opacity: 0.85;
+}
+
+/* Systems pass right by the black hole, so its name would keep colliding
+   with their labels: on the tilted map it is a hover title instead */
+.galaxy-tilted .black-hole-label {
+  display: none;
+}
+
+.system-marker:focus {
+  outline: none;
+}
+
+.system-marker:focus-visible .system-label {
+  text-decoration: underline;
+}
+
+.system-marker:focus-visible .mini-ring {
+  stroke-opacity: 1;
+}
+
+/* Perspective enlarges near markers, so the "click me" pulse breathes less */
+.galaxy-tilted:not(.explored) .system-glow {
+  animation-name: system-beckon-tilted;
+}
+
+@keyframes system-beckon-tilted {
+  0%, 100% { transform: scale(1); opacity: 0.3; }
+  50% { transform: scale(1.3); opacity: 0.55; }
+}
+
+.system-marker.is-selected .system-glow {
+  opacity: 0.8;
+}
+
+.system-marker.is-selected .mini-ring {
+  stroke-opacity: 0.9;
+}
+
+/* Black hole on the tilted map (galaxy.js drawBlackHole). Only the hit
+   circle over the shadow takes the pointer: the big glow and disc used to
+   swallow clicks on systems passing behind the hole. */
+.bh-scene,
+.bh-scene * {
+  pointer-events: none;
+}
+
+.bh-scene .bh-hit {
+  fill: transparent;
+  pointer-events: all;
+}
+
+#black-hole.is-clickable {
+  cursor: pointer;
+  outline: none;
+}
+
+#black-hole.is-clickable:hover .bh-photon-ring,
+#black-hole.is-clickable:focus-visible .bh-photon-ring,
+#black-hole.is-selected .bh-photon-ring {
+  stroke-width: 1.2;
+  opacity: 1;
+}
+
+.system-dot.black-hole-dot {
+  background: #000;
+  box-shadow: 0 0 0 2px #ffd9a0, 0 0 10px #f0a040;
+}
+
+/* Its list names systems with their distance: give the name column room */
+.black-hole-profile .inhabitant {
+  grid-template-columns: minmax(11rem, 14rem) 1fr 4.5rem;
+}
+
+.bh-shadow {
+  fill: #000;
+}
+
+.bh-photon-ring {
+  fill: none;
+  stroke: #ffe7bf;
+  stroke-width: 0.6;
+  opacity: 0.8;
+  filter: drop-shadow(0 0 2px #ffd28a) drop-shadow(0 0 6px rgba(255, 170, 70, 0.7));
+}
+
+.bh-disc {
+  filter: drop-shadow(0 0 6px rgba(255, 160, 60, 0.45));
+}
+
+.bh-lens {
+  filter: drop-shadow(0 0 4px rgba(255, 190, 110, 0.6));
+}
+
+.bh-streak {
+  fill: none;
+  stroke: rgba(255, 250, 235, 0.35);
+  stroke-width: 0.45;
+  stroke-linecap: round;
+  stroke-dasharray: 14 22;
+  animation: bh-swirl 14s linear infinite;
+}
+
+.bh-streak--fast {
+  stroke-dasharray: 9 30;
+  animation-duration: 9s;
+}
+
+@keyframes bh-swirl {
+  to { stroke-dashoffset: -260; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bh-streak {
+    animation: none;
+  }
+}
+
+/* Signals (decorative calls and messages, galaxy.js initSignals) */
+.signals {
+  pointer-events: none;
+}
+
+.signal-thread {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.signal-thread--call {
+  stroke-dasharray: 0.004 0.012;
+}
+
+.signal-packet {
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.7)) drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
+}
+
+.signal-end,
+.signal-ripple {
+  fill: none;
+}
+
+/* --- The panel -------------------------------------------------------------- */
+.system-panel {
+  position: relative;
+  min-width: 0;
+  max-height: calc(100svh - 8rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1.5rem 1rem 2.5rem 2rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 1.5rem, black calc(100% - 2.5rem), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, black 1.5rem, black calc(100% - 2.5rem), transparent 100%);
+}
+
+.system-panel-close {
+  position: sticky;
+  top: 0;
+  float: right;
+  z-index: 2;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.system-panel-close:hover,
+.system-panel-close:focus-visible {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Each part of the profile slides in from the right, one after another */
+.system-profile.is-entering > * {
+  animation: profile-slide 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.system-profile.is-entering > :nth-child(2) { animation-delay: 0.08s; }
+.system-profile.is-entering > :nth-child(3) { animation-delay: 0.16s; }
+.system-profile.is-entering > :nth-child(4) { animation-delay: 0.24s; }
+.system-profile.is-entering > :nth-child(5) { animation-delay: 0.32s; }
+
+@keyframes profile-slide {
+  from { opacity: 0; transform: translateX(3.5rem); }
+  to { opacity: 1; transform: none; }
+}
+
+.system-dot {
+  display: inline-block;
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 50%;
+  background: var(--system-color);
+  box-shadow: 0 0 8px var(--system-color);
+  flex: none;
+}
+
+.system-dot--other {
+  background: var(--other-color);
+  box-shadow: 0 0 6px var(--other-color);
+}
+
+.profile-name {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
+  line-height: 1.1;
+  color: var(--system-tint);
+}
+
+.profile-name .system-dot {
+  width: 0.8rem;
+  height: 0.8rem;
+}
+
+.profile-intro {
+  max-width: 38rem;
+  margin: 0.9rem 0 0;
+  color: rgba(224, 224, 224, 0.8);
+  line-height: 1.65;
+}
+
+.profile-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 2.5rem;
+  margin: 1.4rem 0 0;
+}
+
+.profile-facts > div {
+  display: flex;
+  flex-direction: column-reverse;
+}
+
+.profile-facts dt {
+  font-size: 0.85rem;
+  color: rgba(224, 224, 224, 0.5);
+}
+
+.profile-facts dd {
+  margin: 0;
+  font-family: 'Oxanium', sans-serif;
+  font-weight: 700;
+  font-size: 1.3rem;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.profile-block {
+  margin-top: 2.25rem;
+}
+
+.system-profile h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--system-tint);
+}
+
+.profile-story {
+  margin: 0.5rem 0 0.75rem;
+  max-width: 38rem;
+  line-height: 1.65;
+  font-style: italic;
+  color: rgba(224, 224, 224, 0.85);
+}
+
+.profile-hint {
+  margin: 0.25rem 0 0.75rem;
+  font-size: 0.85rem;
+  color: rgba(224, 224, 224, 0.5);
+}
+
+/* Inhabitants: planets with their moons indented beneath them; the bar is
+   the share of your hour that passes on that body (full = 60 min) */
+.inhabitant-list,
+.relation-list,
+.profile-meeting-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.inhabitant {
+  display: grid;
+  grid-template-columns: minmax(7rem, 10.5rem) 1fr 4.5rem;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.28rem 0;
+}
+
+.inhabitant-name {
+  color: #fff;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inhabitant-name small {
+  margin-left: 0.3rem;
+  font-weight: 400;
+  font-size: 0.75rem;
+  color: rgba(224, 224, 224, 0.45);
+}
+
+.inhabitant--planet {
+  margin-top: 0.3rem;
+}
+
+.inhabitant--moon .inhabitant-name {
+  padding-left: 1.1rem;
+  font-weight: 400;
+  color: rgba(224, 224, 224, 0.75);
+}
+
+.inhabitant-track {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.inhabitant-bar {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--system-color);
+}
+
+.inhabitant--moon .inhabitant-bar {
+  opacity: 0.65;
+}
+
+.inhabitant-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9rem;
+  color: rgba(224, 224, 224, 0.85);
+  white-space: nowrap;
+}
+
+.relation {
+  padding: 0.55rem 0;
+}
+
+.relation-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: 'Oxanium', sans-serif;
+  font-weight: 700;
+  color: #fff;
+}
+
+.relation-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 1rem;
+  margin-top: 0.2rem;
+  padding-left: 1.15rem;
+  font-size: 0.88rem;
+  color: rgba(224, 224, 224, 0.6);
+}
+
+.relation-facts strong {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+}
+
+.profile-meeting-list {
+  margin-top: 0.6rem;
+}
+
+.profile-meeting-list li {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr;
+  gap: 0.1rem 1rem;
+  padding: 0.4rem 0;
+  font-size: 0.92rem;
+}
+
+.pm-time {
+  font-variant-numeric: tabular-nums;
+  color: rgba(224, 224, 224, 0.6);
+  white-space: nowrap;
+}
+
+.pm-topic {
+  color: #fff;
+}
+
+.pm-badge {
+  margin-left: 0.4rem;
+  font-size: 0.78rem;
+  color: rgba(255, 215, 0, 0.8);
+  white-space: nowrap;
+}
+
+.pm-stats {
+  grid-column: 2;
+  color: rgba(224, 224, 224, 0.5);
+  font-size: 0.85rem;
+}
+
+.profile-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  margin-top: 2.25rem;
+}
+
+.profile-link {
+  font-family: 'Oxanium', sans-serif;
+  font-weight: 700;
+  color: var(--system-tint);
+  text-decoration: none;
+  border-bottom: 1px solid currentColor;
+  padding-bottom: 0.1rem;
+}
+
+.profile-link:hover,
+.profile-link:focus-visible {
+  color: #fff;
+}
+
+.profile-link--quiet {
+  color: rgba(224, 224, 224, 0.55);
+  border-bottom-color: rgba(224, 224, 224, 0.25);
+}
+
+/* === Landing story ==========================================================
+   Below the map: the idea of the app told as a short story, one column on
+   the sky. scroll-margin keeps the "Co je Gravikon?" jump clear of the
+   sticky nav. */
+.galaxy-story {
+  max-width: 40rem;
+  margin: 6rem auto 3rem;
+  scroll-margin-top: 7rem;
+}
+
+.story-part + .story-part {
+  margin-top: 5.5rem;
+}
+
+.story-part h2 {
+  margin: 0 0 1.25rem;
+  font-size: clamp(1.6rem, 3.4vw, 2.4rem);
+  line-height: 1.15;
+  color: #fff;
+}
+
+.story-part p {
+  max-width: 36rem;
+  margin: 0 0 1.1rem;
+  font-size: 1.12rem;
+  line-height: 1.75;
+  color: rgba(224, 224, 224, 0.8);
+}
+
+.story-chart {
+  margin: 2.5rem 0 0;
+}
+
+.galaxy-time-chart {
+  position: relative;
+  height: 380px;
+}
+
+.story-chart figcaption {
+  max-width: 36rem;
+  margin-top: 0.75rem;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: rgba(224, 224, 224, 0.5);
+}
+
+.story-part a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.45);
+}
+
+.story-part a:hover,
+.story-part a:focus-visible {
+  border-bottom-color: var(--accent);
+}
+
+.story-foot {
+  margin-top: 5rem;
+  font-size: 0.92rem;
+  line-height: 1.7;
+  color: rgba(224, 224, 224, 0.5);
+}
+
+.story-foot a {
+  color: rgba(224, 224, 224, 0.8);
+}
+
+@media (max-width: 900px) {
+  .galaxy-stage,
+  .galaxy-stage.has-selection {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+  }
+
+  .system-panel {
+    max-height: none;
+    overflow: visible;
+    padding: 2rem 0 0;
+    scroll-margin-top: 5rem;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .system-panel-close {
+    position: static;
+  }
+
+  .galaxy-stage.has-selection .galaxy-hero-hint {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .galaxy-story {
+    margin-top: 4rem;
+  }
+
+  .story-part p {
+    font-size: 1.02rem;
+  }
+
+  .inhabitant {
+    grid-template-columns: minmax(6rem, 8.5rem) 1fr 4rem;
+    gap: 0.5rem;
+  }
+
+  .galaxy-time-chart {
+    height: 300px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .galaxy-stage {
+    transition: none;
+  }
+
+  .system-profile.is-entering > * {
+    animation: none;
+  }
+}
+
+/* === Soustavy (systems list) =================================================
+   Same sky as the landing: one row per system, no cards. A row = static
+   miniature, name + star(s) + facts, minutes per your hour, links. */
+.systems-list {
+  max-width: 64rem;
+  margin: 0 auto 4rem;
+}
+
+.systems-list-head h1 {
+  margin: 0 0 0.75rem;
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  color: #fff;
+}
+
+.systems-list-head p {
+  max-width: 38rem;
+  margin: 0;
+  font-size: 1.08rem;
+  line-height: 1.7;
+  color: rgba(224, 224, 224, 0.75);
+}
+
+.systems-rows {
+  list-style: none;
+  margin: 3rem 0 0;
+  padding: 0;
+}
+
+.systems-row {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1.5fr) minmax(9rem, 1fr) auto;
+  align-items: center;
+  gap: 1.5rem 2rem;
+  padding: 1.75rem 0;
+}
+
+.systems-row + .systems-row {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.system-miniature {
+  width: 5.5rem;
+  height: 5.5rem;
+  overflow: visible;
+}
+
+.miniature-ring {
+  fill: none;
+  stroke: var(--system-color);
+  stroke-width: 0.6;
+  stroke-opacity: 0.45;
+}
+
+.miniature-planet {
+  fill: var(--system-tint);
+}
+
+.miniature-star {
+  fill: var(--system-tint);
+  filter: drop-shadow(0 0 4px var(--system-color));
+}
+
+.systems-row-main h2 {
+  margin: 0;
+  font-size: 1.6rem;
+  line-height: 1.2;
+}
+
+.systems-row-main h2 a {
+  color: var(--system-tint, #fff);
+  text-decoration: none;
+}
+
+.systems-row-main h2 a:hover,
+.systems-row-main h2 a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.systems-row-sub {
+  margin: 0.2rem 0 0;
+  color: rgba(224, 224, 224, 0.6);
+}
+
+.systems-row-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 1.5rem;
+  margin: 0.6rem 0 0;
+  font-size: 0.92rem;
+  color: rgba(224, 224, 224, 0.6);
+}
+
+.systems-row-facts strong {
+  color: #fff;
+  font-weight: 600;
+}
+
+.systems-row-time {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.systems-row-time-value {
+  font-family: 'Oxanium', sans-serif;
+  font-weight: 700;
+  font-size: 1.35rem;
+  color: #fff;
+}
+
+.systems-row-time-label {
+  font-size: 0.85rem;
+  color: rgba(224, 224, 224, 0.5);
+}
+
+.systems-row-links {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+/* Adding a system: same row shape, neutral grey */
+.systems-row--add {
+  --system-color: rgba(255, 255, 255, 0.5);
+  --system-tint: rgba(255, 255, 255, 0.85);
+}
+
+.miniature-ring--add {
+  stroke-dasharray: 3 3;
+}
+
+.miniature-plus {
+  stroke: rgba(255, 255, 255, 0.7);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+
+.systems-row--add .systems-row-main {
+  grid-column: 2 / -1;
+}
+
+@media (max-width: 760px) {
+  .systems-row {
+    grid-template-columns: 4.5rem minmax(0, 1fr);
+    gap: 1rem 1.25rem;
+  }
+
+  .system-miniature {
+    width: 4.5rem;
+    height: 4.5rem;
+  }
+
+  .systems-row-time,
+  .systems-row-links {
+    grid-column: 2;
+  }
+
+  .systems-row-links {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+  }
+}
+
+/* === System forms (new / edit): form left, position map right ============= */
+.system-form-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 2rem 4rem;
+  max-width: 72rem;
+  margin: 0 auto 4rem;
+}
+
+.system-form-layout .page-header {
+  margin-bottom: 2rem;
+}
+
+.system-form-map {
+  position: sticky;
+  top: 6.5rem;
+  align-self: start;
+}
+
+.system-form-map h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1.3rem;
+}
+
+#position-preview {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  max-width: 34rem;
+}
+
+#position-preview > svg:first-child {
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, black 60%, transparent 72%);
+  mask-image: radial-gradient(circle at 50% 50%, black 60%, transparent 72%);
+}
+
+.form-hint {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.82rem;
+  color: rgba(224, 224, 224, 0.5);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0 1.25rem;
+}
+
+@media (max-width: 900px) {
+  .system-form-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .system-form-map {
+    position: static;
+  }
+}
+
+#position-validation {
+  margin-bottom: 1.25rem;
 }
