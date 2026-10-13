@@ -218,7 +218,7 @@ class RelativisticCalculatorTest < ActiveSupport::TestCase
   end
 
   test "uses consistent physics constants from PhysicsConstants" do
-    assert_equal 0.0001, PhysicsConstants::GRAVITATIONAL_CONSTANT
+    assert_equal 0.00004, PhysicsConstants::GRAVITATIONAL_CONSTANT
     assert_equal 10_000_000, PhysicsConstants::C
     # Black hole dilation must be a real value in (0, 1), not a rescued 1.0
     dilation = PhysicsConstants.gravitational_dilation(PhysicsConstants::BLACK_HOLE_MASS, 100)

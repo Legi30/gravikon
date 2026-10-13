@@ -22,8 +22,8 @@
       <ul style="margin: 0.5rem 0 0 1.5rem; line-height: 1.6; color: rgba(255, 255, 255, 0.9);">
         <li>Změna pozice může ovlivnit časovou dilataci všech těles v soustavě</li>
         <li>Ujistěte se, že nová pozice nekoliduje s jinými soustavami</li>
-        <li>Minimální vzdálenost od černé díry je 50 jednotek</li>
-        <li>Minimální vzdálenost mezi soustavami je 40 jednotek</li>
+        <li>Minimální vzdálenost od černé díry je <%= format_distance_km(50) %></li>
+        <li>Minimální vzdálenost mezi soustavami je <%= format_distance_km(40) %></li>
         <li>Pro změnu počtu planet nebo měsíců použijte funkci "Regenerovat soustavu" na stránce detailu</li>
       </ul>
     </div>
@@ -57,7 +57,7 @@
       <div class="param-item">
         <strong style="color: var(--accent); display: block; margin-bottom: 0.25rem;">Vzdálenost od černé díry</strong>
         <% distance = Math.sqrt((@system.x - 400)**2 + (@system.y - 400)**2) %>
-        <span><%= distance.round(1) %> jednotek</span>
+        <span><%= format_distance_km(distance) %></span>
       </div>
 
       <% system_data = @system.load_system_data %>
@@ -72,11 +72,11 @@
           <span><%= system_data['bodies'].count { |b| b['type'] == 'moon' } %></span>
         </div>
 
-        <% star = system_data['bodies'].find { |b| b['type'] == 'star' } %>
-        <% if star %>
+        <% stars = system_data['bodies'].select { |b| b['type'] == 'star' } %>
+        <% if stars.any? %>
           <div class="param-item">
-            <strong style="color: var(--accent); display: block; margin-bottom: 0.25rem;">Centrální hvězda</strong>
-            <span><%= star['name'] %></span>
+            <strong style="color: var(--accent); display: block; margin-bottom: 0.25rem;"><%= stars.size >= 2 ? "Dvojhvězda" : "Centrální hvězda" %></strong>
+            <span><%= stars.map { |star| star['name'] }.join(" a ") %></span>
           </div>
         <% end %>
       <% end %>
@@ -102,9 +102,6 @@
           <line x1="0" y1="<%= i * 100 %>" x2="800" y2="<%= i * 100 %>" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
         <% end %>
 
-        <!-- Recommended zone (100-700) -->
-        <rect x="100" y="100" width="600" height="600" fill="none" stroke="rgba(46, 213, 115, 0.3)" stroke-width="2" stroke-dasharray="10,5"/>
-
         <!-- Black hole at center -->
         <circle cx="400" cy="400" r="30" fill="#8b5cf6" opacity="0.3"/>
         <circle cx="400" cy="400" r="50" fill="none" stroke="#e74c3c" stroke-width="2" stroke-dasharray="5,5" opacity="0.5"/>
@@ -116,17 +113,20 @@
         <text x="<%= @system.x %>" y="<%= @system.y - 25 %>" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="bold"><%= @system.name %></text>
 
         <!-- Other systems for reference -->
+        <%# class/data-* let galaxy.js validatePosition check the spacing rule client-side %>
         <% System.where.not(id: @system.id).each do |other_system| %>
-          <circle cx="<%= other_system.x %>" cy="<%= other_system.y %>" r="10" fill="rgba(255,255,255,0.3)" stroke="rgba(255,255,255,0.5)" stroke-width="1"/>
+          <circle cx="<%= other_system.x %>" cy="<%= other_system.y %>" r="40" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="2" stroke-dasharray="6,5"/>
+          <circle cx="<%= other_system.x %>" cy="<%= other_system.y %>" r="10" fill="rgba(255,255,255,0.3)" stroke="rgba(255,255,255,0.5)" stroke-width="1"
+                  class="system-marker" data-x="<%= other_system.x %>" data-y="<%= other_system.y %>" data-system-name="<%= other_system.name %>"/>
         <% end %>
       </svg>
     </div>
 
-    <div style="margin-top: 1rem; font-size: 0.9rem; color: rgba(255, 255, 255, 0.7); text-align: center;">
-      <p><span style="color: #2ed573;">█</span> Zelený čtverec = Doporučená zóna (100-700)</p>
-      <p><span style="color: #e74c3c;">○</span> Červený kruh = Minimální vzdálenost od černé díry</p>
-      <p><span style="color: #fbbf24;">●</span> Žlutá = Současná pozice vaší soustavy</p>
-    </div>
+    <ul class="position-legend">
+      <li><span class="legend-ring legend-ring-black-hole" aria-hidden="true"></span>Minimální vzdálenost od černé díry (<%= format_distance_km(50) %>)</li>
+      <li><span class="legend-ring legend-ring-system" aria-hidden="true"></span>Minimální vzdálenost od ostatních soustav (<%= format_distance_km(40) %>)</li>
+      <li><span class="legend-dot" style="background: #fbbf24;" aria-hidden="true"></span>Současná pozice vaší soustavy</li>
+    </ul>
   </div>
 </div>
 

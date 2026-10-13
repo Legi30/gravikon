@@ -3,6 +3,14 @@
 require_relative "../validators/orbit_validator"
 
 class System < ApplicationRecord
+  # Categorical colour per star system, in fixed order of System id so a
+  # system keeps its colour everywhere (map, dashboard, meetings) and when
+  # others are added. Validated for the dark card surface (#1a1e3a): OKLCH
+  # lightness band, chroma floor, colour-blind + normal-vision separation,
+  # 3:1 contrast. Systems past the 7th share the neutral OTHER_COLOR.
+  COLORS = %w[#14a594 #b38f00 #8b5cf6 #e0603e #3b82f6 #d9469b #5f9e2a].freeze
+  OTHER_COLOR = "#7c8a9c"
+
   # Callbacks
   before_validation :normalize_name
   before_validation :set_default_json_file_path, on: :create
@@ -53,7 +61,30 @@ class System < ApplicationRecord
   # Security: Validate coordinates are finite numbers (not NaN or Infinity)
   validate :validate_finite_coordinates
 
+  # @return [Hash{Integer => String}] system id => categorical colour
+  def self.color_map
+    order(:id).pluck(:id).each_with_index.to_h { |id, index| [ id, COLORS[index] || OTHER_COLOR ] }
+  end
+
+  # Mix a "#rrggbb" colour toward white (0 = unchanged, 1 = white). The map
+  # and system pages draw stars and planets in light tints of the system
+  # colour so each system reads as one family.
+  def self.tint(hex, amount)
+    channels = hex.delete("#").scan(/../).map { |pair| pair.to_i(16) }
+    "#%02x%02x%02x" % channels.map { |c| (c + (255 - c) * amount).round }
+  end
+
   # Instance methods
+
+  # Stars of the system (two for a binary), primary first
+  # @return [Array<Hash>]
+  def stars
+    (load_system_data&.dig("bodies") || []).select { |body| body["type"] == "star" }
+  end
+
+  def binary?
+    stars.size >= 2
+  end
 
   # Load system's JSON data from file system
   # Returns hash with system data or nil if file doesn't exist

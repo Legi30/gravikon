@@ -43,8 +43,13 @@ class SystemGenerator
     Sturyth Staldor Stalyth Styrgath Stelvon Starnix Stylor Sturgix Stelmax
   ].freeze
 
+  # Binary systems: the two stars circle their common centre (the system's
+  # local origin) at this distance each, so the pair spans 72 000 km and the
+  # first circumbinary planet orbit (>= 90 units) stays clear of both.
+  BINARY_STAR_OFFSET = 36
+
   attr_reader :system_id, :system_name, :system_x, :system_y, :num_planets, :max_moons_per_planet
-  attr_reader :custom_bodies, :errors
+  attr_reader :custom_bodies, :binary, :errors
 
   # Initialize generator with parameters
   # @param system_id [String] Unique identifier for the system (UUID or slug)
@@ -54,8 +59,9 @@ class SystemGenerator
   # @param num_planets [Integer] Number of planets (1-10)
   # @param max_moons_per_planet [Integer] Maximum moons per planet (0-5)
   # @param custom_bodies [Array<Hash>] Optional custom body definitions
+  # @param binary [Boolean] Two stars orbiting the system centre instead of one
   def initialize(system_id:, system_name: nil, system_x: nil, system_y: nil,
-                 num_planets: 5, max_moons_per_planet: 2, custom_bodies: nil)
+                 num_planets: 5, max_moons_per_planet: 2, custom_bodies: nil, binary: false)
     @system_id = system_id
     @system_name = system_name || "System #{system_id}"
     @system_x = system_x
@@ -63,6 +69,7 @@ class SystemGenerator
     @num_planets = num_planets.to_i
     @max_moons_per_planet = max_moons_per_planet.to_i
     @custom_bodies = custom_bodies
+    @binary = binary
     @errors = []
     @used_names = []
   end
@@ -194,9 +201,11 @@ class SystemGenerator
   def generate_random_system
     bodies = []
 
-    # Generate star
-    star = generate_star
-    bodies << star
+    # Generate the star (or the binary pair). Planets orbit the system
+    # centre, which is the star itself or the binary's common centre.
+    stars = @binary ? generate_binary_stars : [ generate_star ]
+    bodies.concat(stars)
+    star = { x: STAR_POSITION[0], y: STAR_POSITION[1] }
 
     # Generate planets and their moons
     @num_planets.times do |i|
@@ -246,6 +255,20 @@ class SystemGenerator
       # The star is the system's local reference frame
       dilation: 1.0
     }
+  end
+
+  # Generate two stars facing each other across the system centre
+  # @return [Array<Hash>] Star data, primary first
+  def generate_binary_stars
+    angle = rand * 2 * Math::PI
+
+    [ 0, Math::PI ].map do |phase|
+      star = generate_star
+      star.merge(
+        x: (STAR_POSITION[0] + BINARY_STAR_OFFSET * Math.cos(angle + phase)).round(2),
+        y: (STAR_POSITION[1] + BINARY_STAR_OFFSET * Math.sin(angle + phase)).round(2)
+      )
+    end
   end
 
   # Generate a planet

@@ -1,42 +1,13 @@
 # frozen_string_literal: true
 
 class DashboardController < ApplicationController
-  include DashboardHelper
-
+  # The dashboard introduces the star systems (one profile at a time) and
+  # keeps the galaxy-wide time chart; meetings only appear inside the profile
+  # of the systems they connect. Built through `helpers` because the data
+  # helpers use view helpers (system colours, km formatting).
   def index
-    # Cache dashboard statistics for performance with large datasets
-    # Cache expires when meetings are created/updated/deleted (see Meeting model)
-    cache_key = "dashboard_stats_v2_#{Meeting.maximum(:updated_at)&.to_i || 0}"
-
-    @dashboard_stats = Rails.cache.fetch(cache_key, expires_in: 1.hour) do
-      {
-        total_meetings: total_meetings_count,
-        avg_delay: average_signal_delay,
-        avg_duration: average_time_dilation,
-        total_time: total_meeting_time,
-        participant_frequency: participant_frequency,
-        duration_distribution: duration_distribution
-      }
-    end
-
-    # Extract cached statistics
-    @total_meetings = @dashboard_stats[:total_meetings]
-    @avg_delay = @dashboard_stats[:avg_delay]
-    @avg_duration = @dashboard_stats[:avg_duration]
-    @total_time = @dashboard_stats[:total_time]
-    @participant_frequency = @dashboard_stats[:participant_frequency]
-    @duration_distribution = @dashboard_stats[:duration_distribution]
-
-    # Featured meetings are not cached (always show latest)
-    @recent_meetings = recent_meetings
-    @longest_meeting = longest_meeting
-    @highest_delay_meeting = highest_delay_meeting
-
-    # Total number of celestial bodies across all systems
-    @total_bodies = System.all.sum do |system|
-      system_data = system.load_system_data
-      system_data ? (system_data["bodies"]&.size || 0) : 0
-    end
+    @profiles = helpers.galaxy_system_profiles
+    @galaxy_time_chart = helpers.galaxy_time_chart_data
   end
 
   def cache_stats

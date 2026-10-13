@@ -142,8 +142,32 @@ class SystemGeneratorTest < ActiveSupport::TestCase
 
   # Test physical constants are defined
   test "defines required physical constants" do
-    assert_equal 0.0001, PhysicsConstants::GRAVITATIONAL_CONSTANT
+    assert_equal 0.00004, PhysicsConstants::GRAVITATIONAL_CONSTANT
     assert_equal 10_000_000, PhysicsConstants::C
     assert_equal 1_000_000, PhysicsConstants::UNIT_METERS
+  end
+
+  test "binary option generates two stars facing each other across the centre" do
+    data = SystemGenerator.new(system_id: "binary_gen", system_name: "Binary", num_planets: 4, binary: true).generate
+
+    stars = data[:bodies].select { |body| body[:type] == "star" }
+    assert_equal 2, stars.size
+    center = PhysicsConstants::SYSTEM_LOCAL_CENTER
+    stars.each do |star|
+      assert_in_delta SystemGenerator::BINARY_STAR_OFFSET, Math.hypot(star[:x] - center, star[:y] - center), 0.05
+    end
+    assert_in_delta center, (stars[0][:x] + stars[1][:x]) / 2, 0.05
+    assert_in_delta center, (stars[0][:y] + stars[1][:y]) / 2, 0.05
+
+    # Planets circle both stars, clear of the pair
+    data[:bodies].select { |body| body[:type] == "planet" }.each do |planet|
+      assert Math.hypot(planet[:x] - center, planet[:y] - center) >= 90
+    end
+  end
+
+  test "a single star is the default" do
+    data = SystemGenerator.new(system_id: "single_gen", system_name: "Single", num_planets: 2).generate
+
+    assert_equal 1, data[:bodies].count { |body| body[:type] == "star" }
   end
 end

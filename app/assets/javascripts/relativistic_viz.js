@@ -2,63 +2,41 @@
 // Handles expand/collapse and animations for meeting relativistic info
 
 document.addEventListener('DOMContentLoaded', function() {
-  // Add toggle buttons to meeting rows
   initializeRelativistics();
 });
 
+// The whole meeting row opens/closes its relativistic detail row; the
+// chevron button (rendered in _meeting) is the keyboard/screen-reader
+// equivalent. Clicks on the edit link / delete form keep their own action.
 function initializeRelativistics() {
   const meetingRows = document.querySelectorAll('tbody#meetings-table tr[id^="meeting_"]');
 
   meetingRows.forEach(function(row) {
-    // Skip if already initialized
-    if (row.querySelector('.relativistic-toggle')) {
-      return;
+    const toggleButton = row.querySelector('.relativistic-toggle');
+    const detailsRow = document.getElementById('relativistic-' + row.id);
+    if (!toggleButton || !detailsRow) return;
+
+    function toggle() {
+      const opening = detailsRow.style.display === 'none';
+
+      detailsRow.style.display = opening ? 'table-row' : 'none';
+      detailsRow.classList.toggle('open', opening);
+      row.classList.toggle('expanded', opening);
+      toggleButton.classList.toggle('active', opening);
+      toggleButton.setAttribute('aria-expanded', String(opening));
+      toggleButton.setAttribute('aria-label', opening ? 'Skrýt relativistické efekty' : 'Zobrazit relativistické efekty');
+
+      if (opening) animateSignalPulses(detailsRow);
     }
 
-    const meetingId = row.id;
+    row.addEventListener('click', function(e) {
+      const interactive = e.target.closest('a, button, form, input, select, textarea');
+      if (interactive && interactive !== toggleButton) return;
+      // Selecting text in the row should not toggle it
+      if (window.getSelection && String(window.getSelection()).length > 0) return;
 
-    // Create toggle button
-    const toggleButton = document.createElement('button');
-    toggleButton.textContent = '📊 Relativistika';
-    toggleButton.className = 'button-like relativistic-toggle';
-    toggleButton.style.marginLeft = '0.5rem';
-    toggleButton.title = 'Zobrazit relativistické efekty';
-    toggleButton.setAttribute('aria-label', 'Zobrazit relativistické efekty pro tuto schůzku');
-    toggleButton.setAttribute('aria-expanded', 'false');
-    toggleButton.setAttribute('aria-controls', 'relativistic-' + meetingId);
-    toggleButton.type = 'button';
-
-    // Add button to actions cell
-    const actionsCell = row.querySelector('td:last-child > div');
-    if (actionsCell) {
-      actionsCell.appendChild(toggleButton);
-    }
-
-    // Toggle functionality
-    toggleButton.addEventListener('click', function(e) {
       e.preventDefault();
-      const detailsRow = document.getElementById('relativistic-' + meetingId);
-
-      if (detailsRow) {
-        if (detailsRow.style.display === 'none') {
-          detailsRow.style.display = 'table-row';
-          detailsRow.classList.add('open');
-          toggleButton.textContent = '📊 Skrýt';
-          toggleButton.classList.add('active');
-          toggleButton.setAttribute('aria-expanded', 'true');
-          toggleButton.setAttribute('aria-label', 'Skrýt relativistické efekty');
-
-          // Start animations
-          animateSignalPulses(detailsRow);
-        } else {
-          detailsRow.style.display = 'none';
-          detailsRow.classList.remove('open');
-          toggleButton.textContent = '📊 Relativistika';
-          toggleButton.classList.remove('active');
-          toggleButton.setAttribute('aria-expanded', 'false');
-          toggleButton.setAttribute('aria-label', 'Zobrazit relativistické efekty pro tuto schůzku');
-        }
-      }
+      toggle();
     });
   });
 }

@@ -12,15 +12,25 @@
       this.initSystemNavigation();
       this.initSystemTooltips();
       this.initGalaxyOrbits();
+      this.initSystemDilations();
       this.initSpaceClock();
       this.initPositionSelector();
 
       if (window.Logger) window.Logger.log('Galaxy interactions initialized');
     },
 
+    // Markers of the LIVE galaxy map. The new-system position picker embeds
+    // the same SVG, but there the systems must stay at their STORED positions
+    // (the ones validation checks against) and must not navigate away or
+    // pop tooltips — so markers inside #position-preview are excluded.
+    liveMarkers() {
+      return Array.from(document.querySelectorAll('#solar-systems .system-marker'))
+        .filter(marker => !marker.closest('#position-preview'));
+    },
+
     // Initialize click navigation on system markers
     initSystemNavigation() {
-      const systemMarkers = document.querySelectorAll('.system-marker');
+      const systemMarkers = this.liveMarkers();
 
       if (systemMarkers.length === 0) {
         if (window.Logger) window.Logger.info('No system markers found for navigation');
@@ -47,7 +57,7 @@
     // Positions derive from wall-clock time, so a refresh continues the
     // motion instead of resetting it.
     initGalaxyOrbits() {
-      const markers = Array.from(document.querySelectorAll('#solar-systems .system-marker'));
+      const markers = this.liveMarkers();
       if (markers.length === 0) return;
 
       const CENTER_X = 400;
@@ -90,6 +100,29 @@
       if (window.Logger) window.Logger.log(`Galaxy orbit animation running for ${orbiting.length} systems`);
     },
 
+    // Tag each map marker with its black-hole time dilation for the hover
+    // tooltip. Computed by RelativisticCalculator on the server and passed in
+    // data-system-dilations (keyed by file id), so no physics is re-derived here.
+    initSystemDilations() {
+      const hero = document.querySelector('.galaxy-hero[data-system-dilations]');
+      if (!hero) return;
+
+      let dilations = {};
+      try {
+        dilations = JSON.parse(hero.getAttribute('data-system-dilations')) || {};
+      } catch (e) {
+        if (window.Logger) window.Logger.warn('Invalid data-system-dilations JSON');
+        return;
+      }
+
+      this.liveMarkers().forEach(marker => {
+        const dilation = dilations[marker.getAttribute('data-system-id')];
+        if (typeof dilation === 'number' && dilation > 0) {
+          marker.setAttribute('data-dilation', dilation);
+        }
+      });
+    },
+
     // Xentorský orbitální čas: each rune digit is one solar system's orbital
     // phase around the black hole, quantized into 12 sectors (base-12, zero
     // at galactic north, increasing clockwise). Outermost system = leftmost
@@ -106,7 +139,7 @@
 
       // Up to 4 systems ordered by orbital radius, outermost first
       // (ties broken by name for determinism)
-      const systems = Array.from(document.querySelectorAll('#solar-systems .system-marker'))
+      const systems = this.liveMarkers()
         .map(m => ({
           name: m.getAttribute('data-system-name') || '',
           orbitRadius: parseFloat(m.getAttribute('data-orbit-radius')) || 0,
@@ -147,7 +180,7 @@
     // Initialize tooltips for system markers
     initSystemTooltips() {
       const tooltip = document.getElementById('tooltip');
-      const systemMarkers = document.querySelectorAll('.system-marker');
+      const systemMarkers = this.liveMarkers();
 
       if (!tooltip) {
         if (window.Logger) window.Logger.info('Tooltip element not found');
@@ -163,28 +196,37 @@
       // mouseenter/mouseleave (not mouseover/mouseout) so transitions between
       // the group's children never blink the tooltip.
       systemMarkers.forEach(marker => {
-        const core = marker.querySelector('.system-core');
-        const originalStroke = core ? core.getAttribute('stroke') : null;
-        const originalStrokeWidth = core ? core.getAttribute('stroke-width') : null;
+        // Hover highlight itself is CSS (the map SVG's own style block)
         let lastPointer = null;
 
         marker.addEventListener('mouseenter', (e) => {
           marker.__orbitFrozen = true;
           lastPointer = { x: e.clientX, y: e.clientY };
 
-          if (core) {
-            core.setAttribute('stroke', '#ffd700');
-            core.setAttribute('stroke-width', '3');
-          }
+          // First hover = the visitor found the markers; stop the "click me" pulse
+          const hero = marker.closest('.galaxy-hero');
+          if (hero) hero.classList.add('explored');
 
           const systemName = marker.getAttribute('data-system-name') || 'Neznámá soustava';
           const bodyCount = marker.getAttribute('data-body-count') || '0';
+          const systemColor = marker.getAttribute('data-system-color') || '#7c8a9c';
+          const binary = marker.getAttribute('data-binary') === 'true';
           const orbitRadius = parseFloat(marker.getAttribute('data-orbit-radius')) || 0;
+          const dilation = parseFloat(marker.getAttribute('data-dilation'));
+
+          // One of your hours, measured on this system's clock
+          let dilationRow = '';
+          if (dilation > 0) {
+            const localSeconds = Math.round(3600 * dilation);
+            dilationRow = `<div class="tooltip-row"><span>Za vaši 1 hodinu uběhne zde</span><span>${Math.floor(localSeconds / 60)} min ${localSeconds % 60} s</span></div>`;
+          }
 
           tooltip.innerHTML = `
-            <div class="tooltip-title">${systemName}</div>
+            <div class="tooltip-title"><span class="tooltip-dot" style="background: ${systemColor}"></span>${systemName}</div>
+            ${binary ? '<div class="tooltip-row"><span>Hvězdy</span><span>dvojhvězda</span></div>' : ''}
             <div class="tooltip-row"><span>Počet těles</span><span>${bodyCount}</span></div>
-            <div class="tooltip-row"><span>Vzdálenost od černé díry</span><span>${orbitRadius.toFixed(0)} j.</span></div>
+            <div class="tooltip-row"><span>Vzdálenost od černé díry</span><span>${Math.round(orbitRadius * 1000).toLocaleString('cs-CZ')} km</span></div>
+            ${dilationRow}
             <div class="tooltip-hint">Klikněte pro detail soustavy</div>
           `;
 
@@ -209,11 +251,6 @@
           }
 
           marker.__orbitFrozen = false;
-
-          if (core) {
-            core.setAttribute('stroke', originalStroke);
-            core.setAttribute('stroke-width', originalStrokeWidth);
-          }
           tooltip.style.display = 'none';
         });
       });
@@ -336,13 +373,31 @@
       if (distance < MIN_DISTANCE_FROM_BLACK_HOLE) {
         return {
           valid: false,
-          error: `Pozice je příliš blízko černé díry (vzdálenost: ${distance.toFixed(1)}, minimum: ${MIN_DISTANCE_FROM_BLACK_HOLE})`
+          error: `Pozice je příliš blízko černé díry (vzdálenost: ${Math.round(distance * 1000).toLocaleString('cs-CZ')} km, minimum: ${(MIN_DISTANCE_FROM_BLACK_HOLE * 1000).toLocaleString('cs-CZ')} km)`
         };
       }
 
       // Warning for positions outside recommended range (but still allow)
       if (x < RECOMMENDED_MIN || x > RECOMMENDED_MAX || y < RECOMMENDED_MIN || y > RECOMMENDED_MAX) {
         if (window.Logger) window.Logger.warn('Position outside recommended range but still valid');
+      }
+
+      // Same spacing rule the server enforces, checked against the other
+      // systems' STORED positions (data-x/data-y on the picker's markers)
+      const MIN_DISTANCE_BETWEEN_SYSTEMS = 40;
+      const others = document.querySelectorAll('#position-preview .system-marker');
+      for (const marker of others) {
+        const ox = parseFloat(marker.getAttribute('data-x'));
+        const oy = parseFloat(marker.getAttribute('data-y'));
+        if (isNaN(ox) || isNaN(oy)) continue;
+
+        if (Math.hypot(x - ox, y - oy) < MIN_DISTANCE_BETWEEN_SYSTEMS) {
+          const name = marker.getAttribute('data-system-name') || 'jiné soustavy';
+          return {
+            valid: false,
+            error: `Pozice je příliš blízko soustavy ${name} (minimum: ${(MIN_DISTANCE_BETWEEN_SYSTEMS * 1000).toLocaleString('cs-CZ')} km)`
+          };
+        }
       }
 
       return { valid: true };

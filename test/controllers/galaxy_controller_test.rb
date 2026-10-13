@@ -48,6 +48,18 @@ class GalaxyControllerTest < ActionDispatch::IntegrationTest
     assert_select "h3", /Seznam soustav/
   end
 
+  test "GET index passes per-system black-hole dilation to the map tooltips" do
+    @test_galaxy_data["systems"] = [ { "id" => "clock_test", "x" => 500.0, "y" => 400.0 } ]
+    File.write(@test_galaxy_file, JSON.pretty_generate(@test_galaxy_data))
+
+    get galaxy_index_path
+    assert_response :success
+
+    expected = PhysicsConstants.gravitational_dilation(8.2e36, 100).round(6)
+    assert_equal({ "clock_test" => expected }, assigns(:system_dilations))
+    assert_select ".galaxy-hero[data-system-dilations*=?]", "clock_test"
+  end
+
   # Test GET show_system displays specific system
   test "GET show_system displays specific system SVG and metadata" do
     # Create a test system
@@ -193,5 +205,43 @@ class GalaxyControllerTest < ActionDispatch::IntegrationTest
 
     # Should not create system with invalid name format
     assert_not System.exists?(name: "Test@#$%System!")
+  end
+
+  # The four core systems are permanent
+  test "core systems cannot be edited, regenerated or deleted" do
+    core = System.new(name: "Core System", x: 300, y: 300, json_file_path: "data/systems/core_test.json", core: true)
+    core.save(validate: false)
+
+    get edit_galaxy_system_path(core)
+    assert_redirected_to galaxy_system_path(core)
+
+    patch galaxy_system_path(core), params: { system: { name: "Renamed" } }
+    assert_equal "Core System", core.reload.name
+
+    assert_no_enqueued_jobs only: RegenerateSystemJob do
+      post regenerate_galaxy_system_path(core), params: { num_planets: 3, max_moons_per_planet: 1 }
+    end
+
+    assert_no_difference("System.count") do
+      delete galaxy_system_path(core)
+    end
+    assert_redirected_to galaxy_system_path(core)
+    assert_match(/stálé soustavy/, flash[:alert])
+
+    core.destroy
+  end
+
+  test "core system page hides edit, delete and regenerate controls" do
+    core = System.new(name: "Core Page", x: 300, y: 300, json_file_path: "data/systems/core_page.json", core: true)
+    core.save(validate: false)
+    write_system_data(core, default_test_bodies(%w[Corestar Coreplanet]))
+
+    get galaxy_system_path(core)
+    assert_response :success
+    assert_select "a[href=?]", edit_galaxy_system_path(core), count: 0
+    assert_select "#system-regeneration-form", count: 0
+    assert_select "form[action=?]", galaxy_system_path(core), count: 0
+
+    core.destroy
   end
 end

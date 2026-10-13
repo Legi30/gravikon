@@ -225,6 +225,24 @@ class MeetingsControllerTest < ActionDispatch::IntegrationTest
     assert_select "body", /Alpha|Beta/
   end
 
+  test "GET index row shows one lived-time bar per participant and a detail toggle" do
+    system = create_system_with_bodies(name: "Alpha", x: 300, y: 300, file_id: "alpha", body_names: %w[Sol Earth Mars])
+    meeting = Meeting.create!(start_time: "09:00", end_time: "10:30", participants: '["Sol", "Earth", "Mars"]', topic: "Kalibrace", system: system)
+
+    get meetings_url
+    assert_response :success
+
+    assert_select "tr#meeting_#{meeting.id}.meeting-row" do
+      assert_select ".meeting-time", "09:00–10:30"
+      assert_select ".meeting-row-topic", "Kalibrace"
+      assert_select ".lived-bars .lived-bar", 3
+      assert_select "button.relativistic-toggle[aria-controls=?]", "relativistic-meeting_#{meeting.id}"
+    end
+    # The detail row spans every column of the meeting row
+    assert_select "tr#relativistic-meeting_#{meeting.id} td[colspan='6']"
+    assert_select "tr#relativistic-meeting_#{meeting.id} .rel-bar-dilation", 3
+  end
+
   test "POST create with single-system participants sets is_inter_system=false" do
     system = create_system_with_bodies(name: "Sol System", x: 300, y: 300, file_id: "sol", body_names: %w[Sol Earth Mars])
 

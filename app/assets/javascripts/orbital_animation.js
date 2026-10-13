@@ -68,7 +68,8 @@ class OrbitalAnimator {
         orbitalPeriod: orbitalPeriod,
         originalX: originalX,
         originalY: originalY,
-        hasOrbit: orbitRadius > 0 && orbitalPeriod > 0 && parentName !== "",
+        // No parent name = orbits a fixed point (a binary's common centre)
+        hasOrbit: orbitRadius > 0 && orbitalPeriod > 0,
         currentX: originalX,
         currentY: originalY,
         orbitPath: orbitPath

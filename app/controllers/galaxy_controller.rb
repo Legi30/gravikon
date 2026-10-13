@@ -3,13 +3,23 @@
 # Controller for galaxy view and system management
 # Handles CRUD operations for solar systems and displays galaxy map
 class GalaxyController < ApplicationController
-  before_action :set_system, only: [ :show_system, :edit_system, :update_system, :destroy_system ]
+  before_action :set_system, only: [ :show_system, :edit_system, :update_system, :destroy_system, :regenerate_system ]
+  # The four core systems are permanent: no editing, regenerating or deleting
+  before_action :protect_core_system, only: [ :edit_system, :update_system, :destroy_system, :regenerate_system ]
 
   # GET /galaxy
   # Display galaxy map with all systems
   def index
     @galaxy_data = load_galaxy_data
-    @systems = System.all.order(created_at: :desc)
+    @systems = System.order(:id) # same order as the system colours and dashboard pills
+
+    # Black-hole time dilation per system (keyed by FILE id, like the map
+    # markers) for the landing-map clocks — computed here so the physics
+    # stays in RelativisticCalculator instead of being re-derived in JS
+    calculator = RelativisticCalculator.new(galaxy_data: @galaxy_data)
+    @system_dilations = (@galaxy_data["systems"] || []).to_h do |system|
+      [ system["id"], calculator.calculate_black_hole_dilation(system["x"].to_f, system["y"].to_f).round(6) ]
+    end
 
     # Generate galaxy SVG if it doesn't exist or is outdated
     generate_galaxy_svg_if_needed
@@ -256,8 +266,6 @@ class GalaxyController < ApplicationController
   # POST /galaxy/systems/:id/regenerate
   # Regenerate system with new parameters (triggers background job)
   def regenerate_system
-    @system = find_system_record(params[:id])
-
     unless @system
       redirect_to galaxy_index_path, alert: "Systém nebyl nalezen."
       return
@@ -294,6 +302,12 @@ class GalaxyController < ApplicationController
   # markers whose data comes from galaxy_data.json).
   def set_system
     @system = find_system_record(params[:id])
+  end
+
+  def protect_core_system
+    return unless @system&.core?
+
+    redirect_to galaxy_system_path(@system), alert: "#{@system.name} patří mezi čtyři stálé soustavy galaxie, ty měnit ani mazat nelze."
   end
 
   def find_system_record(param)

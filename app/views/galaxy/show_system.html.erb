@@ -7,12 +7,14 @@
         <li aria-current="page"><%= @system.name %></li>
       </ol>
     </nav>
-    <h1><%= @system.name %></h1>
+    <h1 class="system-title" style="--system-color: <%= system_color(@system.id) %>; --system-tint: <%= system_tint(@system.id) %>;"><span class="system-title-dot" aria-hidden="true"></span><%= @system.name %></h1>
   </div>
 
   <nav class="system-header-actions" role="navigation" aria-label="Akce se soustavou">
-    <%= link_to "Upravit soustavu", edit_galaxy_system_path(@system), class: "btn btn-primary", "aria-label" => "Upravit parametry soustavy" %>
-    <%= button_to "Smazat", galaxy_system_path(@system), method: :delete, form: { onsubmit: "return confirm('Opravdu chcete smazat soustavu #{j @system.name}? Tato akce je nevratná.');", style: "display: contents;" }, class: "btn btn-danger", "aria-label" => "Smazat soustavu" %>
+    <% unless @system.core? %>
+      <%= link_to "Upravit soustavu", edit_galaxy_system_path(@system), class: "btn btn-primary", "aria-label" => "Upravit parametry soustavy" %>
+      <%= button_to "Smazat", galaxy_system_path(@system), method: :delete, form: { onsubmit: "return confirm('Opravdu chcete smazat soustavu #{j @system.name}? Tato akce je nevratná.');", style: "display: contents;" }, class: "btn btn-danger", "aria-label" => "Smazat soustavu" %>
+    <% end %>
     <%= link_to "Zpět na galaxii", galaxy_index_path, class: "btn btn-secondary", "aria-label" => "Návrat na mapu galaxie" %>
   </nav>
 </div>
@@ -24,6 +26,44 @@
     align-items: flex-start;
     gap: 1.5rem;
     flex-wrap: wrap;
+  }
+
+  .system-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--system-tint);
+    text-shadow: none;
+  }
+
+  .system-title-dot {
+    width: 0.55em;
+    height: 0.55em;
+    border-radius: 50%;
+    flex: none;
+    background: var(--system-tint);
+    box-shadow: 0 0 14px var(--system-color);
+  }
+
+  .system-svg .celestial-body[data-type="planet"] {
+    fill: var(--tone-0);
+  }
+
+  .system-svg .celestial-body[data-type="planet"][data-tone="1"] {
+    fill: var(--tone-1);
+  }
+
+  .system-svg .celestial-body[data-type="planet"][data-tone="2"] {
+    fill: var(--tone-2);
+  }
+
+  .system-svg .celestial-body[data-type="moon"] {
+    fill: var(--tone-moon);
+  }
+
+  .system-svg .orbit-path {
+    stroke: var(--system-color);
+    stroke-opacity: 0.55;
   }
 
   .system-header-actions {
@@ -67,14 +107,14 @@
       <div class="metadata-item">
         <strong style="color: var(--accent); display: block; margin-bottom: 0.5rem;">Vzdálenost od černé díry</strong>
         <% distance = Math.sqrt((@system.x - 400)**2 + (@system.y - 400)**2) %>
-        <span><%= distance.round(1) %> jednotek</span>
+        <span><%= format_distance_km(distance) %></span>
       </div>
 
-      <% star = @system_data['bodies'].find { |b| b['type'] == 'star' } %>
-      <% if star %>
+      <% stars = @system_data['bodies'].select { |b| b['type'] == 'star' } %>
+      <% if stars.any? %>
         <div class="metadata-item">
-          <strong style="color: var(--accent); display: block; margin-bottom: 0.5rem;">Centrální hvězda</strong>
-          <span><%= star['name'] %> <% if star['mass'] %>(<%= (star['mass'] / 1.989e30).round(2) %> M☉)<% end %></span>
+          <strong style="color: var(--accent); display: block; margin-bottom: 0.5rem;"><%= stars.size >= 2 ? "Dvojhvězda" : "Centrální hvězda" %></strong>
+          <span><%= stars.map { |star| star['name'] }.join(" a ") %></span>
         </div>
       <% end %>
 
@@ -163,6 +203,8 @@
   </div>
 </div>
 
+<%# Core systems are permanent: no regeneration (the controller refuses it too) %>
+<% unless @system.core? %>
 <div class="content-section">
   <div class="card fade-in">
     <h3>Parametry soustavy</h3>
@@ -190,15 +232,13 @@
     <% end %>
   </div>
 </div>
+<% end %>
 
 <% if @system_svg.present? %>
-  <div class="svg-container fade-in" role="img" aria-label="Interaktivní mapa planetární soustavy <%= @system.name %>">
+  <%# Planets and moons wear light tints of the system colour (as on the galaxy map) %>
+  <div class="svg-container fade-in system-svg" role="img" aria-label="Interaktivní mapa planetární soustavy <%= @system.name %>"
+       style="--system-color: <%= system_color(@system.id) %>; --tone-0: <%= system_tint(@system.id, 0.2) %>; --tone-1: <%= system_tint(@system.id, 0.4) %>; --tone-2: <%= system_tint(@system.id, 0.55) %>; --tone-moon: <%= system_tint(@system.id, 0.7) %>;">
     <%= raw @system_svg %>
-  </div>
-
-  <div class="animation-controls" role="group" aria-label="Ovládání animace orbit" style="display: flex; gap: 0.75rem; align-items: center; justify-content: center; margin-top: 1rem;">
-    <button id="orbit-play-pause" class="btn btn-secondary btn-sm" type="button">⏸ Pozastavit</button>
-    <span style="font-size: 0.85rem; color: rgba(255, 255, 255, 0.5);">Orbity běží v reálném čase — po pozastavení se soustava „dožene" do aktuální pozice.</span>
   </div>
 
   <!-- Tooltip for celestial body information -->
@@ -221,6 +261,7 @@
     const numPlanetsField = document.getElementById('num-planets-field');
     const maxMoonsField = document.getElementById('max-moons-field');
     const submitButton = document.getElementById('regenerate-button');
+    if (!form) return;
 
     function validateForm() {
       const numPlanets = parseInt(numPlanetsField.value, 10);

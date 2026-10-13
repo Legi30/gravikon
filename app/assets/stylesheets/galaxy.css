@@ -70,7 +70,7 @@
 }
 
 .galaxy-map-container #black-hole text {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Oxanium', sans-serif;
   font-weight: 700;
   text-shadow: 0 0 10px rgba(139, 92, 246, 0.6);
 }
@@ -183,7 +183,7 @@
 }
 
 .system-card-title {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Oxanium', sans-serif;
   font-size: 1.3rem;
   color: var(--accent);
   margin: 0;
@@ -258,7 +258,7 @@
   display: block;
   margin-bottom: var(--spacing-sm);
   color: var(--accent);
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Oxanium', sans-serif;
   font-weight: 600;
   font-size: 0.95rem;
 }
@@ -384,7 +384,7 @@
 }
 
 .system-form-section-title {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Oxanium', sans-serif;
   font-size: 1.1rem;
   color: var(--accent);
   margin-bottom: var(--spacing-sm);
@@ -483,7 +483,7 @@
 }
 
 .galaxy-stat-value {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Oxanium', sans-serif;
   font-size: 1.5rem;
   color: var(--accent);
   font-weight: 700;
@@ -508,7 +508,7 @@
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all var(--transition-fast);
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Oxanium', sans-serif;
   font-weight: 600;
   font-size: 0.85rem;
 }
@@ -622,7 +622,7 @@
 }
 
 .galaxy-empty-title {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Oxanium', sans-serif;
   font-size: 1.5rem;
   color: var(--accent);
   margin-bottom: var(--spacing-sm);
@@ -678,6 +678,66 @@ body.galaxy-page .galaxy-hero svg {
   display: block;
 }
 
+/* Keep-out zones layered over the embedded map; clicks pass through to it */
+#position-preview .position-zones {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.position-zones circle {
+  fill: none;
+  stroke-width: 2;
+  stroke-dasharray: 6 5;
+}
+
+.position-zones .zone-black-hole {
+  stroke: rgba(231, 76, 60, 0.75);
+}
+
+.position-zones .zone-system {
+  stroke: rgba(255, 255, 255, 0.35);
+}
+
+.position-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem 1.75rem;
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.position-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.legend-ring,
+.legend-dot {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.legend-ring-black-hole {
+  border: 2px dashed rgba(231, 76, 60, 0.75);
+}
+
+.legend-ring-system {
+  border: 2px dashed rgba(255, 255, 255, 0.35);
+}
+
+.legend-dot {
+  background: #10b981;
+}
+
 /* === Xentorský orbitální čas (space clock) ================================
    Four rune digits, one per solar system: each digit is the system's
    current orbital phase around the black hole quantized into 12 sectors
@@ -723,5 +783,24 @@ body.galaxy-page .galaxy-hero svg {
   .space-clock {
     position: static;
     margin: 0 auto 0.75rem;
+  }
+}
+
+/* "Click me": the system halos breathe until the visitor first hovers a
+   marker (galaxy.js adds .explored) */
+.galaxy-hero:not(.explored) .system-glow {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: system-beckon 2.4s ease-in-out infinite;
+}
+
+@keyframes system-beckon {
+  0%, 100% { transform: scale(1); opacity: 0.3; }
+  50% { transform: scale(1.6); opacity: 0.75; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .galaxy-hero:not(.explored) .system-glow {
+    animation: none;
   }
 }

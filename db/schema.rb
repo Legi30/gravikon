@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_20_164549) do
+ActiveRecord::Schema[8.0].define(version: 2026_10_13_133603) do
   create_table "meetings", force: :cascade do |t|
     t.string "start_time"
     t.string "end_time"
@@ -47,6 +47,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_20_164549) do
     t.string "json_file_path", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "core", default: false, null: false
     t.index ["name"], name: "index_systems_on_name", unique: true
   end
 

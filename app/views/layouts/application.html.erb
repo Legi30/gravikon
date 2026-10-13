@@ -18,10 +18,10 @@
     <link rel="icon" href="/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/icon.png">
 
-    <%# Google Fonts - Orbitron for headings, Inter for body %>
+    <%# Google Fonts - Oxanium for headings (full Czech diacritics; Orbitron lacked ů ř ě č š ž), Inter for body %>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Oxanium:wght@600;700;800&display=swap" rel="stylesheet">
 
     <%# application.css is the manifest — it @imports the other stylesheets
         in cascade order (gravikon base first) %>
@@ -55,7 +55,7 @@
             <span>Přehled</span>
           <% end %>
           <%= link_to about_path, class: "nav-link #{'active' if current_page?(about_path)}", "aria-label" => "O aplikaci - klávesová zkratka O", title: "O aplikaci (klávesová zkratka: O)" do %>
-            <span class="nav-icon" aria-hidden="true">🚀</span>
+            <span class="nav-icon" aria-hidden="true">🔭</span>
             <span>O aplikaci</span>
           <% end %>
         </div>

@@ -88,7 +88,6 @@ namespace :cache do
         GalaxyService.invalidate_system_meeting_stats(system.id)
         GalaxyService.invalidate_system_meeting_stats(system.system_id)
       end
-      Rails.cache.delete("dashboard_stats_v2_#{Meeting.maximum(:updated_at)&.to_i || 0}")
       puts "  ✓ Meeting statistics caches cleared"
 
       puts "\n✓ All meeting statistics caches cleared successfully!"

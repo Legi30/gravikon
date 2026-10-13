@@ -3,21 +3,10 @@
   show_system_column = local_assigns.fetch(:show_system_column, false)
   calculator = @relativistic_calculator || RelativisticCalculator.new
   base_duration = meeting.duration_minutes
-  participant_systems_hash = meeting.participant_systems_hash
 
-  # Resolve each participant's system and body data once
-  participants = meeting.participants_array
-  participant_info = {}
-  participants.each do |name|
-    system_id = if is_inter_system && participant_systems_hash.present?
-      participant_systems_hash[name]
-    else
-      meeting.system_id
-    end
-    system = system_id ? (@systems_by_id&.dig(system_id) || System.find_by(id: system_id)) : nil
-    body = system&.load_system_data&.dig("bodies")&.find { |b| b["name"] == name }
-    participant_info[name] = { system_id: system_id, system: system, body: body }
-  end
+  # Each participant's system, body and dilation (resolved once, shared with the row)
+  participant_info = meeting_participants_info(meeting)
+  participants = participant_info.keys
 
   # Pairwise signal delays (seconds)
   pair_delays = participants.combination(2).filter_map do |p1, p2|
@@ -31,7 +20,7 @@
   max_delay = pair_delays.map { |pair| pair[:delay] }.max
 %>
 <tr class="relativistic-details" id="relativistic-<%= dom_id(meeting) %>" style="display: none;">
-  <td colspan="<%= show_system_column ? 7 : 6 %>">
+  <td colspan="<%= show_system_column ? 6 : 5 %>">
     <div class="relativistic-info-container">
       <h4>Relativistické efekty<% if is_inter_system %> - Mezisystémová schůzka<% end %></h4>
 
@@ -52,10 +41,8 @@
           <% participants.each do |participant_name| %>
             <%
               info = participant_info[participant_name]
-              dilation = calculator.calculate_time_dilation(info[:body], info[:system_id])
+              dilation = info[:dilation]
               local_duration = base_duration * dilation
-              color_value = ((1.0 - dilation) * 255).to_i.clamp(0, 255)
-              bar_color = "rgb(#{color_value}, #{255 - color_value}, 50)"
             %>
             <span class="rel-name">
               <%= participant_name %>
@@ -64,7 +51,7 @@
               <% end %>
             </span>
             <span class="rel-bar-track">
-              <span class="rel-bar" style="width: <%= (dilation * 100).clamp(0, 100).round(1) %>%; background-color: <%= bar_color %>;"></span>
+              <span class="rel-bar rel-bar-dilation" style="width: <%= (dilation * 100).clamp(0, 100).round(1) %>%; background: <%= system_color(info[:system_id]) %>;"></span>
             </span>
             <span class="rel-num rel-value"><%= local_duration.round(2) %> min</span>
             <span class="rel-num rel-factor"><%= dilation.round(4) %>×</span>

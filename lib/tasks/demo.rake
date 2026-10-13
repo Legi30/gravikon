@@ -10,11 +10,13 @@ namespace :demo do
   # Predefined demo galaxy: positions are spread safely (>= 50 units from the
   # black hole at (400,400), >= 40 units apart) and deliberately sit at
   # DIFFERENT distances from the black hole so each system has its own orbit
-  # ring (radii ~140 / 220 / 300 / 350). Bodies are generated randomly each
-  # reset, so the demo stays varied while the structure is stable.
+  # ring (radii ~100 / 160 / 300 / 350: the inner two sit deep in the black
+  # hole's well, so its effect dominates). Bodies are generated randomly each
+  # reset, so the demo stays varied while the structure is stable. Alfa
+  # Centauri is a binary star, like the real one (A + B).
   DEMO_SYSTEMS = [
-    { name: "Alfa Centauri", x: 279.0, y: 330.0, planets: 5, moons: 2 },
-    { name: "Kepler-442",    x: 607.0, y: 475.0, planets: 7, moons: 1 },
+    { name: "Alfa Centauri", x: 314.0, y: 350.0, planets: 5, moons: 2, binary: true },
+    { name: "Kepler-442",    x: 551.0, y: 455.0, planets: 7, moons: 1 },
     { name: "Trappist",      x: 250.0, y: 660.0, planets: 4, moons: 3 },
     { name: "Proxima",       x: 668.0, y: 175.0, planets: 3, moons: 2 }
   ].freeze
@@ -43,7 +45,9 @@ namespace :demo do
         name: cfg[:name],
         x: cfg[:x],
         y: cfg[:y],
-        json_file_path: "data/systems/#{file_id}.json"
+        json_file_path: "data/systems/#{file_id}.json",
+        # Permanent: no editing, regenerating or deleting from the UI
+        core: true
       )
       GenerateSystemJob.perform_now(
         system_id: file_id,
@@ -51,7 +55,8 @@ namespace :demo do
         system_x: cfg[:x],
         system_y: cfg[:y],
         num_planets: cfg[:planets],
-        max_moons: cfg[:moons]
+        max_moons: cfg[:moons],
+        binary: cfg.fetch(:binary, false)
       )
       puts "[demo:reset]   ✓ #{cfg[:name]} (#{cfg[:planets]} planet)"
       system

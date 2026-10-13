@@ -28,7 +28,7 @@ rails server                # http://localhost:3000
 ## Commands
 
 ```yaml
-test_cmd: rails test              # 281 runs, 0 failures — safe: tests write only to tmp/test_gravikon/
+test_cmd: rails test              # 266 runs, 0 failures — safe: tests write only to tmp/test_gravikon/
 lint_cmd: rubocop
 security_scan_cmd: brakeman -q -i config/brakeman.ignore
 server_cmd: rails server
@@ -131,6 +131,138 @@ ticks fastest. Pure JS in galaxy.js (initSpaceClock) reading the markers'
 orbit data attributes — no server state, wall-clock-derived like the orbits,
 so it is identical for all visitors. Fewer than 4 systems → "–" digits.
 
+**Landing (2026-10-13).** One headline above the map ("Čím blíž černé díře,
+tím pomaleji plyne čas.") + the "Co je Gravikon?" link. Per-system clocks
+under the stars were tried and REMOVED by David's call, don't bring them
+back. The hover tooltip shows "Za vaši 1 hodinu uběhne zde": dilations are
+computed SERVER-side (`GalaxyController#index` → `@system_dilations`, keyed by
+FILE id, via `RelativisticCalculator#calculate_black_hole_dilation`), passed as
+`data-system-dilations` on `.galaxy-hero`; galaxy.js `initSystemDilations`
+only copies them onto the markers. Marker halos pulse ("click me") until the
+first hover adds `.explored`. Headings use **Oxanium** (Orbitron had no
+ů ř ě č š ž).
+
+**Live markers vs. the position picker.** The new-system form embeds the same
+galaxy SVG. galaxy.js `liveMarkers()` excludes markers inside
+`#position-preview`, so in the picker systems stay at their STORED x/y (what
+validation uses), don't navigate away and show no tooltips. The picker draws
+its keep-out zones as an overlay SVG (`.position-zones`: 50-unit black-hole
+ring, 40-unit ring per system) and `validatePosition` checks BOTH rules
+client-side (the edit page's own inline map tags its other systems with
+`.system-marker` + `data-x/y` for the same check).
+
+**Units.** Visitors see km, never canvas units ("j."/"jednotek"): 1 unit =
+`PhysicsConstants::UNIT_METERS` = 1 000 km. Ruby: `ApplicationHelper#format_distance_km`;
+JS: `Math.round(units * 1000).toLocaleString('cs-CZ') + ' km'`. Canvas X/Y
+coordinates in forms stay raw.
+
+**System colours.** `System::COLORS` (aliased as `ApplicationHelper::SYSTEM_COLORS`)
+is a 7-slot categorical palette validated for the dark surface (#1a1e3a);
+`System.color_map` / `system_color(id)` assign it in System id order (8th+ →
+`OTHER_COLOR`). `System.tint(hex, amount)` / `system_tint(id)` mix toward white
+for the light "solar system theme". Used by the galaxy map (markers, labels,
+orbit rings, tooltip dot), landing system cards (top border + name; listed by
+id = colour order), system page title, dashboard (pills, profile accent,
+chart) and meetings (row stripe, dots, bars): a system has ONE colour
+everywhere. Direction from David (2026-10-13): the app is about the 4 demo
+systems; adding/editing systems stays but is visually quiet (the "+ Přidat
+soustavu" card is neutral grey, not gold).
+
+**Map markers = miniature systems (2026-10-13).** `GalaxyVisualizer` draws each
+marker as a star (light tint of the system colour) with about HALF of the
+real planets circling it (`planets.size / 2`, at least 1, spread inner→outer,
+starting at their real angle) on faint rings in the system colour. Planets
+spin via CSS `.mini-orbit` (nested `<g>` rotate, stops under reduced motion);
+the outer `<g>` transform still belongs to galaxy.js (orbit around the black
+hole). Hover highlight is CSS in the SVG's own style block (the old JS stroke
+on `.system-core` is gone). The visualizer takes `colors:` (file id → hex),
+defaulting to `System.color_map`, so the galaxy SVG must be regenerated when
+systems change (it already is).
+
+**Binary stars (Alfa Centauri, 2026-10-13).** `SystemGenerator.new(binary: true)`
+makes two stars at `BINARY_STAR_OFFSET` (36 units) on opposite sides of the
+system centre; planets orbit the centre (>= 90 units out). Wired through
+`GenerateSystemJob(binary:)`, `demo:reset` (`DEMO_SYSTEMS` Alfa Centauri has
+`binary: true`) and `RegenerateSystemJob` (keeps `system.binary?`). No form
+option on purpose (David: Alfa Centauri only). `PlanetarySystem` parents both
+stars and the planets to an undrawn barycentre (empty `data-parent`, fixed
+`data-parent-x/y`); orbital_animation.js treats "no parent name + radius" as
+an orbit around a fixed point. Binary stars draw at most 26 px and circle in
+24 s. Physics: unchanged model. A body's clock = its OWN surface gravity ×
+black hole; star gravity never affected planets, so the second star is just
+another body (meeting participant, dashboard inhabitant, intro "Dvojhvězda X
+a Y…"). Views read `stars` (plural) everywhere: dashboard profile `stars:`,
+landing card, show/edit pages.
+
+**Meetings index.** Body class `meetings-page`; one `.meetings-board` surface
+(filter bar + table), quiet column heads (overrides the global gold `th`
+band), a left stripe per row in the system colour; inter-system rows get ONE
+shared rainbow stripe (`--inter-rainbow`, a `::before`, same for all such rows).
+Topic + participants share one column; the whole row toggles the
+relativistic detail row (relativistic_viz.js; the chevron button in
+`_meeting` is the keyboard equivalent); edit/delete are quiet `.icon-btn`s.
+"Prožitá délka" = one hairline per participant in that participant's system
+colour (track = scheduled length, bar = dilation share). Per-participant data:
+`MeetingsHelper#meeting_participants_info` (memoized, shared by `_meeting`
+and `_relativistic_info`). Under 760px each row stacks into a card. Row CSS
+is the last block of meetings.css; the older `.meeting-topic`/`.meeting-actions`
+rules there belong to an unused card layout, hence the `meeting-row-*` names.
+
+**Dashboard (Přehled) = the star systems, not meeting stats.** A pill
+switcher shows ONE system profile at a time (all panels server-rendered,
+inline JS toggles them and keeps `#soustava-<id>` in the URL hash). Profile =
+generated intro (`DashboardHelper#system_intro`, built from live data because
+the nightly demo reset regenerates bodies), facts (distance in km, minutes per
+your hour, planet/moon counts with `cs_count` Czech plurals), "Kdo tu žije"
+(star, planets with their moons, nearest-planet rule like
+`PlanetarySystem#assign_parents!`, bar = minutes per your hour), "Vztahy s
+ostatními" (signal delay, "hodina tady = X min tam", shared meetings) and a
+small list of the system's meetings (no "Všechny schůzky" link). "Kdo tu žije"
+opens with a STORY about the inhabitants (`DashboardHelper#system_story`:
+hand-written `SYSTEM_STORIES` for the 4 core systems, playing on their real
+place in the galaxy; other systems get a stable pick from `SYSTEM_STORY_POOL`).
+Moon bars are as thick as planet bars. No coloured top stripe on profile
+panels or landing cards (David: no top stripes anywhere). Data: `DashboardHelper#galaxy_system_profiles`;
+the controller calls `helpers.` because the data helpers use view helpers.
+Below: the "Čas napříč galaxií" chart (`galaxy_time_chart_data`, colours from
+`system_color`, HTML-escaped `data-chart` attribute; the "Zobrazit jako
+tabulku" table was removed on request). Numbers on this page
+use a Czech decimal comma. The old meeting-stat strip, recent-meetings
+timeline, highlights, their helpers and the `dashboard_stats_*` cache (and
+`Meeting#clear_dashboard_cache`) were removed. The cache/job performance
+pages still exist at their URLs but are not linked.
+
+**About page copy.** Section icons are default-emoji-presentation glyphs
+(📖 🧮 🔧 🧭 🧩 ⌨️) so they all render as colour emoji (🛠/🜛 rendered
+monochrome); nav icon is 🔭. No long dashes in the copy (colons/commas), no
+"rescaled constants" note, no closing call-to-action box, no "shortcuts don't
+work in form fields" note.
+
+**Core systems (2026-10-13).** `systems.core` (boolean, default false;
+migration backfills the 4 demo names, `demo:reset` creates them with
+`core: true`). `GalaxyController#protect_core_system` refuses edit, update,
+regenerate and delete for them (redirect + alert); the show page and landing
+cards hide those controls. Meetings in them work normally. demo:reset itself
+still destroys and recreates them (no model-level guard on purpose).
+
+**Black hole dominates (2026-10-13).** `BLACK_HOLE_GRAVITATIONAL_CONSTANT` =
+2.7e-16 (horizon ~44 units, dilation ~0.34 at 50, ~0.75 at 100, ~0.93 at
+350) and `GRAVITATIONAL_CONSTANT` = 0.00004 (a body's own factor ~0.82-0.99),
+plus demo positions Alfa Centauri ~100 and Kepler-442 ~160 from the hole.
+Result: the 4 systems run ~45 / 51 / 55 / 56 min per hour and a body's own
+gravity pulls it at most ~10 min below that. Stored body dilations come from
+generation, so data made under the old constants needs a regenerate
+(`demo:reset`).
+
+**System page.** Planets/moons are painted with light tints of the system
+colour via CSS variables on `.system-svg` (`--tone-0..2`, `--tone-moon`;
+`PlanetarySystem::Body#tone` emits `data-tone`); orbit rings in the system
+colour. The pause button and its note were removed (animation just runs).
+
+**Mobile nav.** The nav bleeds to the edges with a negative margin that must
+match the body padding; the ≤768px block keeps them in step (otherwise every
+page scrolled sideways by 16px).
+
 **System lookup:** galaxy map markers navigate with the FILE id (UUID) while
 view links use the DB id — `GalaxyController#find_system_record` accepts both.
 Keep it that way for any new system routes.
@@ -138,7 +270,7 @@ Keep it that way for any new system routes.
 **About page:** `/o-aplikaci` (`PagesController#about`) webifies the original
 assignment (Gravikon.pdf — served copy at `public/Gravikon.pdf`, source in the
 repo root is git-ignored): the Xentor story, the physics formulas (CSS-rendered,
-no MathJax) and the extension checklist. Linked from the nav (🚀 O aplikaci, shortcut O) and from the galaxy landing
+no MathJax) and the extension checklist. Linked from the nav (🔭 O aplikaci, shortcut O) and from the galaxy landing
 map intro link. The keyboard-shortcut table lives on this page (the Nápověda
 nav tab + modal were removed). Favicon: black-hole icon (public/icon.svg,
 rasterized icon.png/favicon.ico).
@@ -165,7 +297,7 @@ the star (planet spacing shrinks with planet count so 1-10 planets all work).
 
 ## Testing
 
-- `rails test`: 281 runs / 0 failures / 0 errors / 9 documented skips. Parallelized;
+- `rails test`: 266 runs / 0 failures / 0 errors / 9 documented skips. Parallelized;
   each worker gets isolated data roots (test_helper `parallelize_setup`).
 - Helpers in test_helper: `write_system_data(system_or_id, bodies)`,
   `default_test_bodies(names)`.

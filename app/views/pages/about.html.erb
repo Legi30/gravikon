@@ -11,7 +11,7 @@
       Ve vzdálené galaxii, v planetární soustavě <strong>Xentor</strong>, žije technologicky vyspělá
       civilizace, která ovládla svou sluneční soustavu. Její členové sídlí na mnoha různých planetách
       a měsících, kde probíhá výzkum, těžba a řízení jejich společnosti. Potřebují se však pravidelně
-      spojovat pomocí meziplanetárních videokonferencí – typicky přes <em>Zoom</em>.
+      spojovat pomocí meziplanetárních videokonferencí, typicky přes <em>Zoom</em>.
     </p>
     <p>
       Vzhledem ke komplikovaným podmínkám (zakřivení času vlivem gravitace, konečná rychlost signálu)
@@ -35,12 +35,12 @@
     </div>
 
     <ul class="formula-legend">
-      <li><var>τ</var> — skutečná doba schůzky (lokální čas účastníka)</li>
-      <li><var>t</var> — doba schůzky z hlediska vesmírného pozorovatele</li>
-      <li><var>G</var> — gravitační konstanta</li>
-      <li><var>M</var> — hmotnost tělesa</li>
-      <li><var>R</var> — vzdálenost od středu hmotného tělesa (typicky poloměr planety či měsíce)</li>
-      <li><var>c</var> — rychlost signálu</li>
+      <li><var>τ</var>: skutečná doba schůzky (lokální čas účastníka)</li>
+      <li><var>t</var>: doba schůzky z hlediska vesmírného pozorovatele</li>
+      <li><var>G</var>: gravitační konstanta</li>
+      <li><var>M</var>: hmotnost tělesa</li>
+      <li><var>R</var>: vzdálenost od středu hmotného tělesa (typicky poloměr planety či měsíce)</li>
+      <li><var>c</var>: rychlost signálu</li>
     </ul>
 
     <p style="margin-top: 1.5rem;">
@@ -55,17 +55,12 @@
     </div>
 
     <ul class="formula-legend">
-      <li><var>d</var> — vzdálenost mezi dvěma účastníky</li>
+      <li><var>d</var>: vzdálenost mezi dvěma účastníky</li>
     </ul>
-
-    <p class="about-note">
-      Konstanty v aplikaci jsou pedagogicky přeškálované, aby byly relativistické efekty na mapě
-      viditelné — vzorce ale odpovídají skutečné obecné relativitě.
-    </p>
   </section>
 
   <section>
-    <h3>🛠 Co Gravikon dělá</h3>
+    <h3>🔧 Co Gravikon dělá</h3>
     <p>Uživatel zadá účastníky schůzky, začátek, konec a téma. Gravikon:</p>
     <ul class="about-list">
       <li>načte planetární soustavu (a celou galaxii soustav obíhajících kolem černé díry),</li>
@@ -75,13 +70,13 @@
   </section>
 
   <section>
-    <h3>🚀 Od zadání k dnešní podobě</h3>
-    <p>Původní zadání navrhovalo i možná rozšíření — většina z nich je dnes součástí aplikace:</p>
+    <h3>🧭 Od zadání k dnešní podobě</h3>
+    <p>Původní zadání navrhovalo i možná rozšíření. Většina z nich je dnes součástí aplikace:</p>
     <ul class="about-list">
       <li>✅ <strong>Robustnost:</strong> validace vstupů a chybové hlášky</li>
       <li>✅ <strong>Velikost:</strong> více planetárních soustav v galaxii kolem centrální černé díry, včetně mezisystémových schůzek</li>
-      <li>✅ <strong>Dynamika &amp; simulace:</strong> tělesa i soustavy obíhají v reálném čase — vizualizace běží synchronně s hodinami, obnovení stránky pohyb nepřeruší</li>
-      <li>⏳ <strong>Optimalizace:</strong> algoritmus hledající nejlepší okamžik pro schůzku (nejmenší zpoždění signálu) — zatím čeká na implementaci</li>
+      <li>✅ <strong>Dynamika &amp; simulace:</strong> tělesa i soustavy obíhají v reálném čase, vizualizace běží synchronně s hodinami, obnovení stránky pohyb nepřeruší</li>
+      <li>⏳ <strong>Optimalizace:</strong> algoritmus hledající nejlepší okamžik pro schůzku (nejmenší zpoždění signálu), zatím čeká na implementaci</li>
     </ul>
     <p style="margin-top: 1rem;">
       <%= link_to "Původní zadání (PDF)", "/Gravikon.pdf", class: "btn btn-secondary btn-sm", target: "_blank", rel: "noopener" %>
@@ -89,9 +84,9 @@
   </section>
 
   <section>
-    <h3>🜛 Hádanka: Xentorský čas</h3>
+    <h3>🧩 Hádanka: Xentorský čas</h3>
     <p>
-      V pravém horním rohu mapy galaxie tikají čtyři runy — <span class="rune-sample">ᚠᚢ:ᚦᚨ</span>.
+      V pravém horním rohu mapy galaxie tikají čtyři runy: <span class="rune-sample">ᚠᚢ:ᚦᚨ</span>.
       Jsou to xentorské hodiny. Nefungují ale jako ty pozemské...
     </p>
     <p><strong>Dokážete přijít na to, jak xentorský čas funguje?</strong></p>
@@ -101,7 +96,7 @@
       <ul class="about-list">
         <li>Každá runa se mění jinou rychlostí.</li>
         <li>Pořadí run není náhodné.</li>
-        <li>Odpověď nenajdete v číslech — najdete ji na obloze.</li>
+        <li>Odpověď nenajdete v číslech, najdete ji na obloze.</li>
         <li>Když zanikne soustava, hodiny přijdou o číslici.</li>
       </ul>
     </details>
@@ -111,9 +106,9 @@
       <p>
         Každá runa je <strong>okamžitá poloha jedné planetární soustavy na její orbitě</strong> kolem
         černé díry, rozdělené na 12 výsečí (dvanáctková soustava, nula na galaktickém severu, po směru
-        hodinových ručiček). Zleva jsou soustavy od nejvzdálenější po nejbližší — nejpravější runa se
+        hodinových ručiček). Zleva jsou soustavy od nejvzdálenější po nejbližší, nejpravější runa se
         proto mění nejrychleji, jako vteřinová ručička. Hodiny tak čtete z <em>konfigurace prostoru</em>,
-        která je ale díky oběžným dobám zároveň jednoznačným údajem o čase — stejné runy uvidí každý
+        která je ale díky oběžným dobám zároveň jednoznačným údajem o čase. Stejné runy uvidí každý
         návštěvník, kdekoli a po libovolném obnovení stránky. Zanikne-li soustava, její číslice zmizí: „–".
       </p>
     </details>
@@ -131,27 +126,12 @@
         <tr><td><kbd class="keyboard-key">O</kbd></td><td>O aplikaci</td></tr>
       </tbody>
     </table>
-    <p class="about-note">Zkratky nefungují, když píšete do formulářových polí.</p>
   </section>
-</div>
-
-<div class="content-section">
-  <div class="card about-closing">
-    <p>
-      <em>Gravikon je první krok ke komunikaci mezi planetami — propojuje relativistickou fyziku
-      s každodenní potřebou: domluvit si schůzku. Až budete příště plánovat Zoom call, buďte rádi,
-      že nejste na měsíci vzdáleném několik světelných let.</em>
-    </p>
-    <div class="actions" style="justify-content: center; margin-top: 1.5rem;">
-      <%= link_to "🌌 Prozkoumat galaxii", galaxy_index_path, class: "btn btn-primary" %>
-      <%= link_to "📅 Naplánovat schůzku", new_meeting_path, class: "btn btn-accent" %>
-    </div>
-  </div>
 </div>
 
 <style>
   .about-subtitle {
-    font-family: 'Orbitron', sans-serif;
+    font-family: 'Oxanium', sans-serif;
     color: rgba(255, 255, 255, 0.65);
     font-size: 1.1rem;
     margin-top: -1rem;
@@ -241,13 +221,6 @@
     line-height: 1.9;
   }
 
-  .about-note {
-    margin-top: 1rem;
-    font-size: 0.9rem;
-    color: rgba(255, 255, 255, 0.55);
-    font-style: italic;
-  }
-
   .rune-sample {
     color: #2dd4bf;
     text-shadow: 0 0 8px rgba(45, 212, 191, 0.5);
@@ -282,17 +255,6 @@
   .riddle-reveal ul {
     padding-left: 2.25rem;
     line-height: 1.9;
-  }
-
-  .about-closing {
-    text-align: center;
-  }
-
-  /* The closing box stays a box but must not react to hovering */
-  .about-closing:hover {
-    transform: none;
-    box-shadow: var(--shadow-md);
-    border-color: rgba(255, 215, 0, 0.2);
   }
 
   @media (max-width: 640px) {

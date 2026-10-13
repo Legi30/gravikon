@@ -152,7 +152,7 @@ abbr[title] {
 
 /* === Typography === */
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Oxanium', sans-serif;
   font-weight: 700;
   line-height: 1.2;
   margin-bottom: var(--spacing-md);
@@ -234,9 +234,9 @@ code {
 }
 
 .brand-text {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Oxanium', sans-serif;
   font-size: 1.5rem;
-  font-weight: 900;
+  font-weight: 800;
   color: var(--accent);
   text-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
 }
@@ -337,7 +337,7 @@ code {
 .btn {
   display: inline-block;
   padding: 0.75rem 1.5rem;
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Oxanium', sans-serif;
   font-size: 0.9rem;
   font-weight: 600;
   text-decoration: none;
@@ -431,7 +431,7 @@ label {
   margin-bottom: var(--spacing-xs);
   font-weight: 600;
   color: var(--accent);
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Oxanium', sans-serif;
   font-size: 0.9rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -562,7 +562,7 @@ table {
 th {
   background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 215, 0, 0.1) 100%);
   color: var(--accent);
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Oxanium', sans-serif;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -621,12 +621,21 @@ tr:hover td {
 }
 
 #tooltip .tooltip-title {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Oxanium', sans-serif;
   color: var(--accent);
   font-size: 13px;
   margin-bottom: 0.35rem;
   padding-bottom: 0.35rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* Galaxy map: the system's colour (same as dashboard and meetings) */
+#tooltip .tooltip-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 0.45rem;
 }
 
 #tooltip .tooltip-row {
@@ -668,6 +677,12 @@ tr:hover td {
 @media (max-width: 768px) {
   body {
     padding: var(--spacing-sm);
+  }
+
+  /* The nav bleeds to the edges by cancelling the body padding; keep the
+     two in step or the nav sticks out and the page scrolls sideways */
+  .main-nav {
+    margin: calc(-1 * var(--spacing-sm)) calc(-1 * var(--spacing-sm)) var(--spacing-lg);
   }
 
   h1 {

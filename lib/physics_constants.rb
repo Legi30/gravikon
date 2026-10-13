@@ -15,13 +15,15 @@ module PhysicsConstants
   C = 10_000_000.0
 
   # Scaled gravitational constant used for a body's OWN surface dilation
-  # (real: 6.67430e-11). Chosen so planets/moons get visible 0.85-0.99 factors.
-  GRAVITATIONAL_CONSTANT = 0.0001
+  # (real: 6.67430e-11). Chosen so planets/moons get visible ~0.82-0.99
+  # factors, i.e. a body's own gravity matters LESS than the black hole
+  # (David's call 2026-10-13: the black hole should dominate).
+  GRAVITATIONAL_CONSTANT = 0.00004
 
-  # Separately scaled G for the supermassive black hole, chosen so its
-  # dilation stays in a visible ~0.80 (50 units away) to ~0.99 (canvas edge)
-  # range instead of collapsing the sqrt into a negative radicand.
-  BLACK_HOLE_GRAVITATIONAL_CONSTANT = 1.1e-16
+  # Separately scaled G for the supermassive black hole: dilation ~0.34 at the
+  # 50-unit safety limit, ~0.75 at 100, ~0.93 at 350 (horizon ~44 units, inside
+  # the 50-unit limit, so the sqrt never goes negative where systems may sit).
+  BLACK_HOLE_GRAVITATIONAL_CONSTANT = 2.7e-16
 
   # Mass of the central black hole (kg, shared by all generators/services)
   BLACK_HOLE_MASS = 8.2e36

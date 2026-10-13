@@ -1,15 +1,26 @@
-<div class="page-header">
-  <h1>Naplánované schůzky</h1>
+<% content_for :body_class, "meetings-page" %>
+
+<div class="page-header meetings-header">
+  <div>
+    <h1>Naplánované schůzky</h1>
+    <p class="meetings-lead">Kliknutím na schůzku zobrazíte, jak ji prožije každý z účastníků.</p>
+  </div>
+  <div class="meetings-header-actions">
+    <%= link_to "Naplánovat schůzku", new_meeting_path, class: "btn btn-primary", "aria-label" => "Naplánovat novou schůzku - klávesová zkratka N", title: "Naplánovat novou schůzku (klávesová zkratka: N)" %>
+    <% if @systems.present? && @systems.count >= 2 %>
+      <%= link_to "Mezisystémová schůzka", new_inter_system_meetings_path, class: "btn btn-accent", "aria-label" => "Naplánovat schůzku mezi soustavami" %>
+    <% end %>
+  </div>
 </div>
 
 <div id="flash-messages" role="alert" aria-live="polite" aria-atomic="true"></div>
 
-<div class="content-section">
-  <div class="card fade-in meetings-toolbar">
-    <div class="meetings-filter">
-      <% if @systems.present? && @systems.count > 1 %>
-        <label for="system-filter" style="margin-bottom: 0.5rem;">Podle soustavy:</label>
-        <select id="system-filter" class="form-control" style="min-width: 220px;" aria-label="Filtrovat podle soustavy">
+<div class="content-section fade-in">
+  <div class="meetings-board">
+    <% if @systems.present? && @systems.count > 1 %>
+      <div class="meetings-filter">
+        <label for="system-filter">Zobrazit</label>
+        <select id="system-filter" class="form-control" aria-label="Filtrovat podle soustavy">
           <option value="">Všechny schůzky</option>
           <option value="inter-system">Pouze mezisystémové</option>
           <option value="single-system">Pouze v rámci soustavy</option>
@@ -17,58 +28,20 @@
             <option value="system-<%= system.id %>"><%= system.name %></option>
           <% end %>
         </select>
-      <% end %>
-    </div>
+      </div>
+    <% end %>
 
-    <div class="meetings-toolbar-actions">
-      <%= link_to "Naplánovat novou schůzku", new_meeting_path, class: "btn btn-primary", "aria-label" => "Naplánovat novou schůzku - klávesová zkratka N", title: "Naplánovat novou schůzku (klávesová zkratka: N)" %>
-      <% if @systems.present? && @systems.count >= 2 %>
-        <%= link_to "🌌 Mezisystémová schůzka", new_inter_system_meetings_path, class: "btn btn-accent", "aria-label" => "Naplánovat schůzku mezi soustavami" %>
-      <% end %>
-    </div>
-  </div>
-</div>
-
-<style>
-  .meetings-toolbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    gap: 1.5rem;
-    flex-wrap: wrap;
-    padding: 1.25rem 1.5rem;
-  }
-
-  .meetings-filter {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .meetings-filter select {
-    width: auto;
-  }
-
-  .meetings-toolbar-actions {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-  }
-</style>
-
-<div class="content-section">
-  <div class="card fade-in">
-    <table role="table" aria-label="Seznam naplánovaných schůzek">
+    <table class="meetings-table" role="table" aria-label="Seznam naplánovaných schůzek">
       <thead>
         <tr>
           <th scope="col">Čas</th>
-          <th scope="col">Účastníci</th>
-          <th scope="col">Téma</th>
+          <th scope="col">Schůzka</th>
           <% if @systems.present? && @systems.count > 0 %>
             <th scope="col">Soustava</th>
           <% end %>
-          <th scope="col"><abbr title="Průměrná délka schůzky v lokálním čase účastníků. Kvůli gravitační dilataci času — důsledku zakřivení časoprostoru hmotnými tělesy (obecná relativita) — plyne čas každému účastníkovi jinak rychle, takže schůzka pro ně trvá jinak dlouho než v plánovaném čase." aria-label="Průměrná délka">⏱ Průměrná délka</abbr></th>
-          <th scope="col"><abbr title="Průměrné zpoždění signálu mezi účastníky. Světlo (a tedy každý signál) má konečnou rychlost, takže komunikace mezi vzdálenými tělesy dorazí se zpožděním — u mezisystémových schůzek výrazně větším." aria-label="Zpoždění signálu">📡 Zpoždění</abbr></th>
-          <th scope="col">Akce</th>
+          <th scope="col"><abbr title="Průměrná délka schůzky v lokálním čase účastníků. Kvůli gravitační dilataci času plyne čas každému účastníkovi jinak rychle, takže schůzka pro něj trvá jinak dlouho než v plánovaném čase. Čárky ukazují každého účastníka zvlášť." aria-label="Prožitá délka">Prožitá délka</abbr></th>
+          <th scope="col"><abbr title="Průměrné zpoždění signálu mezi účastníky. Signál má konečnou rychlost, takže mezi vzdálenými tělesy dorazí se zpožděním, mezi soustavami výrazně větším." aria-label="Zpoždění signálu">Zpoždění</abbr></th>
+          <th scope="col"><span class="sr-only">Akce</span></th>
         </tr>
       </thead>
       <tbody id="meetings-table">

@@ -12,46 +12,70 @@
                 else
                   "—"
                 end
+
+  # Mini dilation bars: one per participant, the track is the scheduled
+  # length and the bar is how much of it that participant lives through
+  participant_info = meeting_participants_info(meeting)
+  base_duration = meeting.duration_minutes
+  max_bars = 8
+
+  # Shared system colours (ApplicationHelper#system_color): the row stripe
+  # is the meeting's system, inter-system meetings use the accent gold
+  involved_system_ids = is_inter_system ? meeting.participant_systems_hash.values.uniq.compact : [ meeting.system_id ].compact
+  row_color = is_inter_system ? "var(--accent)" : system_color(meeting.system_id)
 %>
-<tr id="<%= dom_id(meeting) %>" data-is-inter-system="<%= is_inter_system %>" data-system-id="<%= meeting.system_id %>" <% if is_inter_system && meeting.participant_systems.present? %>data-system-ids="<%= meeting.participant_systems_hash.values.uniq.compact.join(',') %>"<% end %>>
-  <td><%= "#{meeting.start_time || '?'} - #{meeting.end_time || '?'}" %></td>
-  <td>
-    <% if is_inter_system && meeting.participant_systems.present? %>
-      <%# Inter-system meetings list only the involved SYSTEMS, not bodies %>
-      <% system_names = meeting.participant_systems_hash.values.uniq.map { |sid| @systems_by_id[sid]&.name }.compact %>
-      <%= system_names.first(4).join(", ") %><%= "…" if system_names.size > 4 %>
-    <% else %>
-      <% names = meeting.participants_array %>
-      <% if names.any? %>
-        <%= names.first(4).join(", ") %><%= "…" if names.size > 4 %>
+<tr id="<%= dom_id(meeting) %>" class="meeting-row<%= ' meeting-row--inter' if is_inter_system %>" style="--row-color: <%= row_color %>;" data-is-inter-system="<%= is_inter_system %>" data-system-id="<%= meeting.system_id %>" <% if is_inter_system && meeting.participant_systems.present? %>data-system-ids="<%= meeting.participant_systems_hash.values.uniq.compact.join(',') %>"<% end %>>
+  <td class="meeting-time"><%= "#{meeting.start_time || '?'}–#{meeting.end_time || '?'}" %></td>
+  <td class="meeting-main">
+    <div class="meeting-row-topic"><%= meeting.topic.presence || "(bez tématu)" %></div>
+    <div class="meeting-participants">
+      <% if is_inter_system && meeting.participant_systems.present? %>
+        <%# Inter-system meetings list only the involved SYSTEMS, not bodies %>
+        <% system_names = meeting.participant_systems_hash.values.uniq.map { |sid| @systems_by_id[sid]&.name }.compact %>
+        <%= system_names.first(4).join(", ") %><%= "…" if system_names.size > 4 %>
       <% else %>
-        (neznámí účastníci)
+        <% names = meeting.participants_array %>
+        <% if names.any? %>
+          <%= names.first(4).join(", ") %><%= "…" if names.size > 4 %>
+        <% else %>
+          (neznámí účastníci)
+        <% end %>
       <% end %>
-    <% end %>
-  </td>
-  <td>
-    <%= meeting.topic.presence || "(bez tématu)" %>
+    </div>
   </td>
   <% if show_system_column %>
-    <td>
+    <td class="meeting-system">
+      <span class="meeting-system-dots" aria-hidden="true">
+        <% involved_system_ids.first(4).each do |system_id| %>
+          <span class="meeting-system-dot" style="background: <%= system_color(system_id) %>;"></span>
+        <% end %>
+      </span>
       <% if is_inter_system %>
-        <span style="color: var(--accent); font-weight: bold;" title="<%= meeting.participant_systems.present? ? "Soustavy: #{meeting.participant_systems_hash.values.uniq.compact.map { |sid| @systems_by_id[sid]&.name }.compact.join(', ')}" : 'Více soustav' %>">
-          🌌 Více soustav
-        </span>
+        <span class="meeting-multi" title="<%= meeting.participant_systems.present? ? "Soustavy: #{involved_system_ids.map { |sid| @systems_by_id[sid]&.name }.compact.join(', ')}" : 'Více soustav' %>">Více soustav</span>
       <% else %>
         <%= system_name %>
       <% end %>
     </td>
   <% end %>
-  <td><%= meeting.local_avg_duration ? meeting.formatted_duration : "?" %></td>
-  <td><%= meeting.avg_delay ? meeting.formatted_delay : "?" %></td>
-  <td>
-    <div style="display: flex; gap: 0.5rem;">
-      <%= link_to "✏️ Upravit", edit_meeting_path(meeting), class: "button-like" %>
-      <%= form_with url: meeting_path(meeting), method: :delete, html: { onsubmit: "return confirm('Opravdu smazat tuto schůzku?');" }, style: "display:inline;" do %>
-        <%= submit_tag "🗑 Smazat", class: "button-like" %>
-      <% end %>
-    </div>
+  <td class="meeting-lived">
+    <span class="meeting-lived-value"><%= meeting.local_avg_duration ? meeting.formatted_duration : "?" %></span>
+    <% if base_duration.positive? && participant_info.any? %>
+      <span class="lived-bars" title="Plánováno <%= base_duration.round %> min. Každá čárka je jeden účastník: kolik z plánovaného času skutečně prožije.">
+        <% participant_info.first(max_bars).each do |name, info| %>
+          <span class="lived-track"><span class="lived-bar" style="width: <%= (info[:dilation] * 100).clamp(0, 100).round(1) %>%; background: <%= system_color(info[:system_id]) %>;" title="<%= name %>: <%= (base_duration * info[:dilation]).round(1) %> min"></span></span>
+        <% end %>
+      </span>
+    <% end %>
+  </td>
+  <td class="meeting-delay"><%= meeting.avg_delay ? meeting.formatted_delay : "?" %></td>
+  <td class="meeting-row-actions">
+    <%= link_to "✏️", edit_meeting_path(meeting), class: "icon-btn", title: "Upravit", "aria-label" => "Upravit schůzku" %>
+    <%= form_with url: meeting_path(meeting), method: :delete, html: { onsubmit: "return confirm('Opravdu smazat tuto schůzku?');" } do %>
+      <button type="submit" class="icon-btn icon-btn-danger" title="Smazat" aria-label="Smazat schůzku">🗑</button>
+    <% end %>
+    <button type="button" class="relativistic-toggle" aria-expanded="false" aria-controls="relativistic-<%= dom_id(meeting) %>" aria-label="Zobrazit relativistické efekty" title="Relativistické efekty">
+      <span class="relativistic-toggle-chevron" aria-hidden="true">▾</span>
+    </button>
   </td>
 </tr>
 <%= render 'meetings/relativistic_info', meeting: meeting, is_inter_system: is_inter_system, show_system_column: show_system_column %>

@@ -7,7 +7,6 @@ class Meeting < ApplicationRecord
   # Callbacks
   before_validation :ensure_participants_json
   before_validation :ensure_participant_systems_json
-  after_commit :clear_dashboard_cache
 
   # Validations
   validates :start_time, presence: true
@@ -294,17 +293,5 @@ class Meeting < ApplicationRecord
       errors.add(:participant_systems, "není platný JSON formát")
       Rails.logger.warn("Security: JSON parse error in participant_systems: #{e.message}")
     end
-  end
-
-  # Clear dashboard statistics cache when meetings change
-  def clear_dashboard_cache
-    # Solid Cache doesn't support delete_matched. Deleting the key for the
-    # current Meeting.maximum(:updated_at) covers the stale-reuse case
-    # (destroying the newest meeting reverts the maximum to an older,
-    # possibly cached value); other keys expire via their 1-hour TTL.
-    Rails.cache.delete("dashboard_stats_v2_#{Meeting.maximum(:updated_at)&.to_i || 0}")
-  rescue => e
-    Rails.logger.error("Failed to clear dashboard cache: #{e.message}")
-    # Don't fail the transaction if cache clearing fails
   end
 end

@@ -50,6 +50,15 @@
     <div id="position-preview" style="width: 100%; max-width: 500px; height: 500px; margin: 0 auto; background: #000814; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; position: relative;">
       <% if @galaxy_svg.present? %>
         <%= raw @galaxy_svg %>
+        <%# Keep-out zones drawn over the embedded map (same 800×800 viewBox).
+            galaxy.js leaves the picker's systems at their STORED positions,
+            which is what these zones and the validation use. %>
+        <svg class="position-zones" viewBox="0 0 800 800" aria-hidden="true">
+          <circle cx="400" cy="400" r="50" class="zone-black-hole"/>
+          <% @systems.each do |other_system| %>
+            <circle cx="<%= other_system.x %>" cy="<%= other_system.y %>" r="40" class="zone-system"/>
+          <% end %>
+        </svg>
       <% else %>
         <svg viewBox="0 0 800 800" style="width: 100%; height: 100%;">
           <!-- Background -->
@@ -60,9 +69,6 @@
             <line x1="<%= i * 100 %>" y1="0" x2="<%= i * 100 %>" y2="800" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
             <line x1="0" y1="<%= i * 100 %>" x2="800" y2="<%= i * 100 %>" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
           <% end %>
-
-          <!-- Recommended zone (100-700) -->
-          <rect x="100" y="100" width="600" height="600" fill="none" stroke="rgba(46, 213, 115, 0.3)" stroke-width="2" stroke-dasharray="10,5"/>
 
           <!-- Black hole at center -->
           <circle cx="400" cy="400" r="30" fill="#8b5cf6" opacity="0.3"/>
@@ -81,11 +87,11 @@
       <% end %>
     </div>
 
-    <div style="margin-top: 1rem; font-size: 0.9rem; color: rgba(255, 255, 255, 0.7); text-align: center;">
-      <p><span style="color: #2ed573;">█</span> Zelený čtverec = Doporučená zóna (100-700)</p>
-      <p><span style="color: #e74c3c;">○</span> Červený kruh = Minimální vzdálenost od černé díry</p>
-      <p><span style="color: #10b981;">●</span> Zelený marker = Vaše vybraná pozice</p>
-    </div>
+    <ul class="position-legend">
+      <li><span class="legend-ring legend-ring-black-hole" aria-hidden="true"></span>Minimální vzdálenost od černé díry (<%= format_distance_km(50) %>)</li>
+      <li><span class="legend-ring legend-ring-system" aria-hidden="true"></span>Minimální vzdálenost od ostatních soustav (<%= format_distance_km(40) %>)</li>
+      <li><span class="legend-dot" aria-hidden="true"></span>Vaše vybraná pozice</li>
+    </ul>
   </div>
 </div>
 
@@ -98,8 +104,8 @@
         <li><strong>Souřadnice X a Y:</strong> Pozice soustavy na mapě galaxie (0-800)</li>
         <li><strong>Doporučený rozsah:</strong> 100-700 (soustavy mimo tento rozsah mohou být příliš blízko okraje)</li>
         <li><strong>Centrum galaxie:</strong> (400, 400) - pozice centrální černé díry</li>
-        <li><strong>Minimální vzdálenost od černé díry:</strong> 50 jednotek</li>
-        <li><strong>Minimální vzdálenost mezi soustavami:</strong> 40 jednotek</li>
+        <li><strong>Minimální vzdálenost od černé díry:</strong> <%= format_distance_km(50) %></li>
+        <li><strong>Minimální vzdálenost mezi soustavami:</strong> <%= format_distance_km(40) %></li>
       </ul>
 
       <h4 style="color: var(--accent); margin-top: 1.5rem;">🪐 Parametry soustavy</h4>

@@ -7,6 +7,8 @@ require "fileutils"
 # === Planetární systém ===
 # Renders a single solar system's SVG visualization from its JSON data file.
 class PlanetarySystem
+  SYSTEM_CENTER = 400
+
   # === Třída tělesa ===
   class Body
     attr_reader :name, :x, :y, :radius, :color, :type, :dilation
@@ -46,6 +48,12 @@ class PlanetarySystem
     def color_for_body
       self.class.color_for(@name, @type)
     end
+
+    # 0-2, stable per name: which light tint of the system colour the system
+    # page paints this body in (show_system sets the tints as CSS variables)
+    def tone
+      name.to_s.each_byte.reduce(0) { |acc, b| (acc * 31 + b) % 1_000_000 } % 3
+    end
   end
 
   attr_reader :bodies, :background, :raw_bodies, :system_id, :system_name, :system_x, :system_y
@@ -68,12 +76,30 @@ class PlanetarySystem
     generate_background
   end
 
+  # Binary star: the two stars circle their common centre (the system's
+  # local origin) slowly, so they don't spin like a propeller
+  BINARY_STAR_DISPLAY_RADIUS = 26
+  BINARY_STAR_PERIOD = 24
+
+  def binary?
+    bodies.count { |b| b.type == "star" } >= 2
+  end
+
   def assign_parents!
-    star = bodies.find { |b| b.type == "star" }
+    stars = bodies.select { |b| b.type == "star" }
     planets = bodies.select { |b| b.type == "planet" }
     moons = bodies.select { |b| b.type == "moon" }
 
-    planets.each { |p| p.parent = star }
+    # Planets orbit the star, or a binary's common centre (an unnamed,
+    # undrawn point that the stars themselves circle too)
+    center = if stars.size >= 2
+      barycentre = Body.new("x" => SYSTEM_CENTER, "y" => SYSTEM_CENTER, "radius" => 0, "type" => "barycentre")
+      stars.each { |star| star.parent = barycentre }
+      barycentre
+    else
+      stars.first
+    end
+    planets.each { |p| p.parent = center }
 
     moons.each do |m|
       # Přiřaď nejbližší planetu jako rodiče
@@ -130,9 +156,10 @@ class PlanetarySystem
           svg.circle(cx: obj[:cx], cy: obj[:cy], r: obj[:r], fill: obj[:color])
         end
 
-        # Orbitální dráhy
+        # Orbitální dráhy (a binary's two stars share one ring)
         bodies.each do |body|
           next unless body.parent
+          next if body.type == "star" && body != bodies.find { |b| b.type == "star" }
           r = body.orbit_radius
           svg.circle(cx: body.parent.x, cy: body.parent.y, r: r.round(1),
                      fill: "none", stroke: "#555", "stroke-dasharray": "3,2",
@@ -144,6 +171,7 @@ class PlanetarySystem
         # Tělesa
         bodies.each do |body|
           scaled_radius = (body.radius * scale_factor).clamp(1, 50)
+          scaled_radius = [ scaled_radius, BINARY_STAR_DISPLAY_RADIUS ].min if body.type == "star" && binary?
 
           # Získat mass pro data atribut
           raw_body = raw_bodies.find { |b| b["name"] == body.name }
@@ -151,7 +179,7 @@ class PlanetarySystem
 
           # Vypočítat orbitální parametry pro animaci
           orbit_radius = body.orbit_radius
-          parent_name = body.parent ? body.parent.name : ""
+          parent_name = body.parent ? body.parent.name.to_s : ""
           parent_x = body.parent ? body.parent.x : 0
           parent_y = body.parent ? body.parent.y : 0
 
@@ -164,7 +192,9 @@ class PlanetarySystem
 
           # Orbitální perioda (úměrná poloměru orbity - zjednodušený Keplerův zákon)
           # Menší hodnota = rychlejší otáčení
-          if orbit_radius && orbit_radius > 0
+          if body.type == "star" && orbit_radius && orbit_radius > 0
+            orbital_period = BINARY_STAR_PERIOD
+          elsif orbit_radius && orbit_radius > 0
             # Perioda v sekundách pro jeden oběh (čím dále, tím pomaleji)
             orbital_period = (orbit_radius / 50.0) ** 1.5 * 10
           else
@@ -187,6 +217,7 @@ class PlanetarySystem
             "data-orbit-radius": orbit_radius ? orbit_radius.round(2) : 0,
             "data-initial-angle": initial_angle.round(4),
             "data-orbital-period": orbital_period.round(2),
+            "data-tone": body.tone,
             class: "celestial-body"
           )
           svg.text_("#{body.name}", x: body.x + scaled_radius + 5, y: body.y - scaled_radius - 5,

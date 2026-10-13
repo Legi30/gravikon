@@ -17,7 +17,8 @@ class GenerateSystemJob < ApplicationJob
   # @param num_planets [Integer] Number of planets (1-10)
   # @param max_moons [Integer] Maximum moons per planet (0-5)
   # @param custom_bodies [Array<Hash>] Optional custom body definitions
-  def perform(system_id:, system_name:, system_x:, system_y:, num_planets:, max_moons:, custom_bodies: nil)
+  # @param binary [Boolean] Generate a binary star (two stars) instead of one
+  def perform(system_id:, system_name:, system_x:, system_y:, num_planets:, max_moons:, custom_bodies: nil, binary: false)
     job_start_time = Time.current
 
     Rails.logger.info("GenerateSystemJob: Generating '#{system_name}' (#{system_id}) at (#{system_x}, #{system_y}) with #{num_planets} planets, #{max_moons} max moons")
@@ -33,7 +34,8 @@ class GenerateSystemJob < ApplicationJob
       system_y: system_y,
       num_planets: num_planets,
       max_moons_per_planet: max_moons,
-      custom_bodies: custom_bodies
+      custom_bodies: custom_bodies,
+      binary: binary
     )
 
     system_data = generator.generate

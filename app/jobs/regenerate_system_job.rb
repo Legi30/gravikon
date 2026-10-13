@@ -33,7 +33,9 @@ class RegenerateSystemJob < ApplicationJob
       system_y: system.y,
       num_planets: num_planets,
       max_moons_per_planet: max_moons,
-      custom_bodies: custom_bodies
+      custom_bodies: custom_bodies,
+      # A binary stays a binary when its planets are regenerated
+      binary: system.binary?
     )
 
     system_data = generator.generate

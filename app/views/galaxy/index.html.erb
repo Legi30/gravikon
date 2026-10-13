@@ -1,13 +1,15 @@
 <% content_for :body_class, "galaxy-page" %>
 
-<%# === Short intro link for first-time visitors === %>
-<p class="galaxy-intro fade-in">
-  <%= link_to "Co je Gravikon?", about_path, class: "galaxy-intro-link" %>
-</p>
+<%# === Intro: the one idea a first-time visitor needs, then the map === %>
+<div class="galaxy-intro fade-in">
+  <p class="galaxy-intro-lead">Čím blíž černé díře, tím pomaleji plyne čas.</p>
+  <p class="galaxy-intro-sub"><%= link_to "Co je Gravikon?", about_path, class: "galaxy-intro-link" %></p>
+</div>
 
 <%# === Galaxy map hero — the map is the landing page === %>
 <% if @galaxy_svg.present? %>
-  <div class="svg-container fade-in galaxy-hero" aria-label="Interaktivní mapa galaxie s planetárními soustavami">
+  <div class="svg-container fade-in galaxy-hero" aria-label="Interaktivní mapa galaxie s planetárními soustavami"
+       data-system-dilations="<%= @system_dilations.to_json %>">
     <%# Xentorský orbitální čas — each rune is the orbital phase of one system
         (outermost = leftmost digit); digits are filled in by galaxy.js %>
     <div id="space-clock" class="space-clock"
@@ -63,23 +65,26 @@
         <% @systems.each do |system| %>
           <% system_data = system.load_system_data %>
           <% body_count = system_data&.dig('bodies')&.count || 0 %>
-          <div class="system-card">
-            <h4 style="margin: 0 0 0.75rem 0; color: var(--accent); font-size: 1.1rem;">
+          <div class="system-card" style="--system-color: <%= system_color(system.id) %>; --system-tint: <%= system_tint(system.id) %>;">
+            <h4 class="system-card-name">
+              <span class="system-card-dot" aria-hidden="true"></span>
               <%= link_to system.name, galaxy_system_path(system), style: "color: inherit; text-decoration: none;" %>
             </h4>
             <div class="system-info" style="font-size: 0.9rem; line-height: 1.6; color: rgba(255, 255, 255, 0.8);">
               <div><strong>Pozice:</strong> (<%= system.x.round(1) %>, <%= system.y.round(1) %>)</div>
               <div><strong>Počet těles:</strong> <%= body_count %></div>
               <% if system_data %>
-                <% star = system_data['bodies']&.find { |b| b['type'] == 'star' } %>
-                <% if star %>
-                  <div><strong>Hvězda:</strong> <%= star['name'] %></div>
+                <% stars = (system_data['bodies'] || []).select { |b| b['type'] == 'star' } %>
+                <% if stars.size >= 2 %>
+                  <div><strong>Dvojhvězda:</strong> <%= stars.map { |star| star['name'] }.join(" a ") %></div>
+                <% elsif stars.any? %>
+                  <div><strong>Hvězda:</strong> <%= stars.first['name'] %></div>
                 <% end %>
               <% end %>
             </div>
             <div class="system-actions" style="margin-top: 1rem; display: flex; gap: 0.5rem;">
               <%= link_to "Zobrazit", galaxy_system_path(system), class: "btn btn-primary btn-sm" %>
-              <%= link_to "Upravit", edit_galaxy_system_path(system), class: "btn btn-secondary btn-sm" %>
+              <%= link_to "Upravit", edit_galaxy_system_path(system), class: "btn btn-secondary btn-sm" unless system.core? %>
             </div>
           </div>
         <% end %>
@@ -109,10 +114,24 @@
 
   .galaxy-intro {
     text-align: center;
-    color: rgba(255, 255, 255, 0.6);
-    font-size: 0.95rem;
     max-width: 720px;
     margin: 0.5rem auto 0;
+  }
+
+  .galaxy-intro-lead {
+    font-family: 'Oxanium', sans-serif;
+    font-weight: 700;
+    font-size: 1.6rem;
+    color: var(--accent);
+    text-shadow: 0 0 18px rgba(255, 215, 0, 0.35);
+    margin: 0 0 0.5rem;
+  }
+
+  .galaxy-intro-sub {
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin: 0;
   }
 
   .galaxy-intro-link {
@@ -152,7 +171,7 @@
   }
 
   .galaxy-stat-value {
-    font-family: 'Orbitron', sans-serif;
+    font-family: 'Oxanium', sans-serif;
     font-size: 1.3rem;
     color: var(--accent);
     font-weight: 700;
@@ -181,12 +200,32 @@
     transition: all 0.3s ease;
   }
 
+  /* Each system card wears its system colour (same as map, dashboard, meetings) */
   .system-card:hover {
     background: rgba(255, 255, 255, 0.08);
-    border-color: var(--accent);
+    border-color: var(--system-color, var(--accent));
     transform: translateY(-2px);
   }
 
+  .system-card-name {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 0.75rem 0;
+    color: var(--system-tint, var(--accent));
+    font-size: 1.1rem;
+  }
+
+  .system-card-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex: none;
+    background: var(--system-tint);
+    box-shadow: 0 0 8px var(--system-color);
+  }
+
+  /* Adding a system stays possible but quiet: the four systems lead */
   .add-system-card {
     display: flex;
     flex-direction: column;
@@ -194,16 +233,16 @@
     justify-content: center;
     gap: 0.5rem;
     min-height: 150px;
-    border: 2px dashed rgba(255, 215, 0, 0.35);
-    background: rgba(255, 215, 0, 0.03);
+    border: 1px dashed rgba(255, 255, 255, 0.2);
+    background: transparent;
     text-decoration: none;
-    color: rgba(255, 215, 0, 0.8);
+    color: rgba(255, 255, 255, 0.5);
   }
 
   .add-system-card:hover {
-    border-color: var(--accent);
-    background: rgba(255, 215, 0, 0.08);
-    color: var(--accent);
+    border-color: rgba(255, 255, 255, 0.45);
+    background: rgba(255, 255, 255, 0.03);
+    color: rgba(255, 255, 255, 0.85);
   }
 
   .add-system-plus {
@@ -213,7 +252,7 @@
   }
 
   .add-system-text {
-    font-family: 'Orbitron', sans-serif;
+    font-family: 'Oxanium', sans-serif;
     font-size: 0.95rem;
     letter-spacing: 0.5px;
     text-transform: uppercase;
