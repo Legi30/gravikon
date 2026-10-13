@@ -36,7 +36,15 @@ rebuild_data_cmd: rails galaxy:rebuild   # self-heals galaxy_data.json, system J
 demo_reset_cmd: rails demo:reset         # wipe everything, seed the predefined demo galaxy
 ```
 
-Other rake tasks: `cache:stats`, `cache:warm`, `cache:clear_all`, `job:benchmark`, `assets:verify_js`, `assets:verify_css`.
+Other rake tasks: `cache:stats`, `cache:warm`, `cache:clear_all`, `job:benchmark`.
+
+**Assets:** plain Propshaft (no minification, no Node on talos). `public/assets`
+is Propshaft's OUTPUT dir and must never be added to `config.assets.paths`:
+a code-factory initializer did that plus an `assets:minify` hook on precompile
+(Terser/CSSO needing Node), which made every deploy re-digest the previous
+build (`galaxy-850f107a-850f107a.js`, "Unable to resolve" warnings). Both
+were removed (2026-10-13). After a local `RAILS_ENV=production
+assets:precompile`, run `assets:clobber`, or the dev server serves stale files.
 
 **Nightly demo reset:** `rails demo:reset` (lib/tasks/demo.rake) wipes all systems,
 meetings and generated files, then seeds 4 predefined systems (Alfa Centauri,
